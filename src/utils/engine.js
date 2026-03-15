@@ -213,19 +213,40 @@ export function generarDisposicion(b, h, recub, nBarras, diametro, tipo = 'recta
     return bars
   }
 
-  // Rectangular perimetral
+  // Distribución perimetral rectangular correcta
+  // Calcula cuántas barras van en cada lado incluyendo las esquinas
   const n = Math.max(4, nBarras)
-  const perimeter = 2 * ((xMax - xMin) + (yMax - yMin))
-  const spacing = perimeter / n
+  const lB = xMax - xMin  // longitud lado horizontal
+  const lH = yMax - yMin  // longitud lado vertical
+  const perim = 2 * (lB + lH)
 
+  // Distribuir n barras uniformemente en el perímetro empezando por esquina inf-izq
+  const corners = [
+    [xMin, yMin], [xMax, yMin],
+    [xMax, yMax], [xMin, yMax],
+  ]
+
+  // Generar n puntos uniformes en el perímetro
+  const step = perim / n
   for (let i = 0; i < n; i++) {
-    const d = i * spacing
-    const lB = xMax - xMin, lH = yMax - yMin
+    let dist = i * step
     let x, y
-    if      (d < lB)             { x = xMin + d;       y = yMin }
-    else if (d < lB + lH)        { x = xMax;            y = yMin + (d - lB) }
-    else if (d < 2 * lB + lH)    { x = xMax - (d - lB - lH); y = yMax }
-    else                          { x = xMin;            y = yMax - (d - 2 * lB - lH) }
+    // Lado inferior: yMin, de xMin a xMax
+    if (dist <= lB) {
+      x = xMin + dist; y = yMin
+    }
+    // Lado derecho: xMax, de yMin a yMax
+    else if (dist <= lB + lH) {
+      x = xMax; y = yMin + (dist - lB)
+    }
+    // Lado superior: yMax, de xMax a xMin
+    else if (dist <= 2 * lB + lH) {
+      x = xMax - (dist - lB - lH); y = yMax
+    }
+    // Lado izquierdo: xMin, de yMax a yMin
+    else {
+      x = xMin; y = yMax - (dist - 2 * lB - lH)
+    }
     bars.push({ x: +x.toFixed(3), y: +y.toFixed(3), diametro, area })
   }
   return bars
