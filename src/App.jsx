@@ -1,8 +1,7 @@
 import { useState, useCallback } from 'react'
 import SidebarInputs from './components/SidebarInputs'
 import ThreeSurfaceViewer from './three_scene/ThreeSurfaceViewer'
-import InteractionDiagramMx from './charts/InteractionDiagramMx'
-import InteractionDiagramMy from './charts/InteractionDiagramMy'
+import InteractionChart from './charts/InteractionDiagramMx'
 import { generarSuperficie } from './utils/engine'
 import './App.css'
 
@@ -16,6 +15,12 @@ export default function App() {
   const [error, setError]             = useState(null)
   const [demandPoint, setDemandPoint] = useState(null)
   const [proyecto, setProyecto]       = useState({ nombre:'', licencia:'', autor:'' })
+  const [dcrMax, setDcrMax]           = useState(null)
+  const [dcrOk, setDcrOk]            = useState(true)
+
+  // Viewer settings (controlled from sidebar)
+  const [ptSize, setPtSize]       = useState(4)
+  const [viewType, setViewType]   = useState('points')
 
   const handleCalculate = useCallback((data) => {
     setLoading(true); setError(null); setProgress(0); setColumnData(data)
@@ -44,12 +49,12 @@ export default function App() {
             <line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="8" x2="22" y2="16"/>
             <line x1="2" y1="16" x2="22" y2="8"/>
           </svg>
-          <span className="topbar-title">Software <span>E.060</span></span>
+          <span className="topbar-title">Column<span>Seis</span></span>
         </div>
         <div className="topbar-meta">
           <div className="topbar-field">
             <label>Proyecto</label>
-            <input value={proyecto.nombre} onChange={e=>setProyecto(p=>({...p,nombre:e.target.value}))} placeholder="nombre del proyecto"/>
+            <input value={proyecto.nombre} onChange={e=>setProyecto(p=>({...p,nombre:e.target.value}))} placeholder="Nombre del proyecto"/>
           </div>
           <div className="topbar-field">
             <label>Elemento</label>
@@ -60,13 +65,13 @@ export default function App() {
             <input value={proyecto.autor} onChange={e=>setProyecto(p=>({...p,autor:e.target.value}))} placeholder="Ing. Nombre Apellidos"/>
           </div>
           {geo && <>
-            <div className="topbar-field" style={{marginLeft:16}}>
+            <div className="topbar-field" style={{marginLeft:8}}>
               <label>Sección</label>
-              <input readOnly value={`${geo.b}×${geo.h} cm`} style={{width:70,color:'rgba(255,255,255,.7)',cursor:'default'}}/>
+              <input readOnly value={`${geo.b} x ${geo.h} cm`} style={{width:70}}/>
             </div>
             <div className="topbar-field">
               <label>f'c</label>
-              <input readOnly value={`${mat?.fc} kg/cm²`} style={{width:80,color:'rgba(255,255,255,.7)',cursor:'default'}}/>
+              <input readOnly value={`${mat?.fc} kg/cm²`} style={{width:85}}/>
             </div>
           </>}
         </div>
@@ -78,8 +83,7 @@ export default function App() {
       </header>
 
       <div className="app-body">
-
-        {/* ══ ZONA 1 — PANEL LATERAL IZQUIERDO ══ */}
+        {/* ══ PANEL LATERAL IZQUIERDO ══ */}
         <aside className="sidebar">
           <SidebarInputs
             onCalculate={handleCalculate}
@@ -87,7 +91,17 @@ export default function App() {
             columnData={columnData}
             surfaceData={surfaceData}
             onDemandChange={setDemandPoint}
+            ptSize={ptSize}
+            setPtSize={setPtSize}
+            viewType={viewType}
+            setViewType={setViewType}
+            onDcrUpdate={(dcr, ok) => { setDcrMax(dcr); setDcrOk(ok) }}
           />
+          {/* DCR Badge */}
+          <div className={`dcr-badge ${dcrMax !== null ? (dcrOk ? 'ok' : 'bad') : 'neutral'}`}>
+            <div className="dcr-badge-label">RATIO<br/>D/C MÁX</div>
+            <div className="dcr-badge-value">{dcrMax !== null ? dcrMax.toFixed(3) : '—'}</div>
+          </div>
           {/* RESULT BAR */}
           {surfaceData && (
             <div className="result-bar">
@@ -111,33 +125,58 @@ export default function App() {
           )}
         </aside>
 
-        {/* ══ ZONA 2 — VISOR 3D CENTRAL ══ */}
-        <section className="center-zone">
+        {/* ══ CONTENIDO CENTRAL ══ */}
+        <main className="main-content">
           {error && <div className="err-bar">⚠ {error}</div>}
-          <ThreeSurfaceViewer
-            surfaceData={surfaceData}
-            demandPoint={demandPoint}
-            loading={loading}
-            progress={progress}
-          />
-        </section>
 
-        {/* ══ ZONA 3 — PANEL DERECHO GRÁFICOS ══ */}
-        <aside className="charts-panel">
-          <div className="charts-panel-header">
-            <div className="sec-num" style={{background:'var(--purple)'}}>D</div>
-            <span className="charts-panel-title">Diagramas de Interacción</span>
+          {/* Visor 3D */}
+          <div className="viewer-wrapper">
+            <ThreeSurfaceViewer
+              surfaceData={surfaceData}
+              demandPoint={demandPoint}
+              loading={loading}
+              progress={progress}
+              ptSize={ptSize}
+              viewType={viewType}
+            />
           </div>
-          <InteractionDiagramMx
-            curva={surfaceData?.puntos_curva_PMx}
-            demandPoint={demandPoint ? {P:demandPoint.Pu, M:demandPoint.Mux} : null}
-          />
-          <InteractionDiagramMy
-            curva={surfaceData?.puntos_curva_PMy}
-            demandPoint={demandPoint ? {P:demandPoint.Pu, M:demandPoint.Muy} : null}
-          />
-        </aside>
 
+          {/* Grilla 2x2 de diagramas */}
+          <div className="charts-grid">
+            <InteractionChart
+              curva={surfaceData?.puntos_curva_PMx}
+              demandPoint={demandPoint ? {P:demandPoint.Pu, M:demandPoint.Mux} : null}
+              title="P-M33 (Sismo X)"
+              labelX="M33"
+              color="#2563eb"
+              dotColor="#2563eb"
+            />
+            <InteractionChart
+              curva={surfaceData?.puntos_curva_PMy}
+              demandPoint={demandPoint ? {P:demandPoint.Pu, M:demandPoint.Muy} : null}
+              title="P-M22 (Sismo X)"
+              labelX="M22"
+              color="#d97706"
+              dotColor="#d97706"
+            />
+            <InteractionChart
+              curva={surfaceData?.puntos_curva_PMx}
+              demandPoint={null}
+              title="P-M33 (Sismo Y)"
+              labelX="M33"
+              color="#dc2626"
+              dotColor="#dc2626"
+            />
+            <InteractionChart
+              curva={surfaceData?.puntos_curva_PMy}
+              demandPoint={null}
+              title="P-M22 (Sismo Y)"
+              labelX="M22"
+              color="#059669"
+              dotColor="#059669"
+            />
+          </div>
+        </main>
       </div>
     </div>
   )

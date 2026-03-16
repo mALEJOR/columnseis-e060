@@ -14,24 +14,39 @@ async function loadPlotly() {
 
 const LAYOUT_BASE = {
   paper_bgcolor:'#ffffff',
-  plot_bgcolor:'#f8f9fc',
-  font:{family:"'IBM Plex Mono',monospace",size:10,color:'#606880'},
-  margin:{l:46,r:10,t:10,b:44},
-  xaxis:{gridcolor:'#e4e7ee',zerolinecolor:'#b8bece',tickfont:{size:8,family:"'IBM Plex Mono',monospace",color:'#9aa0b4'},showgrid:true,zeroline:true},
-  yaxis:{gridcolor:'#e4e7ee',zerolinecolor:'#b8bece',tickfont:{size:8,family:"'IBM Plex Mono',monospace",color:'#9aa0b4'},showgrid:true,zeroline:true},
-  legend:{font:{size:8,color:'#606880'},bgcolor:'rgba(248,249,252,.9)',bordercolor:'#d4d8e2',borderwidth:1,x:0.02,y:0.02},
+  plot_bgcolor:'#fafbfc',
+  font:{family:"'IBM Plex Mono',monospace",size:10,color:'#6b7280'},
+  margin:{l:42,r:8,t:6,b:36},
+  xaxis:{
+    gridcolor:'#f0f1f3',zerolinecolor:'#e2e5ea',
+    tickfont:{size:8,family:"'IBM Plex Mono',monospace",color:'#9ca3af'},
+    showgrid:true,zeroline:true,
+  },
+  yaxis:{
+    gridcolor:'#f0f1f3',zerolinecolor:'#e2e5ea',
+    tickfont:{size:8,family:"'IBM Plex Mono',monospace",color:'#9ca3af'},
+    showgrid:true,zeroline:true,
+  },
+  legend:{
+    font:{size:7,color:'#6b7280'},
+    bgcolor:'rgba(255,255,255,.95)',bordercolor:'#e2e5ea',borderwidth:1,
+    x:0.02,y:0.98,xanchor:'left',yanchor:'top',
+  },
   hovermode:'closest',
   showlegend:true,
 }
 
-function DiagramChart({ curva, labelX, titulo, demandPoint, color }) {
+export default function InteractionChart({ curva, demandPoint, title, labelX, color, dotColor }) {
   const ref = useRef(null)
 
   useEffect(() => {
     let ok = true
     loadPlotly().then(plt => {
       if (!ok||!ref.current) return
-      if (!curva||curva.length===0) return
+      if (!curva||curva.length===0) {
+        plt.purge(ref.current)
+        return
+      }
 
       const sorted = [...curva].sort((a,b)=>b.P-a.P)
       const posM = sorted.filter(p=>p.M>=0)
@@ -44,17 +59,17 @@ function DiagramChart({ curva, labelX, titulo, demandPoint, color }) {
       const traces = [
         {
           type:'scatter',mode:'lines',x:Mv,y:Pv,
-          fill:'toself',fillcolor:`${color}14`,
-          line:{color,width:1.5},
-          name:'Diagrama',
+          fill:'toself',fillcolor:color+'12',
+          line:{color,width:1.8},
+          name:'Diseño',
           hovertemplate:`${labelX}: %{x:.2f} t·m<br>P: %{y:.2f} t<extra></extra>`,
         },
         {
           type:'scatter',mode:'lines',
           x:[Math.min(...Mv)*0.05, Math.max(...Mv)*0.05],
           y:[Math.max(...Pv),Math.max(...Pv)],
-          line:{color:'#cc2b2b',width:1,dash:'dot'},
-          name:`φP₀=${Math.max(...Pv).toFixed(0)}t`,
+          line:{color:'#dc2626',width:1,dash:'dot'},
+          name:`φP₀ max`,
           hovertemplate:'φP₀=%{y:.1f}t<extra></extra>',
         },
       ]
@@ -63,7 +78,7 @@ function DiagramChart({ curva, labelX, titulo, demandPoint, color }) {
         traces.push({
           type:'scatter',mode:'markers',
           x:[demandPoint.M/100000],y:[demandPoint.P/1000],
-          marker:{symbol:'diamond',size:9,color:'#f4a015',line:{color:'#fff',width:1}},
+          marker:{symbol:'diamond',size:8,color:dotColor || '#dc2626',line:{color:'#fff',width:1.5}},
           name:'Demanda',
           hovertemplate:`Mu: %{x:.3f} t·m<br>Pu: %{y:.2f} t<extra></extra>`,
         })
@@ -71,12 +86,8 @@ function DiagramChart({ curva, labelX, titulo, demandPoint, color }) {
 
       const layout = {
         ...LAYOUT_BASE,
-        xaxis:{...LAYOUT_BASE.xaxis,title:{text:`${labelX} (t·m)`,font:{size:8,color:'#9aa0b4'}}},
-        yaxis:{...LAYOUT_BASE.yaxis,title:{text:'P (ton)',font:{size:8,color:'#9aa0b4'}}},
-        annotations:[
-          {x:Math.max(...Mv)*.85,y:Math.min(...Pv)*.4,text:'Tracción',showarrow:false,font:{size:7,color:'rgba(204,43,43,.4)'}},
-          {x:Math.max(...Mv)*.85,y:Math.max(...Pv)*.8,text:'Compresión',showarrow:false,font:{size:7,color:'rgba(21,71,200,.4)'}},
-        ],
+        xaxis:{...LAYOUT_BASE.xaxis,title:{text:`${labelX} (t·m)`,font:{size:8,color:'#9ca3af'}}},
+        yaxis:{...LAYOUT_BASE.yaxis,title:{text:'P (ton)',font:{size:8,color:'#9ca3af'}}},
       }
 
       plt.newPlot(ref.current, traces, layout, {
@@ -84,22 +95,20 @@ function DiagramChart({ curva, labelX, titulo, demandPoint, color }) {
       })
     })
     return () => { ok=false }
-  }, [curva, demandPoint, color, labelX])
+  }, [curva, demandPoint, color, dotColor, labelX])
 
-  if (!curva||curva.length===0) return (
-    <div className="chart-placeholder">Sin datos</div>
-  )
-  return <div ref={ref} style={{flex:1,minHeight:0,width:'100%'}}/>
-}
-
-export default function InteractionDiagramMx({ curva, demandPoint }) {
   return (
-    <div className="chart-block">
-      <div className="chart-block-header">
-        <span style={{width:6,height:6,borderRadius:'50%',background:'#1547c8',flexShrink:0,display:'inline-block'}}/>
-        <span className="chart-block-title">Diagrama P-Mx</span>
+    <div className="chart-card">
+      <div className="chart-card-header">
+        <div className="chart-card-dot" style={{background:color}}/>
+        <span className="chart-card-title">{title}</span>
       </div>
-      <DiagramChart curva={curva} labelX="Mx" titulo="P-Mx" demandPoint={demandPoint} color="#1547c8"/>
+      <div className="chart-card-body">
+        {(!curva || curva.length===0)
+          ? <div className="chart-placeholder">Sin datos</div>
+          : <div ref={ref} style={{width:'100%',height:'100%'}}/>
+        }
+      </div>
     </div>
   )
 }

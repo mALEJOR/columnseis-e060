@@ -1,17 +1,17 @@
-import { useRef, useMemo, useState, useEffect } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, Text, Line } from '@react-three/drei'
+import { useRef, useMemo, useState } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { OrbitControls, Text } from '@react-three/drei'
 import * as THREE from 'three'
 
-// ── Gradiente de color por carga axial ────────────────────────────────────
+// ── Gradiente púrpura/violeta ─────────────────────────────────────────
 function pColor(P, Pmin, Pmax) {
   const t = Math.max(0, Math.min(1, (P - Pmin) / (Math.abs(Pmax - Pmin) + 1)))
   const stops = [
-    [0.30, 0.50, 1.00],  // azul — tracción
-    [0.00, 0.80, 0.90],  // cyan
-    [0.10, 0.85, 0.30],  // verde
-    [1.00, 0.72, 0.00],  // amarillo
-    [1.00, 0.18, 0.08],  // rojo — compresión
+    [0.25, 0.35, 0.85],  // azul-violeta — tracción
+    [0.40, 0.28, 0.75],  // índigo
+    [0.61, 0.35, 0.71],  // púrpura (#9b59b6)
+    [0.78, 0.42, 0.68],  // rosa-púrpura
+    [0.90, 0.35, 0.55],  // rosa — compresión
   ]
   const idx = t * (stops.length - 1)
   const i = Math.min(Math.floor(idx), stops.length - 2)
@@ -19,7 +19,7 @@ function pColor(P, Pmin, Pmax) {
   return stops[i].map((v, k) => v + f * (stops[i + 1][k] - v))
 }
 
-// ── Nube de puntos ────────────────────────────────────────────────────────
+// ── Nube de puntos ────────────────────────────────────────────────────
 function PointCloud({ puntos, Pmin, Pmax, scale, ptSize }) {
   const geom = useMemo(() => {
     const g = new THREE.BufferGeometry()
@@ -40,7 +40,7 @@ function PointCloud({ puntos, Pmin, Pmax, scale, ptSize }) {
   return (
     <points geometry={geom}>
       <pointsMaterial
-        size={ptSize} vertexColors transparent opacity={1}
+        size={ptSize / 100} vertexColors transparent opacity={0.95}
         sizeAttenuation={false} depthWrite={false}
         toneMapped={false}
       />
@@ -48,7 +48,40 @@ function PointCloud({ puntos, Pmin, Pmax, scale, ptSize }) {
   )
 }
 
-// ── Punto de demanda ──────────────────────────────────────────────────────
+// ── Superficie con malla (wireframe) ──────────────────────────────────
+function SurfaceMesh({ puntos, Pmin, Pmax, scale }) {
+  const { geometry, wireGeometry } = useMemo(() => {
+    const g = new THREE.BufferGeometry()
+    const pos = new Float32Array(puntos.length * 3)
+    const col = new Float32Array(puntos.length * 3)
+    puntos.forEach((p, i) => {
+      pos[i*3]   = p.My / scale.M
+      pos[i*3+1] = p.P  / scale.P
+      pos[i*3+2] = p.Mx / scale.M
+      const [r, g2, b] = pColor(p.P, Pmin, Pmax)
+      col[i*3]=r; col[i*3+1]=g2; col[i*3+2]=b
+    })
+    g.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+    g.setAttribute('color',    new THREE.BufferAttribute(col, 3))
+    const wg = g.clone()
+    return { geometry: g, wireGeometry: wg }
+  }, [puntos, Pmin, Pmax, scale])
+
+  return (
+    <group>
+      <points geometry={geometry}>
+        <pointsMaterial size={0.035} vertexColors transparent opacity={0.6}
+          sizeAttenuation={false} depthWrite={false} toneMapped={false} />
+      </points>
+      <points geometry={wireGeometry}>
+        <pointsMaterial size={0.015} vertexColors transparent opacity={0.3}
+          sizeAttenuation={false} depthWrite={false} toneMapped={false} />
+      </points>
+    </group>
+  )
+}
+
+// ── Punto de demanda ──────────────────────────────────────────────────
 function DemandSphere({ dp, scale }) {
   const ref = useRef()
   useFrame((_, dt) => { if (ref.current) ref.current.rotation.y += dt * 1.8 })
@@ -59,22 +92,27 @@ function DemandSphere({ dp, scale }) {
   return (
     <group position={[x, y, z]}>
       <mesh ref={ref}>
-        <octahedronGeometry args={[0.08]} />
-        <meshStandardMaterial color="#f4a015" emissive="#f4a015" emissiveIntensity={0.7} />
+        <octahedronGeometry args={[0.1]} />
+        <meshStandardMaterial color="#dc2626" emissive="#dc2626" emissiveIntensity={0.8} toneMapped={false} />
       </mesh>
-      {/* Líneas verticales y horizontales hacia el origen */}
-      {[[x,y,z],[0,y,0]].map((p,i)=> null)}
+      {/* Línea vertical al plano P=0 */}
+      <line>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[new Float32Array([0,0,0, 0,-y,0]),3]}/>
+        </bufferGeometry>
+        <lineBasicMaterial color="#dc2626" transparent opacity={0.4}/>
+      </line>
     </group>
   )
 }
 
-// ── Ejes coordinados ──────────────────────────────────────────────────────
-function Axes({ scale }) {
-  const L = 1.25
+// ── Ejes coordinados ──────────────────────────────────────────────────
+function Axes() {
+  const L = 1.3
   const axes = [
-    { dir: [1,0,0], color: '#5588ff', label: 'My' },
-    { dir: [0,1,0], color: '#ff5555', label: 'P'  },
-    { dir: [0,0,1], color: '#00ddb8', label: 'Mx' },
+    { dir: [1,0,0], color: '#ffffff', label: 'My' },
+    { dir: [0,1,0], color: '#ffffff', label: 'P'  },
+    { dir: [0,0,1], color: '#ffffff', label: 'Mx' },
   ]
   return (
     <group>
@@ -86,11 +124,12 @@ function Axes({ scale }) {
         return (
           <group key={label}>
             <line geometry={g}>
-              <lineBasicMaterial color={color} transparent opacity={0.55} />
+              <lineBasicMaterial color={color} transparent opacity={0.25} />
             </line>
             <Text
-              position={[x*(L+0.2), y*(L+0.2), z*(L+0.2)]}
-              fontSize={0.11} color={color} anchorX="center" anchorY="middle"
+              position={[x*(L+0.15), y*(L+0.15), z*(L+0.15)]}
+              fontSize={0.1} color="#ffffff" anchorX="center" anchorY="middle"
+              fillOpacity={0.6}
             >
               {label}
             </Text>
@@ -99,23 +138,23 @@ function Axes({ scale }) {
       })}
       {/* Plano P=0 */}
       <mesh rotation={[-Math.PI/2, 0, 0]}>
-        <planeGeometry args={[2.5, 2.5]} />
-        <meshBasicMaterial color="#1e2235" transparent opacity={0.35} side={THREE.DoubleSide} />
+        <planeGeometry args={[2.6, 2.6]} />
+        <meshBasicMaterial color="#1e1e3a" transparent opacity={0.4} side={THREE.DoubleSide} />
       </mesh>
-      {/* Grid lines en plano P=0 */}
+      {/* Grid */}
       {[-1, -0.5, 0, 0.5, 1].map(v => (
         <group key={v}>
           <line>
             <bufferGeometry>
-              <bufferAttribute attach="attributes-position" args={[new Float32Array([-1.25,0,v, 1.25,0,v]),3]}/>
+              <bufferAttribute attach="attributes-position" args={[new Float32Array([-1.3,0,v, 1.3,0,v]),3]}/>
             </bufferGeometry>
-            <lineBasicMaterial color="#2a2e45" transparent opacity={0.6}/>
+            <lineBasicMaterial color="#ffffff" transparent opacity={0.06}/>
           </line>
           <line>
             <bufferGeometry>
-              <bufferAttribute attach="attributes-position" args={[new Float32Array([v,0,-1.25, v,0,1.25]),3]}/>
+              <bufferAttribute attach="attributes-position" args={[new Float32Array([v,0,-1.3, v,0,1.3]),3]}/>
             </bufferGeometry>
-            <lineBasicMaterial color="#2a2e45" transparent opacity={0.6}/>
+            <lineBasicMaterial color="#ffffff" transparent opacity={0.06}/>
           </line>
         </group>
       ))}
@@ -123,8 +162,8 @@ function Axes({ scale }) {
   )
 }
 
-// ── Escena principal ──────────────────────────────────────────────────────
-function Scene({ surfaceData, demandPoint, ptSize }) {
+// ── Escena principal ──────────────────────────────────────────────────
+function Scene({ surfaceData, demandPoint, ptSize, viewType }) {
   const { puntos, P_max, P_min } = surfaceData
 
   const scale = useMemo(() => {
@@ -139,19 +178,22 @@ function Scene({ surfaceData, demandPoint, ptSize }) {
 
   return (
     <>
-      <ambientLight intensity={1.2} />
-      <directionalLight position={[5, 8, 4]} intensity={1.2} />
-      <pointLight position={[-4, 4, -4]} intensity={0.8} color="#4466ff" />
+      <ambientLight intensity={1.0} />
+      <directionalLight position={[5, 8, 4]} intensity={1.0} />
+      <pointLight position={[-4, 4, -4]} intensity={0.6} color="#8b5cf6" />
 
-      <PointCloud
-        puntos={puntos}
-        Pmin={P_min} Pmax={P_max}
-        scale={scale}
-        ptSize={ptSize}
-      />
+      {viewType === 'points' && (
+        <PointCloud puntos={puntos} Pmin={P_min} Pmax={P_max} scale={scale} ptSize={ptSize} />
+      )}
+      {viewType === 'mesh' && (
+        <SurfaceMesh puntos={puntos} Pmin={P_min} Pmax={P_max} scale={scale} />
+      )}
+      {viewType === 'solid' && (
+        <PointCloud puntos={puntos} Pmin={P_min} Pmax={P_max} scale={scale} ptSize={ptSize * 1.5} />
+      )}
 
       <DemandSphere dp={demandPoint} scale={scale} />
-      <Axes scale={scale} />
+      <Axes />
 
       <OrbitControls
         enableDamping dampingFactor={0.07}
@@ -161,182 +203,128 @@ function Scene({ surfaceData, demandPoint, ptSize }) {
   )
 }
 
-// ── Leyenda de colores ────────────────────────────────────────────────────
+// ── Legend overlay ────────────────────────────────────────────────────
 function Legend({ Pmax, Pmin }) {
   const f = v => {
     const abs = Math.abs(v)
     return abs >= 1000 ? `${(v/1000).toFixed(1)} t` : `${Math.round(v)} kg`
   }
   const items = [
-    { c: '#ff2d10', l: f(Pmax),      label: 'Comp. máx.' },
-    { c: '#ffb320', l: f(Pmax * .6), label: '' },
-    { c: '#18d940', l: f(Pmax * .2), label: '' },
-    { c: '#00ddb8', l: '0',          label: 'P = 0' },
-    { c: '#4d88ff', l: f(Pmin),      label: 'Trac. máx.' },
+    { c: '#e65990', l: f(Pmax),    label: 'Comp.' },
+    { c: '#c76bb8', l: '',         label: '' },
+    { c: '#9b59b6', l: '',         label: '' },
+    { c: '#6648c0', l: '',         label: '' },
+    { c: '#4059d9', l: f(Pmin),    label: 'Trac.' },
   ]
   return (
     <div style={{
-      position: 'absolute', bottom: 14, left: 14, zIndex: 10,
-      background: 'rgba(8,10,18,.9)', border: '1px solid rgba(255,255,255,.1)',
-      borderRadius: 6, padding: '10px 14px', backdropFilter: 'blur(6px)',
-      minWidth: 130,
+      position:'absolute',bottom:14,left:14,zIndex:10,
+      background:'rgba(26,26,46,.92)',border:'1px solid rgba(255,255,255,.1)',
+      borderRadius:8,padding:'10px 14px',backdropFilter:'blur(8px)',
+      minWidth:100,
     }}>
-      <div style={{ fontSize: 8, color: 'rgba(255,255,255,.3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>
-        Carga axial P
+      <div style={{fontSize:8,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:1,marginBottom:8,fontWeight:600}}>
+        Carga P
       </div>
-      {items.map(({ c, l, label }) => (
-        <div key={l+label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-          <div style={{ width: 10, height: 10, borderRadius: '50%', background: c, flexShrink: 0 }} />
-          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,.75)', flex: 1 }}>{l}</span>
-          {label && <span style={{ fontSize: 8, color: 'rgba(255,255,255,.3)' }}>{label}</span>}
-        </div>
-      ))}
-      <div style={{ marginTop: 8, paddingTop: 7, borderTop: '1px solid rgba(255,255,255,.1)', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ width: 10, height: 10, background: '#f4a015', transform: 'rotate(45deg)', flexShrink: 0 }} />
-        <span style={{ fontSize: 9, color: 'rgba(255,255,255,.45)' }}>Punto de demanda</span>
+      <div style={{display:'flex',flexDirection:'column',gap:2}}>
+        {items.map(({ c, l, label }, idx) => (
+          <div key={idx} style={{display:'flex',alignItems:'center',gap:8}}>
+            <div style={{width:12,height:4,borderRadius:2,background:c,flexShrink:0}} />
+            {l && <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9,color:'rgba(255,255,255,.7)'}}>{l}</span>}
+            {label && <span style={{fontSize:8,color:'rgba(255,255,255,.35)',marginLeft:'auto'}}>{label}</span>}
+          </div>
+        ))}
+      </div>
+      <div style={{marginTop:8,paddingTop:6,borderTop:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:6}}>
+        <div style={{width:8,height:8,background:'#dc2626',transform:'rotate(45deg)',flexShrink:0,borderRadius:1}} />
+        <span style={{fontSize:8,color:'rgba(255,255,255,.4)'}}>Demanda</span>
       </div>
     </div>
   )
 }
 
-// ── Stats overlay ─────────────────────────────────────────────────────────
+// ── Stats overlay ────────────────────────────────────────────────────
 function Stats({ surfaceData }) {
   const f = v => Math.abs(v) >= 1000 ? `${(v/1000).toFixed(1)}t` : `${Math.round(v)}kg`
   return (
     <div style={{
-      position: 'absolute', top: 10, right: 10, zIndex: 10,
-      background: 'rgba(8,10,18,.85)', border: '1px solid rgba(255,255,255,.08)',
-      borderRadius: 5, padding: '7px 11px', backdropFilter: 'blur(4px)',
+      position:'absolute',top:12,right:12,zIndex:10,
+      background:'rgba(26,26,46,.9)',border:'1px solid rgba(255,255,255,.08)',
+      borderRadius:8,padding:'8px 12px',backdropFilter:'blur(8px)',
     }}>
       {[
-        { l: 'Pts',  v: surfaceData.puntos.length,          c: 'rgba(255,255,255,.7)' },
-        { l: 'φP₀',  v: f(surfaceData.P_max),               c: '#ff6060' },
-        { l: 'φPt',  v: f(surfaceData.P_min),               c: '#5588ff' },
-        { l: 'ρ',    v: `${surfaceData.cuantia_acero.toFixed(2)}%`, c: surfaceData.cuantia_acero >= 1 && surfaceData.cuantia_acero <= 6 ? '#00ddb8' : '#ff5555' },
+        { l:'Pts',  v:surfaceData.puntos.length, c:'rgba(255,255,255,.6)' },
+        { l:'φP₀',  v:f(surfaceData.P_max),      c:'#e65990' },
+        { l:'φPt',  v:f(surfaceData.P_min),       c:'#4059d9' },
+        { l:'ρ',    v:`${surfaceData.cuantia_acero.toFixed(2)}%`, c:surfaceData.cuantia_acero>=1&&surfaceData.cuantia_acero<=6?'#34d399':'#f87171' },
       ].map(({ l, v, c }) => (
-        <div key={l} style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 3 }}>
-          <span style={{ fontSize: 8, color: 'rgba(255,255,255,.3)', fontFamily: 'monospace', width: 24 }}>{l}</span>
-          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, fontWeight: 500, color: c }}>{v}</span>
+        <div key={l} style={{display:'flex',gap:10,alignItems:'center',marginBottom:3}}>
+          <span style={{fontSize:8,color:'rgba(255,255,255,.3)',fontFamily:"'IBM Plex Mono',monospace",width:22}}>{l}</span>
+          <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:11,fontWeight:500,color:c}}>{v}</span>
         </div>
       ))}
     </div>
   )
 }
 
-// ── Componente principal exportado ────────────────────────────────────────
-export default function ThreeSurfaceViewer({ surfaceData, demandPoint, loading, progress }) {
-  const [ptSize,    setPtSize]    = useState(0.05)
-  const [showPts,   setShowPts]   = useState(true)
-  const [showMesh,  setShowMesh]  = useState(false)
-
+// ── Componente principal ──────────────────────────────────────────────
+export default function ThreeSurfaceViewer({ surfaceData, demandPoint, loading, progress, ptSize = 4, viewType = 'points' }) {
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column'}}>
 
-      {/* ── Barra de controles ── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 6,
-        padding: '5px 12px', background: 'rgba(255,255,255,.04)',
-        borderBottom: '1px solid rgba(255,255,255,.06)', flexShrink: 0, flexWrap: 'wrap',
-      }}>
-        <span style={{ fontFamily: "'IBM Plex Sans Condensed',sans-serif", fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'rgba(255,255,255,.4)', marginRight: 6 }}>
-          Superficie P-Mx-My
-        </span>
-        <div style={{ display: 'flex', gap: 5, marginLeft: 'auto', flexWrap: 'wrap' }}>
-          {[
-            { label: '⬡ Puntos', active: showPts, toggle: () => setShowPts(s => !s) },
-          ].map(({ label, active, toggle }) => (
-            <button key={label} onClick={toggle} style={{
-              padding: '3px 10px', borderRadius: 3, fontSize: 9, fontFamily: 'monospace',
-              cursor: 'pointer', transition: 'all .15s',
-              background: active ? 'rgba(77,138,255,.2)' : 'rgba(255,255,255,.06)',
-              border: `1px solid ${active ? '#4d8aff' : 'rgba(255,255,255,.1)'}`,
-              color: active ? '#7eb4ff' : 'rgba(255,255,255,.4)',
-            }}>{label}</button>
-          ))}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 3 }}>
-            <span style={{ fontSize: 9, color: 'rgba(255,255,255,.4)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>Tamaño</span>
-            <input type="range" min="0.02" max="0.12" step="0.005" value={ptSize}
-              onChange={e => setPtSize(parseFloat(e.target.value))}
-              style={{ width: 70, cursor: 'pointer', height: 2, accentColor: '#4d8aff' }} />
-            <span style={{ fontSize: 9, color: 'rgba(255,255,255,.5)', fontFamily: 'monospace', minWidth: 30 }}>{ptSize.toFixed(3)}</span>
+      {/* Estado vacío */}
+      {!surfaceData && !loading && (
+        <div className="viewer-empty">
+          <div className="viewer-empty-icon">⬡</div>
+          <h3>Superficie de Interacción</h3>
+          <p>Ingrese los datos y presione<br/><strong style={{color:'rgba(255,255,255,.35)'}}>CALCULAR INTERACCIÓN</strong></p>
+        </div>
+      )}
+
+      {/* Cargando */}
+      {loading && (
+        <div className="viewer-loading">
+          <div className="spinner" />
+          <p>Calculando superficie…</p>
+          <small>{progress}% — ángulos del eje neutro</small>
+          <div className="prog-bar">
+            <div className="prog-fill" style={{width:`${progress}%`}} />
           </div>
         </div>
-      </div>
+      )}
 
-      {/* ── Área de canvas ── */}
-      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+      {/* Canvas Three.js */}
+      {surfaceData && !loading && (
+        <Canvas
+          camera={{ position: [2.2, 1.6, 2.2], fov: 40 }}
+          style={{ position:'absolute', inset:0, background:'#1a1a2e' }}
+          gl={{ antialias:true }}
+        >
+          <Scene
+            surfaceData={surfaceData}
+            demandPoint={demandPoint}
+            ptSize={ptSize}
+            viewType={viewType}
+          />
+        </Canvas>
+      )}
 
-        {/* Estado vacío */}
-        {!surfaceData && !loading && (
+      {/* Overlays */}
+      {surfaceData && !loading && (
+        <>
+          <Legend Pmax={surfaceData.P_max} Pmin={surfaceData.P_min} />
+          <Stats surfaceData={surfaceData} />
           <div style={{
-            position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 14,
-            color: 'rgba(255,255,255,.15)',
+            position:'absolute',bottom:14,right:14,zIndex:10,
+            fontSize:9,color:'rgba(255,255,255,.2)',
+            fontFamily:"'IBM Plex Mono',monospace",textAlign:'right',lineHeight:2,
           }}>
-            <div style={{ fontSize: 60, lineHeight: 1 }}>⬡</div>
-            <div style={{ fontFamily: "'IBM Plex Sans Condensed',sans-serif", fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>
-              Superficie de Interacción
-            </div>
-            <div style={{ fontSize: 11, textAlign: 'center', lineHeight: 1.7, maxWidth: 260 }}>
-              Ingrese los datos en el panel izquierdo<br/>y presione <strong style={{ color: 'rgba(255,255,255,.3)' }}>CALCULAR INTERACCIÓN</strong>
-            </div>
+            <div>Arrastrar — rotar</div>
+            <div>Scroll — zoom</div>
+            <div>Clic der. — desplazar</div>
           </div>
-        )}
-
-        {/* Cargando */}
-        {loading && (
-          <div style={{
-            position: 'absolute', inset: 0, background: '#12141a',
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center', gap: 14,
-          }}>
-            <div style={{ width: 36, height: 36, border: '2px solid rgba(255,255,255,.1)', borderTopColor: '#4d8aff', borderRadius: '50%', animation: 'spin .7s linear infinite' }} />
-            <div style={{ fontFamily: "'IBM Plex Sans Condensed',sans-serif", fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'rgba(255,255,255,.4)' }}>
-              Calculando superficie…
-            </div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,.25)', fontFamily: 'monospace' }}>
-              {progress}% — ángulos del eje neutro
-            </div>
-            <div style={{ width: 180, height: 2, background: 'rgba(255,255,255,.1)', borderRadius: 1, overflow: 'hidden' }}>
-              <div style={{ height: '100%', background: '#4d8aff', borderRadius: 1, width: `${progress}%`, transition: 'width .3s' }} />
-            </div>
-          </div>
-        )}
-
-        {/* Canvas Three.js */}
-        {surfaceData && !loading && (
-          <Canvas
-            camera={{ position: [2.0, 1.5, 2.0], fov: 42 }}
-            style={{ position: 'absolute', inset: 0, background: '#12141a' }}
-            gl={{ antialias: true }}
-          >
-            <Scene
-              surfaceData={surfaceData}
-              demandPoint={demandPoint}
-              ptSize={ptSize}
-            />
-          </Canvas>
-        )}
-
-        {/* Overlays */}
-        {surfaceData && !loading && (
-          <>
-            <Legend Pmax={surfaceData.P_max} Pmin={surfaceData.P_min} />
-            <Stats surfaceData={surfaceData} />
-            <div style={{
-              position: 'absolute', bottom: 14, right: 14, zIndex: 10,
-              fontSize: 9, color: 'rgba(255,255,255,.2)',
-              fontFamily: 'monospace', textAlign: 'right', lineHeight: 2,
-            }}>
-              <div>⟳ Arrastrar — rotar</div>
-              <div>⊕ Scroll — zoom</div>
-              <div>⊞ Botón der. — desplazar</div>
-            </div>
-          </>
-        )}
-      </div>
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+        </>
+      )}
     </div>
   )
 }
