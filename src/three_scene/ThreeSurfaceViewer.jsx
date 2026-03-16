@@ -1,26 +1,115 @@
-import { useRef, useMemo, useState } from 'react'
+import { useRef, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Text } from '@react-three/drei'
 import * as THREE from 'three'
 
-// ── Gradiente púrpura/violeta ─────────────────────────────────────────
-function pColor(P, Pmin, Pmax) {
-  const t = Math.max(0, Math.min(1, (P - Pmin) / (Math.abs(Pmax - Pmin) + 1)))
-  const stops = [
-    [0.25, 0.35, 0.85],  // azul-violeta — tracción
-    [0.40, 0.28, 0.75],  // índigo
-    [0.61, 0.35, 0.71],  // púrpura (#9b59b6)
-    [0.78, 0.42, 0.68],  // rosa-púrpura
-    [0.90, 0.35, 0.55],  // rosa — compresión
-  ]
-  const idx = t * (stops.length - 1)
-  const i = Math.min(Math.floor(idx), stops.length - 2)
-  const f = idx - i
-  return stops[i].map((v, k) => v + f * (stops[i + 1][k] - v))
+// ── Superficie sólida triangulada con wireframe ───────────────────────
+function SolidSurface({ puntos, scale }) {
+  const { solidGeo, wireGeo } = useMemo(() => {
+    // Agrupar puntos por ángulo del eje neutro (excluir límites)
+    const angleMap = new Map()
+    for (const p of puntos) {
+      if (p.profundidad_c >= 900 || p.profundidad_c <= 0.001) continue
+      const key = p.angulo_neutro
+      if (!angleMap.has(key)) angleMap.set(key, [])
+      angleMap.get(key).push(p)
+    }
+
+    const angles = [...angleMap.keys()].sort((a, b) => a - b)
+    if (angles.length < 3) return {}
+
+    // Ordenar cada grupo por profundidad
+    for (const pts of angleMap.values()) {
+      pts.sort((a, b) => a.profundidad_c - b.profundidad_c)
+    }
+
+    const minLen = Math.min(...angles.map(a => angleMap.get(a).length))
+    if (minLen < 2) return {}
+
+    const nA = angles.length
+    const nD = minLen
+
+    // Construir vértices: grilla ángulo × profundidad
+    const positions = []
+    for (let ia = 0; ia < nA; ia++) {
+      const pts = angleMap.get(angles[ia])
+      for (let ic = 0; ic < nD; ic++) {
+        const p = pts[ic]
+        positions.push(p.My / scale.M, p.P / scale.P, p.Mx / scale.M)
+      }
+    }
+
+    // Centros de tapas superior e inferior
+    const topPt = puntos.find(p => p.profundidad_c >= 900)
+    const botPt = puntos.find(p => p.profundidad_c <= 0.001 && p.P < 0)
+    const topIdx = nA * nD
+    if (topPt) positions.push(topPt.My / scale.M, topPt.P / scale.P, topPt.Mx / scale.M)
+    const botIdx = topPt ? topIdx + 1 : topIdx
+    if (botPt) positions.push(botPt.My / scale.M, botPt.P / scale.P, botPt.Mx / scale.M)
+
+    // Construir triángulos
+    const indices = []
+
+    // Superficie principal: quad strips entre ángulos adyacentes
+    for (let ia = 0; ia < nA; ia++) {
+      const nextIa = (ia + 1) % nA
+      for (let ic = 0; ic < nD - 1; ic++) {
+        const i00 = ia * nD + ic
+        const i01 = ia * nD + ic + 1
+        const i10 = nextIa * nD + ic
+        const i11 = nextIa * nD + ic + 1
+        indices.push(i00, i10, i01)
+        indices.push(i01, i10, i11)
+      }
+    }
+
+    // Tapa superior: conectar última profundidad de cada ángulo al centro superior
+    if (topPt) {
+      for (let ia = 0; ia < nA; ia++) {
+        const nextIa = (ia + 1) % nA
+        indices.push(ia * nD + (nD - 1), nextIa * nD + (nD - 1), topIdx)
+      }
+    }
+
+    // Tapa inferior: conectar primera profundidad de cada ángulo al centro inferior
+    if (botPt) {
+      for (let ia = 0; ia < nA; ia++) {
+        const nextIa = (ia + 1) % nA
+        indices.push(ia * nD, botIdx, nextIa * nD)
+      }
+    }
+
+    const geo = new THREE.BufferGeometry()
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+    geo.setIndex(indices)
+    geo.computeVertexNormals()
+
+    return { solidGeo: geo, wireGeo: new THREE.WireframeGeometry(geo) }
+  }, [puntos, scale])
+
+  if (!solidGeo) return null
+
+  return (
+    <group>
+      <mesh geometry={solidGeo}>
+        <meshPhongMaterial
+          color="#9b59b6"
+          transparent
+          opacity={0.75}
+          side={THREE.DoubleSide}
+          shininess={80}
+          specular={new THREE.Color('#c39bd3')}
+        />
+      </mesh>
+      <lineSegments geometry={wireGeo}>
+        <lineBasicMaterial color="#c39bd3" transparent opacity={0.4} />
+      </lineSegments>
+    </group>
+  )
 }
 
-// ── Nube de puntos ────────────────────────────────────────────────────
-function PointCloud({ puntos, Pmin, Pmax, scale, ptSize }) {
+// ── Nube de puntos (modo alternativo) ─────────────────────────────────
+function PointCloud({ puntos, scale, ptSize }) {
   const geom = useMemo(() => {
     const g = new THREE.BufferGeometry()
     const pos = new Float32Array(puntos.length * 3)
@@ -29,55 +118,20 @@ function PointCloud({ puntos, Pmin, Pmax, scale, ptSize }) {
       pos[i*3]   = p.My / scale.M
       pos[i*3+1] = p.P  / scale.P
       pos[i*3+2] = p.Mx / scale.M
-      const [r, g2, b] = pColor(p.P, Pmin, Pmax)
-      col[i*3]=r; col[i*3+1]=g2; col[i*3+2]=b
+      col[i*3]=0.61; col[i*3+1]=0.35; col[i*3+2]=0.71
     })
     g.setAttribute('position', new THREE.BufferAttribute(pos, 3))
     g.setAttribute('color',    new THREE.BufferAttribute(col, 3))
     return g
-  }, [puntos, Pmin, Pmax, scale])
+  }, [puntos, scale])
 
   return (
     <points geometry={geom}>
       <pointsMaterial
-        size={ptSize / 100} vertexColors transparent opacity={0.95}
-        sizeAttenuation={false} depthWrite={false}
-        toneMapped={false}
+        size={ptSize / 100} vertexColors transparent opacity={0.9}
+        sizeAttenuation={false} depthWrite={false} toneMapped={false}
       />
     </points>
-  )
-}
-
-// ── Superficie con malla (wireframe) ──────────────────────────────────
-function SurfaceMesh({ puntos, Pmin, Pmax, scale }) {
-  const { geometry, wireGeometry } = useMemo(() => {
-    const g = new THREE.BufferGeometry()
-    const pos = new Float32Array(puntos.length * 3)
-    const col = new Float32Array(puntos.length * 3)
-    puntos.forEach((p, i) => {
-      pos[i*3]   = p.My / scale.M
-      pos[i*3+1] = p.P  / scale.P
-      pos[i*3+2] = p.Mx / scale.M
-      const [r, g2, b] = pColor(p.P, Pmin, Pmax)
-      col[i*3]=r; col[i*3+1]=g2; col[i*3+2]=b
-    })
-    g.setAttribute('position', new THREE.BufferAttribute(pos, 3))
-    g.setAttribute('color',    new THREE.BufferAttribute(col, 3))
-    const wg = g.clone()
-    return { geometry: g, wireGeometry: wg }
-  }, [puntos, Pmin, Pmax, scale])
-
-  return (
-    <group>
-      <points geometry={geometry}>
-        <pointsMaterial size={0.035} vertexColors transparent opacity={0.6}
-          sizeAttenuation={false} depthWrite={false} toneMapped={false} />
-      </points>
-      <points geometry={wireGeometry}>
-        <pointsMaterial size={0.015} vertexColors transparent opacity={0.3}
-          sizeAttenuation={false} depthWrite={false} toneMapped={false} />
-      </points>
-    </group>
   )
 }
 
@@ -92,15 +146,23 @@ function DemandSphere({ dp, scale }) {
   return (
     <group position={[x, y, z]}>
       <mesh ref={ref}>
-        <octahedronGeometry args={[0.1]} />
-        <meshStandardMaterial color="#dc2626" emissive="#dc2626" emissiveIntensity={0.8} toneMapped={false} />
+        <octahedronGeometry args={[0.12]} />
+        <meshStandardMaterial
+          color="#e74c3c" emissive="#e74c3c" emissiveIntensity={1.0}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* Glow sphere */}
+      <mesh>
+        <sphereGeometry args={[0.16, 16, 16]} />
+        <meshBasicMaterial color="#e74c3c" transparent opacity={0.2} />
       </mesh>
       {/* Línea vertical al plano P=0 */}
       <line>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[new Float32Array([0,0,0, 0,-y,0]),3]}/>
         </bufferGeometry>
-        <lineBasicMaterial color="#dc2626" transparent opacity={0.4}/>
+        <lineBasicMaterial color="#e74c3c" transparent opacity={0.5}/>
       </line>
     </group>
   )
@@ -124,12 +186,12 @@ function Axes() {
         return (
           <group key={label}>
             <line geometry={g}>
-              <lineBasicMaterial color={color} transparent opacity={0.25} />
+              <lineBasicMaterial color={color} transparent opacity={0.3} />
             </line>
             <Text
               position={[x*(L+0.15), y*(L+0.15), z*(L+0.15)]}
               fontSize={0.1} color="#ffffff" anchorX="center" anchorY="middle"
-              fillOpacity={0.6}
+              fillOpacity={0.7}
             >
               {label}
             </Text>
@@ -139,7 +201,7 @@ function Axes() {
       {/* Plano P=0 */}
       <mesh rotation={[-Math.PI/2, 0, 0]}>
         <planeGeometry args={[2.6, 2.6]} />
-        <meshBasicMaterial color="#1e1e3a" transparent opacity={0.4} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#141428" transparent opacity={0.5} side={THREE.DoubleSide} />
       </mesh>
       {/* Grid */}
       {[-1, -0.5, 0, 0.5, 1].map(v => (
@@ -148,13 +210,13 @@ function Axes() {
             <bufferGeometry>
               <bufferAttribute attach="attributes-position" args={[new Float32Array([-1.3,0,v, 1.3,0,v]),3]}/>
             </bufferGeometry>
-            <lineBasicMaterial color="#ffffff" transparent opacity={0.06}/>
+            <lineBasicMaterial color="#ffffff" transparent opacity={0.05}/>
           </line>
           <line>
             <bufferGeometry>
               <bufferAttribute attach="attributes-position" args={[new Float32Array([v,0,-1.3, v,0,1.3]),3]}/>
             </bufferGeometry>
-            <lineBasicMaterial color="#ffffff" transparent opacity={0.06}/>
+            <lineBasicMaterial color="#ffffff" transparent opacity={0.05}/>
           </line>
         </group>
       ))}
@@ -178,18 +240,16 @@ function Scene({ surfaceData, demandPoint, ptSize, viewType }) {
 
   return (
     <>
-      <ambientLight intensity={1.0} />
-      <directionalLight position={[5, 8, 4]} intensity={1.0} />
-      <pointLight position={[-4, 4, -4]} intensity={0.6} color="#8b5cf6" />
+      <ambientLight intensity={1.2} />
+      <directionalLight position={[5, 8, 4]} intensity={1.5} />
+      <directionalLight position={[-3, 5, -3]} intensity={0.5} color="#c39bd3" />
+      <pointLight position={[-4, 4, -4]} intensity={0.8} color="#8b5cf6" />
 
+      {(viewType === 'mesh' || viewType === 'solid') && (
+        <SolidSurface puntos={puntos} scale={scale} />
+      )}
       {viewType === 'points' && (
-        <PointCloud puntos={puntos} Pmin={P_min} Pmax={P_max} scale={scale} ptSize={ptSize} />
-      )}
-      {viewType === 'mesh' && (
-        <SurfaceMesh puntos={puntos} Pmin={P_min} Pmax={P_max} scale={scale} />
-      )}
-      {viewType === 'solid' && (
-        <PointCloud puntos={puntos} Pmin={P_min} Pmax={P_max} scale={scale} ptSize={ptSize * 1.5} />
+        <PointCloud puntos={puntos} scale={scale} ptSize={ptSize} />
       )}
 
       <DemandSphere dp={demandPoint} scale={scale} />
@@ -205,38 +265,33 @@ function Scene({ surfaceData, demandPoint, ptSize, viewType }) {
 
 // ── Legend overlay ────────────────────────────────────────────────────
 function Legend({ Pmax, Pmin }) {
-  const f = v => {
-    const abs = Math.abs(v)
-    return abs >= 1000 ? `${(v/1000).toFixed(1)} t` : `${Math.round(v)} kg`
-  }
-  const items = [
-    { c: '#e65990', l: f(Pmax),    label: 'Comp.' },
-    { c: '#c76bb8', l: '',         label: '' },
-    { c: '#9b59b6', l: '',         label: '' },
-    { c: '#6648c0', l: '',         label: '' },
-    { c: '#4059d9', l: f(Pmin),    label: 'Trac.' },
-  ]
+  const f = v => Math.abs(v) >= 1000 ? `${(v/1000).toFixed(1)} t` : `${Math.round(v)} kg`
   return (
     <div style={{
       position:'absolute',bottom:14,left:14,zIndex:10,
-      background:'rgba(26,26,46,.92)',border:'1px solid rgba(255,255,255,.1)',
+      background:'rgba(13,13,26,.92)',border:'1px solid rgba(255,255,255,.1)',
       borderRadius:8,padding:'10px 14px',backdropFilter:'blur(8px)',
-      minWidth:100,
+      minWidth:110,
     }}>
       <div style={{fontSize:8,color:'rgba(255,255,255,.35)',textTransform:'uppercase',letterSpacing:1,marginBottom:8,fontWeight:600}}>
-        Carga P
+        Superficie
       </div>
-      <div style={{display:'flex',flexDirection:'column',gap:2}}>
-        {items.map(({ c, l, label }, idx) => (
-          <div key={idx} style={{display:'flex',alignItems:'center',gap:8}}>
-            <div style={{width:12,height:4,borderRadius:2,background:c,flexShrink:0}} />
-            {l && <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9,color:'rgba(255,255,255,.7)'}}>{l}</span>}
-            {label && <span style={{fontSize:8,color:'rgba(255,255,255,.35)',marginLeft:'auto'}}>{label}</span>}
-          </div>
-        ))}
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+        <div style={{width:14,height:10,borderRadius:2,background:'#9b59b6',opacity:0.75,border:'1px solid #c39bd3'}} />
+        <span style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9,color:'rgba(255,255,255,.7)'}}>Malla sólida</span>
       </div>
-      <div style={{marginTop:8,paddingTop:6,borderTop:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:6}}>
-        <div style={{width:8,height:8,background:'#dc2626',transform:'rotate(45deg)',flexShrink:0,borderRadius:1}} />
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+        <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9,color:'rgba(255,255,255,.5)'}}>
+          φP₀ = <span style={{color:'#c39bd3'}}>{f(Pmax)}</span>
+        </div>
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+        <div style={{fontFamily:"'IBM Plex Mono',monospace",fontSize:9,color:'rgba(255,255,255,.5)'}}>
+          φPt = <span style={{color:'#8b5cf6'}}>{f(Pmin)}</span>
+        </div>
+      </div>
+      <div style={{marginTop:6,paddingTop:6,borderTop:'1px solid rgba(255,255,255,.08)',display:'flex',alignItems:'center',gap:6}}>
+        <div style={{width:9,height:9,background:'#e74c3c',transform:'rotate(45deg)',flexShrink:0,borderRadius:1}} />
         <span style={{fontSize:8,color:'rgba(255,255,255,.4)'}}>Demanda</span>
       </div>
     </div>
@@ -249,13 +304,13 @@ function Stats({ surfaceData }) {
   return (
     <div style={{
       position:'absolute',top:12,right:12,zIndex:10,
-      background:'rgba(26,26,46,.9)',border:'1px solid rgba(255,255,255,.08)',
+      background:'rgba(13,13,26,.9)',border:'1px solid rgba(255,255,255,.08)',
       borderRadius:8,padding:'8px 12px',backdropFilter:'blur(8px)',
     }}>
       {[
         { l:'Pts',  v:surfaceData.puntos.length, c:'rgba(255,255,255,.6)' },
-        { l:'φP₀',  v:f(surfaceData.P_max),      c:'#e65990' },
-        { l:'φPt',  v:f(surfaceData.P_min),       c:'#4059d9' },
+        { l:'φP₀',  v:f(surfaceData.P_max),      c:'#c39bd3' },
+        { l:'φPt',  v:f(surfaceData.P_min),       c:'#8b5cf6' },
         { l:'ρ',    v:`${surfaceData.cuantia_acero.toFixed(2)}%`, c:surfaceData.cuantia_acero>=1&&surfaceData.cuantia_acero<=6?'#34d399':'#f87171' },
       ].map(({ l, v, c }) => (
         <div key={l} style={{display:'flex',gap:10,alignItems:'center',marginBottom:3}}>
@@ -268,7 +323,7 @@ function Stats({ surfaceData }) {
 }
 
 // ── Componente principal ──────────────────────────────────────────────
-export default function ThreeSurfaceViewer({ surfaceData, demandPoint, loading, progress, ptSize = 4, viewType = 'points' }) {
+export default function ThreeSurfaceViewer({ surfaceData, demandPoint, loading, progress, ptSize = 4, viewType = 'mesh' }) {
   return (
     <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column'}}>
 
@@ -297,7 +352,7 @@ export default function ThreeSurfaceViewer({ surfaceData, demandPoint, loading, 
       {surfaceData && !loading && (
         <Canvas
           camera={{ position: [2.2, 1.6, 2.2], fov: 40 }}
-          style={{ position:'absolute', inset:0, background:'#1a1a2e' }}
+          style={{ position:'absolute', inset:0, background:'#0d0d1a' }}
           gl={{ antialias:true }}
         >
           <Scene
@@ -316,7 +371,7 @@ export default function ThreeSurfaceViewer({ surfaceData, demandPoint, loading, 
           <Stats surfaceData={surfaceData} />
           <div style={{
             position:'absolute',bottom:14,right:14,zIndex:10,
-            fontSize:9,color:'rgba(255,255,255,.2)',
+            fontSize:9,color:'rgba(255,255,255,.18)',
             fontFamily:"'IBM Plex Mono',monospace",textAlign:'right',lineHeight:2,
           }}>
             <div>Arrastrar — rotar</div>

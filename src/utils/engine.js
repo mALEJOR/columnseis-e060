@@ -157,17 +157,48 @@ export function generarSuperficie(input, onProgress) {
 }
 
 function extraerCurvaPlana(puntos, plano) {
+  const tol = 5 // tolerancia angular en grados
   const filtrados = puntos.filter(p => {
     if (plano === 'Mx') {
-      return (Math.abs(p.angulo_neutro - 90) < 15 || Math.abs(p.angulo_neutro - 270) < 15 ||
-        (Math.abs(p.Mx) > 1 && Math.abs(p.My) < 0.1 * Math.abs(p.Mx)))
+      return (Math.abs(p.angulo_neutro - 90) < tol ||
+        Math.abs(p.angulo_neutro - 270) < tol ||
+        (Math.abs(p.Mx) > 1 && Math.abs(p.My) < 0.15 * Math.abs(p.Mx)))
     } else {
-      return (Math.abs(p.angulo_neutro) < 15 || Math.abs(p.angulo_neutro - 180) < 15 ||
-        (Math.abs(p.My) > 1 && Math.abs(p.Mx) < 0.1 * Math.abs(p.My)))
+      return (Math.abs(p.angulo_neutro) < tol ||
+        Math.abs(p.angulo_neutro - 360) < tol ||
+        Math.abs(p.angulo_neutro - 180) < tol ||
+        (Math.abs(p.My) > 1 && Math.abs(p.Mx) < 0.15 * Math.abs(p.My)))
     }
   })
-  filtrados.sort((a, b) => b.P - a.P)
-  return filtrados.map(p => ({ P: p.P, M: plano === 'Mx' ? p.Mx : p.My }))
+
+  if (filtrados.length === 0) return []
+
+  const getMval = p => plano === 'Mx' ? p.Mx : p.My
+  const Ps = filtrados.map(p => p.P)
+  const pMin = Math.min(...Ps)
+  const pMax = Math.max(...Ps)
+
+  // Construir envolvente por bins de P
+  const nBins = 40
+  const binW = (pMax - pMin) / nBins
+  const rightBranch = [] // M positivo, P descendente
+  const leftBranch = []  // M negativo, P ascendente
+
+  for (let i = 0; i <= nBins; i++) {
+    const pCenter = pMax - i * binW
+    const binPts = filtrados.filter(p => Math.abs(p.P - pCenter) <= binW * 0.8)
+    if (binPts.length === 0) continue
+    const mVals = binPts.map(getMval)
+    const maxM = Math.max(...mVals, 0)
+    const minM = Math.min(...mVals, 0)
+    rightBranch.push({ P: Math.round(pCenter), M: Math.round(maxM) })
+    leftBranch.unshift({ P: Math.round(pCenter), M: Math.round(minM) })
+  }
+
+  // Cerrar la envolvente: rama derecha (P↓) + rama izquierda (P↑)
+  const envelope = [...rightBranch, ...leftBranch]
+  if (envelope.length > 1) envelope.push(envelope[0])
+  return envelope
 }
 
 // ── Verificación de solicitación (DCR) ─────────────────────────────────────

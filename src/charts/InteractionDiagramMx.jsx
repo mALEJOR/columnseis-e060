@@ -48,37 +48,46 @@ export default function InteractionChart({ curva, demandPoint, title, labelX, co
         return
       }
 
-      const sorted = [...curva].sort((a,b)=>b.P-a.P)
-      const posM = sorted.filter(p=>p.M>=0)
-      const negM = sorted.filter(p=>p.M<0).sort((a,b)=>a.P-b.P)
-      const pts  = [...posM,...negM,posM[0]].filter(Boolean)
+      // La curva ya viene como envolvente cerrada desde engine.js
+      const Mv = curva.map(p => p.M / 100000)
+      const Pv = curva.map(p => p.P / 1000)
 
-      const Mv = pts.map(p=>p.M/100000)
-      const Pv = pts.map(p=>p.P/1000)
+      const maxP = Math.max(...Pv)
+      const minP = Math.min(...Pv)
+      const maxM = Math.max(...Mv)
+      const minM = Math.min(...Mv)
 
       const traces = [
+        // Curva de diseño (envolvente suavizada)
         {
-          type:'scatter',mode:'lines',x:Mv,y:Pv,
-          fill:'toself',fillcolor:color+'12',
-          line:{color,width:1.8},
+          type:'scatter', mode:'lines', x:Mv, y:Pv,
+          fill:'toself',
+          fillcolor: color + '14',
+          line:{ color, width:2, shape:'spline', smoothing:1.3 },
           name:'Diseño',
           hovertemplate:`${labelX}: %{x:.2f} t·m<br>P: %{y:.2f} t<extra></extra>`,
         },
+        // Línea punteada φP₀ máximo
         {
-          type:'scatter',mode:'lines',
-          x:[Math.min(...Mv)*0.05, Math.max(...Mv)*0.05],
-          y:[Math.max(...Pv),Math.max(...Pv)],
-          line:{color:'#dc2626',width:1,dash:'dot'},
-          name:`φP₀ max`,
+          type:'scatter', mode:'lines',
+          x:[minM * 1.1, maxM * 1.1],
+          y:[maxP, maxP],
+          line:{ color:'#dc2626', width:1, dash:'dot' },
+          name:`φP₀=${maxP.toFixed(0)}t`,
           hovertemplate:'φP₀=%{y:.1f}t<extra></extra>',
         },
       ]
 
+      // Punto de demanda
       if (demandPoint) {
         traces.push({
-          type:'scatter',mode:'markers',
-          x:[demandPoint.M/100000],y:[demandPoint.P/1000],
-          marker:{symbol:'diamond',size:8,color:dotColor || '#dc2626',line:{color:'#fff',width:1.5}},
+          type:'scatter', mode:'markers',
+          x:[demandPoint.M / 100000], y:[demandPoint.P / 1000],
+          marker:{
+            symbol:'diamond', size:10,
+            color: dotColor || '#e74c3c',
+            line:{ color:'#fff', width:1.5 },
+          },
           name:'Demanda',
           hovertemplate:`Mu: %{x:.3f} t·m<br>Pu: %{y:.2f} t<extra></extra>`,
         })
@@ -86,8 +95,14 @@ export default function InteractionChart({ curva, demandPoint, title, labelX, co
 
       const layout = {
         ...LAYOUT_BASE,
-        xaxis:{...LAYOUT_BASE.xaxis,title:{text:`${labelX} (t·m)`,font:{size:8,color:'#9ca3af'}}},
-        yaxis:{...LAYOUT_BASE.yaxis,title:{text:'P (ton)',font:{size:8,color:'#9ca3af'}}},
+        xaxis:{
+          ...LAYOUT_BASE.xaxis,
+          title:{ text:`${labelX} (t·m)`, font:{size:8,color:'#9ca3af'} },
+        },
+        yaxis:{
+          ...LAYOUT_BASE.yaxis,
+          title:{ text:'P (ton)', font:{size:8,color:'#9ca3af'} },
+        },
       }
 
       plt.newPlot(ref.current, traces, layout, {

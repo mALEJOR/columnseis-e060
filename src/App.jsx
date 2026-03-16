@@ -20,7 +20,7 @@ export default function App() {
 
   // Viewer settings (controlled from sidebar)
   const [ptSize, setPtSize]       = useState(4)
-  const [viewType, setViewType]   = useState('points')
+  const [viewType, setViewType]   = useState('mesh')
 
   const handleCalculate = useCallback((data) => {
     setLoading(true); setError(null); setProgress(0); setColumnData(data)

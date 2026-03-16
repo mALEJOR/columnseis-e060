@@ -212,7 +212,7 @@ select.f-input option{background:#fff;color:var(--text0)}
 /* ── Viewer wrapper ── */
 .viewer-wrapper{
   flex:1;min-height:0;
-  background:#1a1a2e;
+  background:#0d0d1a;
   border-radius:var(--r3);
   overflow:hidden;
   box-shadow:var(--sh3);
