@@ -198,28 +198,6 @@ function Axes() {
           </group>
         )
       })}
-      {/* Plano P=0 */}
-      <mesh rotation={[-Math.PI/2, 0, 0]}>
-        <planeGeometry args={[2.6, 2.6]} />
-        <meshBasicMaterial color="#141428" transparent opacity={0.5} side={THREE.DoubleSide} />
-      </mesh>
-      {/* Grid */}
-      {[-1, -0.5, 0, 0.5, 1].map(v => (
-        <group key={v}>
-          <line>
-            <bufferGeometry>
-              <bufferAttribute attach="attributes-position" args={[new Float32Array([-1.3,0,v, 1.3,0,v]),3]}/>
-            </bufferGeometry>
-            <lineBasicMaterial color="#ffffff" transparent opacity={0.05}/>
-          </line>
-          <line>
-            <bufferGeometry>
-              <bufferAttribute attach="attributes-position" args={[new Float32Array([v,0,-1.3, v,0,1.3]),3]}/>
-            </bufferGeometry>
-            <lineBasicMaterial color="#ffffff" transparent opacity={0.05}/>
-          </line>
-        </group>
-      ))}
     </group>
   )
 }

@@ -261,7 +261,7 @@ export default function SidebarInputs({
 
         {/* E.060 check */}
         {barras.length > 0 && (
-          <div style={{marginTop:6,padding:'5px 8px',borderRadius:'var(--r)',fontSize:9,fontFamily:'var(--mono)',background:rhoOk?'var(--teal-l)':'var(--red-l)',border:`0.5px solid ${rhoOk?'#a7f3d0':'#fca5a5'}`,color:rhoOk?'var(--teal)':'var(--red)'}}>
+          <div style={{marginTop:6,padding:'5px 8px',borderRadius:'var(--r)',fontSize:9,fontFamily:'var(--mono)',background:rhoOk?'var(--teal-l)':'var(--red-l)',border:`1px solid ${rhoOk?'rgba(0,168,150,0.3)':'rgba(220,38,38,0.3)'}`,color:rhoOk?'var(--teal)':'var(--red)'}}>
             {rhoOk ? `E.060: 1% ≤ ρ=${rho.toFixed(2)}% ≤ 6%` : `ρ=${rho.toFixed(2)}% fuera de rango (1–6%)`}
           </div>
         )}
@@ -333,7 +333,7 @@ export default function SidebarInputs({
         <Section num="3" title="Análisis de Solicitaciones" defaultOpen={false} color="#dc2626">
           <div style={{display:'flex',gap:5,marginBottom:8}}>
             {['ton','kg'].map(u=>(
-              <button key={u} onClick={()=>setUnit(u)} style={{flex:1,padding:'4px 0',border:`0.5px solid ${unit===u?'var(--purple)':'var(--border)'}`,borderRadius:'var(--r)',background:unit===u?'#faf5ff':'var(--surface2)',color:unit===u?'var(--purple)':'var(--text2)',fontSize:9,fontFamily:'var(--mono)',cursor:'pointer',fontWeight:unit===u?600:400}}>
+              <button key={u} onClick={()=>setUnit(u)} style={{flex:1,padding:'4px 0',border:`1px solid ${unit===u?'var(--purple)':'var(--border)'}`,borderRadius:'var(--r)',background:unit===u?'rgba(155,89,182,0.15)':'var(--surface2)',color:unit===u?'var(--purple)':'var(--text2)',fontSize:9,fontFamily:'var(--mono)',cursor:'pointer',fontWeight:unit===u?600:400}}>
                 {u==='ton'?'ton / t·m':'kg / kg·cm'}
               </button>
             ))}
@@ -351,7 +351,7 @@ export default function SidebarInputs({
             const isCrit = res && results[critIdx]?.id===c.id
             const dcrColor = res ? (res.dcr<=.7?'var(--teal)':res.dcr<=1?'var(--amber)':'var(--red)') : 'var(--text3)'
             return (
-              <div key={c.id} style={{display:'grid',gridTemplateColumns:'1fr 68px 68px 68px',gap:3,marginBottom:4,padding:'5px',borderRadius:'var(--r)',background:isCrit?'#fffbeb':'var(--surface2)',border:`0.5px solid ${isCrit?'#fcd34d':res?res.dentro?'#a7f3d0':'#fca5a5':'var(--border)'}`}}>
+              <div key={c.id} style={{display:'grid',gridTemplateColumns:'1fr 68px 68px 68px',gap:3,marginBottom:4,padding:'5px',borderRadius:'var(--r)',background:isCrit?'rgba(217,119,6,0.1)':'var(--surface2)',border:`1px solid ${isCrit?'rgba(217,119,6,0.3)':res?res.dentro?'rgba(0,168,150,0.3)':'rgba(220,38,38,0.3)':'var(--border)'}`}}>
                 <div style={{display:'flex',alignItems:'center',gap:4}}>
                   <div style={{width:6,height:6,borderRadius:'50%',background:c.color,flexShrink:0}}/>
                   <input value={c.label} onChange={e=>updCombo(c.id,'label',e.target.value)}
@@ -360,7 +360,7 @@ export default function SidebarInputs({
                 {['Pu','Mux','Muy'].map(f=>(
                   <input key={f} type="number" value={c[f]} placeholder="0.0" step="0.01"
                     onChange={e=>updCombo(c.id,f,e.target.value)}
-                    style={{padding:'3px 4px',fontSize:9,fontFamily:'var(--mono)',textAlign:'right',borderRadius:3,border:'0.5px solid var(--border)',background:'#fff',width:'100%'}}/>
+                    style={{padding:'3px 4px',fontSize:9,fontFamily:'var(--mono)',textAlign:'right',borderRadius:3,border:'1px solid var(--border)',background:'var(--surface3)',color:'var(--text0)',width:'100%'}}/>
                 ))}
                 {res && (
                   <div style={{gridColumn:'1/-1',display:'flex',alignItems:'center',gap:6,paddingTop:4,borderTop:'0.5px solid var(--border)',marginTop:2}}>
@@ -385,7 +385,7 @@ export default function SidebarInputs({
           </div>
 
           {results.length>0 && (
-            <div style={{marginTop:8,padding:'6px 8px',borderRadius:'var(--r)',background:results.some(r=>!r.dentro)?'var(--red-l)':'var(--teal-l)',border:`0.5px solid ${results.some(r=>!r.dentro)?'#fca5a5':'#a7f3d0'}`,fontSize:9,color:results.some(r=>!r.dentro)?'var(--red)':'var(--teal)',fontFamily:'var(--mono)',fontWeight:500}}>
+            <div style={{marginTop:8,padding:'6px 8px',borderRadius:'var(--r)',background:results.some(r=>!r.dentro)?'var(--red-l)':'var(--teal-l)',border:`1px solid ${results.some(r=>!r.dentro)?'rgba(220,38,38,0.3)':'rgba(0,168,150,0.3)'}`,fontSize:9,color:results.some(r=>!r.dentro)?'var(--red)':'var(--teal)',fontFamily:'var(--mono)',fontWeight:500}}>
               {results.some(r=>!r.dentro)
                 ? `${results.filter(r=>!r.dentro).length} combinación(es) NO CONFORME(S) — D/C máx: ${Math.max(...results.map(r=>r.dcr)).toFixed(3)}`
                 : `TODAS CONFORMES — D/C máx: ${Math.max(...results.map(r=>r.dcr)).toFixed(3)}`}

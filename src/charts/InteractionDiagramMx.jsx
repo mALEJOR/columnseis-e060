@@ -13,23 +13,23 @@ async function loadPlotly() {
 }
 
 const LAYOUT_BASE = {
-  paper_bgcolor:'#ffffff',
-  plot_bgcolor:'#fafbfc',
-  font:{family:"'IBM Plex Mono',monospace",size:10,color:'#6b7280'},
+  paper_bgcolor:'#13151c',
+  plot_bgcolor:'#1a1d26',
+  font:{family:"'IBM Plex Mono',monospace",size:10,color:'#8b92a8'},
   margin:{l:42,r:8,t:6,b:36},
   xaxis:{
-    gridcolor:'#f0f1f3',zerolinecolor:'#e2e5ea',
-    tickfont:{size:8,family:"'IBM Plex Mono',monospace",color:'#9ca3af'},
+    gridcolor:'rgba(255,255,255,0.06)',zerolinecolor:'rgba(255,255,255,0.1)',
+    tickfont:{size:8,family:"'IBM Plex Mono',monospace",color:'#5a6178'},
     showgrid:true,zeroline:true,
   },
   yaxis:{
-    gridcolor:'#f0f1f3',zerolinecolor:'#e2e5ea',
-    tickfont:{size:8,family:"'IBM Plex Mono',monospace",color:'#9ca3af'},
+    gridcolor:'rgba(255,255,255,0.06)',zerolinecolor:'rgba(255,255,255,0.1)',
+    tickfont:{size:8,family:"'IBM Plex Mono',monospace",color:'#5a6178'},
     showgrid:true,zeroline:true,
   },
   legend:{
-    font:{size:7,color:'#6b7280'},
-    bgcolor:'rgba(255,255,255,.95)',bordercolor:'#e2e5ea',borderwidth:1,
+    font:{size:7,color:'#8b92a8'},
+    bgcolor:'rgba(19,21,28,.95)',bordercolor:'rgba(255,255,255,0.08)',borderwidth:1,
     x:0.02,y:0.98,xanchor:'left',yanchor:'top',
   },
   hovermode:'closest',
@@ -97,11 +97,11 @@ export default function InteractionChart({ curva, demandPoint, title, labelX, co
         ...LAYOUT_BASE,
         xaxis:{
           ...LAYOUT_BASE.xaxis,
-          title:{ text:`${labelX} (t·m)`, font:{size:8,color:'#9ca3af'} },
+          title:{ text:`${labelX} (t·m)`, font:{size:8,color:'#5a6178'} },
         },
         yaxis:{
           ...LAYOUT_BASE.yaxis,
-          title:{ text:'P (ton)', font:{size:8,color:'#9ca3af'} },
+          title:{ text:'P (ton)', font:{size:8,color:'#5a6178'} },
         },
       }
 
