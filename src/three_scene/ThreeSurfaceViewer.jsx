@@ -40,8 +40,9 @@ function PointCloud({ puntos, Pmin, Pmax, scale, ptSize }) {
   return (
     <points geometry={geom}>
       <pointsMaterial
-        size={ptSize} vertexColors transparent opacity={0.92}
-        sizeAttenuation depthWrite={false}
+        size={ptSize} vertexColors transparent opacity={1}
+        sizeAttenuation={false} depthWrite={false}
+        toneMapped={false}
       />
     </points>
   )
@@ -138,9 +139,9 @@ function Scene({ surfaceData, demandPoint, ptSize }) {
 
   return (
     <>
-      <ambientLight intensity={0.7} />
-      <directionalLight position={[5, 8, 4]} intensity={0.9} />
-      <pointLight position={[-4, 4, -4]} intensity={0.5} color="#4466ff" />
+      <ambientLight intensity={1.2} />
+      <directionalLight position={[5, 8, 4]} intensity={1.2} />
+      <pointLight position={[-4, 4, -4]} intensity={0.8} color="#4466ff" />
 
       <PointCloud
         puntos={puntos}
@@ -224,7 +225,7 @@ function Stats({ surfaceData }) {
 
 // ── Componente principal exportado ────────────────────────────────────────
 export default function ThreeSurfaceViewer({ surfaceData, demandPoint, loading, progress }) {
-  const [ptSize,    setPtSize]    = useState(0.03)
+  const [ptSize,    setPtSize]    = useState(0.05)
   const [showPts,   setShowPts]   = useState(true)
   const [showMesh,  setShowMesh]  = useState(false)
 
@@ -254,7 +255,7 @@ export default function ThreeSurfaceViewer({ surfaceData, demandPoint, loading, 
           ))}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 10px', background: 'rgba(255,255,255,.06)', border: '1px solid rgba(255,255,255,.1)', borderRadius: 3 }}>
             <span style={{ fontSize: 9, color: 'rgba(255,255,255,.4)', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>Tamaño</span>
-            <input type="range" min="0.008" max="0.09" step="0.004" value={ptSize}
+            <input type="range" min="0.02" max="0.12" step="0.005" value={ptSize}
               onChange={e => setPtSize(parseFloat(e.target.value))}
               style={{ width: 70, cursor: 'pointer', height: 2, accentColor: '#4d8aff' }} />
             <span style={{ fontSize: 9, color: 'rgba(255,255,255,.5)', fontFamily: 'monospace', minWidth: 30 }}>{ptSize.toFixed(3)}</span>

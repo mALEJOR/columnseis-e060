@@ -213,41 +213,51 @@ export function generarDisposicion(b, h, recub, nBarras, diametro, tipo = 'recta
     return bars
   }
 
-  // Distribución perimetral rectangular correcta
-  // Calcula cuántas barras van en cada lado incluyendo las esquinas
+  // Distribución perimetral rectangular: esquinas primero, luego lados
   const n = Math.max(4, nBarras)
   const lB = xMax - xMin  // longitud lado horizontal
   const lH = yMax - yMin  // longitud lado vertical
-  const perim = 2 * (lB + lH)
 
-  // Distribuir n barras uniformemente en el perímetro empezando por esquina inf-izq
+  // 4 barras siempre en las esquinas
   const corners = [
     [xMin, yMin], [xMax, yMin],
     [xMax, yMax], [xMin, yMax],
   ]
+  for (const [cx, cy] of corners) {
+    bars.push({ x: +cx.toFixed(3), y: +cy.toFixed(3), diametro, area })
+  }
 
-  // Generar n puntos uniformes en el perímetro
-  const step = perim / n
-  for (let i = 0; i < n; i++) {
-    let dist = i * step
-    let x, y
-    // Lado inferior: yMin, de xMin a xMax
-    if (dist <= lB) {
-      x = xMin + dist; y = yMin
+  // Barras restantes distribuidas proporcionalmente a la longitud de cada lado
+  const nRest = n - 4
+  if (nRest > 0) {
+    const totalLen = lB + lH
+    const nHoriz = Math.round(nRest * lB / totalLen)  // total ambos lados horizontales
+    const nVert = nRest - nHoriz                       // total ambos lados verticales
+    const nBottom = Math.floor(nHoriz / 2)
+    const nTop = nHoriz - nBottom
+    const nRight = Math.floor(nVert / 2)
+    const nLeft = nVert - nRight
+
+    // Lado inferior: y=yMin, de xMin a xMax
+    for (let i = 1; i <= nBottom; i++) {
+      const x = xMin + i * lB / (nBottom + 1)
+      bars.push({ x: +x.toFixed(3), y: +yMin.toFixed(3), diametro, area })
     }
-    // Lado derecho: xMax, de yMin a yMax
-    else if (dist <= lB + lH) {
-      x = xMax; y = yMin + (dist - lB)
+    // Lado derecho: x=xMax, de yMin a yMax
+    for (let i = 1; i <= nRight; i++) {
+      const y = yMin + i * lH / (nRight + 1)
+      bars.push({ x: +xMax.toFixed(3), y: +y.toFixed(3), diametro, area })
     }
-    // Lado superior: yMax, de xMax a xMin
-    else if (dist <= 2 * lB + lH) {
-      x = xMax - (dist - lB - lH); y = yMax
+    // Lado superior: y=yMax, de xMax a xMin
+    for (let i = 1; i <= nTop; i++) {
+      const x = xMax - i * lB / (nTop + 1)
+      bars.push({ x: +x.toFixed(3), y: +yMax.toFixed(3), diametro, area })
     }
-    // Lado izquierdo: xMin, de yMax a yMin
-    else {
-      x = xMin; y = yMax - (dist - 2 * lB - lH)
+    // Lado izquierdo: x=xMin, de yMax a yMin
+    for (let i = 1; i <= nLeft; i++) {
+      const y = yMax - i * lH / (nLeft + 1)
+      bars.push({ x: +xMin.toFixed(3), y: +y.toFixed(3), diametro, area })
     }
-    bars.push({ x: +x.toFixed(3), y: +y.toFixed(3), diametro, area })
   }
   return bars
 }
