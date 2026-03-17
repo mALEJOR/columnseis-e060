@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { generarDisposicion, generarDisposicionCircular, verificarPunto } from '../utils/engine'
+import { generarDisposicion, generarDisposicionCircular, generarDisposicionT, generarDisposicionL, calcularAreaSeccion, verificarPunto } from '../utils/engine'
 import SectionViewer from './SectionViewer'
 
 const DIAMS_MM = [
@@ -11,7 +11,7 @@ const DIAMS_MM = [
   { label:'#9 (28.6mm)', d:2.857 },{ label:'#10 (32.3mm)',d:3.225 },
   { label:'#11 (35.8mm)',d:3.581 },
 ]
-const area = d => Math.PI*d*d/4
+const areaFn = d => Math.PI*d*d/4
 
 function Section({ num, title, children, defaultOpen=true, color }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -47,6 +47,14 @@ const COMBOS_INI = [
   { id:5, label:'0.9CM - CS',       Pu:'', Mux:'', Muy:'', color:'#dc2626' },
 ]
 
+const TIPOS_SECCION = [
+  { key:'rectangular', label:'Rect' },
+  { key:'cuadrada',    label:'Cuad' },
+  { key:'circular',    label:'Circ' },
+  { key:'T',           label:'T' },
+  { key:'L',           label:'L' },
+]
+
 export default function SidebarInputs({
   onCalculate, loading, surfaceData, onDemandChange,
   ptSize, setPtSize, viewType, setViewType, onDcrUpdate,
@@ -65,13 +73,19 @@ export default function SidebarInputs({
   const [tipo, setTipo] = useState('rectangular')
   const [diam, setDiam] = useState(50) // diámetro para sección circular
 
+  // ── GEOMETRÍA T / L
+  const [bAlma,  setBAlma]  = useState(25)
+  const [hTotal, setHTotal] = useState(60)
+  const [bAla,   setBAla]   = useState(50)
+  const [hAla,   setHAla]   = useState(15)
+
   // ── REFUERZO
   const [barras,  setBarras]  = useState([])
   const [nB,      setNB]      = useState(8)
   const [dSel,    setDSel]    = useState(2.540)
-  const [dEsq,    setDEsq]    = useState(2.540) // diámetro esquinas
-  const [nCol,    setNCol]    = useState(2)      // columnas (eje 11)
-  const [nRow,    setNRow]    = useState(3)      // filas (eje 22)
+  const [dEsq,    setDEsq]    = useState(2.540)
+  const [nCol,    setNCol]    = useState(2)
+  const [nRow,    setNRow]    = useState(3)
   const [arrConf, setArrConf] = useState('perimetro')
 
   // ── ANÁLISIS
@@ -112,26 +126,59 @@ export default function SidebarInputs({
   }
 
   const esCircular = tipo === 'circular'
+  const esT = tipo === 'T'
+  const esL = tipo === 'L'
+  const esCuadrada = tipo === 'cuadrada'
+
+  // Dimensiones efectivas para cálculos
+  const bEff = esCircular ? +diam : esT ? +bAla : esL ? +bAla : esCuadrada ? +b : +b
+  const hEff = esCircular ? +diam : esT ? +hTotal : esL ? +hTotal : esCuadrada ? +b : +h
+
+  const handleTipoChange = (t) => {
+    setTipo(t)
+    setBarras([])
+    if (t === 'cuadrada') setH(b)
+  }
 
   const generar = () => {
     if (esCircular) {
       const bs = generarDisposicionCircular(+diam, +rec, +nB, dSel)
       setBarras(bs)
+    } else if (esT) {
+      const bs = generarDisposicionT(+bAlma, +hTotal, +bAla, +hAla, +rec, +nB, dSel)
+      setBarras(bs)
+    } else if (esL) {
+      const bs = generarDisposicionL(+bAlma, +hTotal, +bAla, +hAla, +rec, +nB, dSel)
+      setBarras(bs)
     } else {
+      const bVal = esCuadrada ? +b : +b
+      const hVal = esCuadrada ? +b : +h
       const tipo_disp = arrConf === 'circular' ? 'circular' : 'rectangular'
-      const bs = generarDisposicion(+b, +h, +rec, +nB, dSel, tipo_disp)
+      const bs = generarDisposicion(bVal, hVal, +rec, +nB, dSel, tipo_disp)
       setBarras(bs)
     }
   }
 
+  const buildGeometria = () => {
+    if (esCircular) {
+      return { tipo:'circular', D:+diam, recubrimiento:+rec, longitud:+lon }
+    }
+    if (esT) {
+      return { tipo:'T', b_alma:+bAlma, h_total:+hTotal, b_ala:+bAla, h_ala:+hAla, recubrimiento:+rec, longitud:+lon }
+    }
+    if (esL) {
+      return { tipo:'L', b_alma:+bAlma, h_total:+hTotal, b_ala:+bAla, h_ala:+hAla, recubrimiento:+rec, longitud:+lon }
+    }
+    const bVal = esCuadrada ? +b : +b
+    const hVal = esCuadrada ? +b : +h
+    return { tipo:'rectangular', b:bVal, h:hVal, recubrimiento:+rec, longitud:+lon }
+  }
+
   const calcular = () => {
     if (!barras.length) { alert('Defina barras de refuerzo'); return }
-    const geometria = esCircular
-      ? { tipo:'circular', D:+diam, recubrimiento:+rec, longitud:+lon }
-      : { b:+b, h:+h, recubrimiento:+rec, longitud:+lon }
     onCalculate({
       material: { fc:+fc, fy:+fy, Es:+Es },
-      geometria,
+      geometria: buildGeometria(),
       refuerzo: { barras },
       sistema_estructural: sis,
       angulos_neutro: +ang,
@@ -150,9 +197,14 @@ export default function SidebarInputs({
   }
 
   const As  = barras.reduce((s,br)=>s+(br.area||0), 0)
-  const Ag  = esCircular ? Math.PI*(+diam/2)**2 : (+b)*(+h)
+  const geoObj = buildGeometria()
+  const Ag  = calcularAreaSeccion(geoObj)
   const rho = Ag ? (As/Ag*100) : 0
   const rhoOk = rho>=1&&rho<=6
+
+  // Section viewer props
+  const viewerB = esCircular ? +diam : esT ? +bAla : esL ? +bAla : esCuadrada ? +b : +b
+  const viewerH = esCircular ? +diam : esT ? +hTotal : esL ? +hTotal : esCuadrada ? +b : +h
 
   return (
     <div className="sidebar-scroll">
@@ -173,12 +225,12 @@ export default function SidebarInputs({
         {/* Tipo de sección */}
         <Field label="Tipo de sección">
           <div className="view-btns">
-            {['rectangular','circular'].map(t => (
-              <button key={t}
-                className={`view-btn ${tipo===t?'active':''}`}
-                onClick={()=>{ setTipo(t); setBarras([]) }}
+            {TIPOS_SECCION.map(t => (
+              <button key={t.key}
+                className={`view-btn ${tipo===t.key?'active':''}`}
+                onClick={()=>handleTipoChange(t.key)}
               >
-                {t==='rectangular'?'Rectangular':'Circular'}
+                {t.label}
               </button>
             ))}
           </div>
@@ -189,6 +241,40 @@ export default function SidebarInputs({
           <div className="field-row col2">
             <Field label="D (cm)" tip="Diámetro de la sección circular">
               <input className="f-input" type="number" value={diam} onChange={e=>setDiam(e.target.value)} min="20"/>
+            </Field>
+            <Field label="r (cm)">
+              <input className="f-input" type="number" value={rec} onChange={e=>setRec(e.target.value)} min="2" step="0.5"/>
+            </Field>
+          </div>
+        ) : (esT || esL) ? (
+          <>
+            <div className="field-row col2">
+              <Field label="b alma (cm)" tip="Ancho del alma">
+                <input className="f-input" type="number" value={bAlma} onChange={e=>setBAlma(e.target.value)} min="15"/>
+              </Field>
+              <Field label="h total (cm)" tip="Altura total de la sección">
+                <input className="f-input" type="number" value={hTotal} onChange={e=>setHTotal(e.target.value)} min="20"/>
+              </Field>
+            </div>
+            <div className="field-row col2">
+              <Field label="b ala (cm)" tip={esT ? "Ancho del ala superior" : "Ancho horizontal del ala"}>
+                <input className="f-input" type="number" value={bAla} onChange={e=>setBAla(e.target.value)} min="15"/>
+              </Field>
+              <Field label="h ala (cm)" tip="Espesor del ala">
+                <input className="f-input" type="number" value={hAla} onChange={e=>setHAla(e.target.value)} min="5"/>
+              </Field>
+            </div>
+            <div className="field-row col2">
+              <Field label="r (cm)">
+                <input className="f-input" type="number" value={rec} onChange={e=>setRec(e.target.value)} min="2" step="0.5"/>
+              </Field>
+              <div/>
+            </div>
+          </>
+        ) : esCuadrada ? (
+          <div className="field-row col2">
+            <Field label="L (cm)" tip="Lado de la sección cuadrada">
+              <input className="f-input" type="number" value={b} onChange={e=>{setB(e.target.value);setH(e.target.value)}} min="15"/>
             </Field>
             <Field label="r (cm)">
               <input className="f-input" type="number" value={rec} onChange={e=>setRec(e.target.value)} min="2" step="0.5"/>
@@ -265,7 +351,12 @@ export default function SidebarInputs({
         </div>
 
         {/* Section viewer */}
-        <SectionViewer b={esCircular?+diam:+b} h={esCircular?+diam:+h} rec={+rec} barras={barras} compact circular={esCircular} />
+        <SectionViewer
+          b={viewerB} h={viewerH} rec={+rec}
+          barras={barras} compact circular={esCircular}
+          tipo={tipo}
+          geoT={(esT||esL) ? {b_alma:+bAlma, h_total:+hTotal, b_ala:+bAla, h_ala:+hAla} : null}
+        />
 
         {/* Switches */}
         <div style={{display:'flex',flexDirection:'column',gap:6,marginTop:8,paddingTop:8,borderTop:'0.5px solid var(--border)'}}>
@@ -293,7 +384,7 @@ export default function SidebarInputs({
         <div style={{display:'flex',gap:5,marginTop:8}}>
           <button className="btn-sec" onClick={generar} style={{flex:1,fontSize:9}}>Generar disposición</button>
           <button className="btn-sec" onClick={ejemplo} style={{fontSize:9}}>Ej. 8#8</button>
-          <button className="btn-sec" onClick={()=>setBarras(p=>[...p,{x:0,y:0,diametro:dSel,area:area(dSel)}])} style={{fontSize:9}}>+1</button>
+          <button className="btn-sec" onClick={()=>setBarras(p=>[...p,{x:0,y:0,diametro:dSel,area:areaFn(dSel)}])} style={{fontSize:9}}>+1</button>
         </div>
 
         {/* E.060 check */}
@@ -431,34 +522,65 @@ export default function SidebarInputs({
         </Section>
       )}
 
-      {/* Bars table (collapsible) */}
+      {/* ══ TABLA DE BARRAS REDISEÑADA ══ */}
       {barras.length > 0 && (
-        <Section num="T" title={`Tabla de Barras (${barras.length})`} defaultOpen={false} color="var(--text2)">
-          <div className="bars-table-wrap">
-            <table className="bars-table">
-              <thead><tr><th>#</th><th>X</th><th>Y</th><th>∅ (cm)</th><th>As</th><th/></tr></thead>
+        <Section num="T" title={<span style={{display:'flex',alignItems:'center',gap:6}}>
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <rect x="1" y="1" width="14" height="14" rx="1.5"/>
+            <line x1="1" y1="5.5" x2="15" y2="5.5"/>
+            <line x1="6" y1="5.5" x2="6" y2="15"/>
+            <line x1="11" y1="5.5" x2="11" y2="15"/>
+          </svg>
+          Tabla de Barras
+          <span className="bt-badge">{barras.length}</span>
+        </span>} defaultOpen={false} color="var(--text2)">
+          <div className="bt-wrap">
+            <table className="bt-table">
+              <thead>
+                <tr>
+                  <th style={{width:28}}>#</th>
+                  <th style={{width:60}}>X</th>
+                  <th style={{width:60}}>Y</th>
+                  <th style={{width:70}}>∅ (cm)</th>
+                  <th style={{width:55}}>As</th>
+                  <th style={{width:28}}/>
+                </tr>
+              </thead>
               <tbody>
                 {barras.map((bar,i) => (
-                  <tr key={i}>
-                    <td style={{color:'var(--text3)'}}>{i+1}</td>
-                    <td><input type="number" value={bar.x} step="0.01"
-                      onChange={e=>setBarras(p=>p.map((b,j)=>j===i?{...b,x:+e.target.value}:b))}
-                      style={{width:48,padding:'2px 3px',fontSize:9,border:'none',background:'transparent',fontFamily:'var(--mono)'}}/></td>
-                    <td><input type="number" value={bar.y} step="0.01"
-                      onChange={e=>setBarras(p=>p.map((b,j)=>j===i?{...b,y:+e.target.value}:b))}
-                      style={{width:48,padding:'2px 3px',fontSize:9,border:'none',background:'transparent',fontFamily:'var(--mono)'}}/></td>
+                  <tr key={i} className={i%2===0?'bt-even':'bt-odd'}>
+                    <td className="bt-num">{i+1}</td>
+                    <td>
+                      <input type="number" value={bar.x} step="0.01"
+                        onChange={e=>setBarras(p=>p.map((b,j)=>j===i?{...b,x:+e.target.value}:b))}
+                        className="bt-input"/>
+                    </td>
+                    <td>
+                      <input type="number" value={bar.y} step="0.01"
+                        onChange={e=>setBarras(p=>p.map((b,j)=>j===i?{...b,y:+e.target.value}:b))}
+                        className="bt-input"/>
+                    </td>
                     <td>
                       <select value={bar.diametro}
-                        onChange={e=>setBarras(p=>p.map((b,j)=>j===i?{...b,diametro:+e.target.value,area:area(+e.target.value)}:b))}
-                        style={{width:58,padding:'2px 3px',fontSize:9,border:'none',background:'transparent',fontFamily:'var(--mono)'}}>
+                        onChange={e=>setBarras(p=>p.map((b,j)=>j===i?{...b,diametro:+e.target.value,area:areaFn(+e.target.value)}:b))}
+                        className="bt-input bt-select">
                         {DIAMS_MM.map(d=><option key={d.label} value={d.d}>{d.d}</option>)}
                       </select>
                     </td>
-                    <td style={{color:'var(--purple)',fontWeight:600}}>{(bar.area||0).toFixed(2)}</td>
-                    <td><button className="btn-del" onClick={()=>setBarras(p=>p.filter((_,j)=>j!==i))}>✕</button></td>
+                    <td className="bt-as">{(bar.area||0).toFixed(2)}</td>
+                    <td><button className="bt-del" onClick={()=>setBarras(p=>p.filter((_,j)=>j!==i))}>✕</button></td>
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr className="bt-total">
+                  <td colSpan="2">TOTAL</td>
+                  <td>—</td>
+                  <td>—</td>
+                  <td className="bt-as">{As.toFixed(2)}</td>
+                  <td/>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </Section>

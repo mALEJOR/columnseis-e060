@@ -25,6 +25,74 @@ export function phiFactor(epsilonNeto, sistema = 'SMF') {
   return phi_c + (epsilonNeto - eps_ty) / (eps_tt - eps_ty) * (phi_t - phi_c)
 }
 
+// ── Área de sección según tipo ────────────────────────────────────────────
+export function calcularAreaSeccion(geo) {
+  switch (geo.tipo) {
+    case 'circular':
+      return Math.PI * (geo.D / 2) ** 2
+    case 'T':
+      return geo.b_alma * geo.h_alma + geo.b_ala * (geo.h_total - geo.h_alma)
+    case 'L':
+      return geo.b_alma * geo.h_total + (geo.b_ala - geo.b_alma) * geo.h_ala
+    default: // rectangular
+      return (geo.b || 0) * (geo.h || 0)
+  }
+}
+
+// ── Comprueba si un punto (x,y) está dentro de la sección ─────────────────
+// Coordenadas relativas al centroide de la sección
+export function puntoEnSeccion(x, y, geo) {
+  if (geo.tipo === 'circular') {
+    const R = geo.D / 2
+    return x * x + y * y <= R * R
+  }
+  if (geo.tipo === 'T') {
+    // Centroide de la T calculado desde la base del alma
+    const { b_alma, h_total, b_ala, h_ala } = geo
+    const h_alma = h_total - h_ala
+    const A = b_alma * h_alma + b_ala * h_ala
+    const yc = (b_alma * h_alma * (h_alma / 2) + b_ala * h_ala * (h_alma + h_ala / 2)) / A
+    // y local: y=0 es centroide, positivo arriba
+    const yAbs = y + yc // posición desde la base
+    // Alma: 0 ≤ yAbs ≤ h_alma, -b_alma/2 ≤ x ≤ b_alma/2
+    if (yAbs >= 0 && yAbs <= h_alma && x >= -b_alma / 2 && x <= b_alma / 2) return true
+    // Ala: h_alma ≤ yAbs ≤ h_total, -b_ala/2 ≤ x ≤ b_ala/2
+    if (yAbs >= h_alma && yAbs <= h_total && x >= -b_ala / 2 && x <= b_ala / 2) return true
+    return false
+  }
+  if (geo.tipo === 'L') {
+    const { b_alma, h_total, b_ala, h_ala } = geo
+    // Centroide de la L desde esquina inferior izquierda
+    const A = b_alma * h_total + (b_ala - b_alma) * h_ala
+    const xc = (b_alma * h_total * (b_alma / 2) + (b_ala - b_alma) * h_ala * (b_alma + (b_ala - b_alma) / 2)) / A
+    const yc = (b_alma * h_total * (h_total / 2) + (b_ala - b_alma) * h_ala * (h_ala / 2)) / A
+    const xAbs = x + xc
+    const yAbs = y + yc
+    // Alma vertical: 0 ≤ xAbs ≤ b_alma, 0 ≤ yAbs ≤ h_total
+    if (xAbs >= 0 && xAbs <= b_alma && yAbs >= 0 && yAbs <= h_total) return true
+    // Ala horizontal: b_alma ≤ xAbs ≤ b_ala, 0 ≤ yAbs ≤ h_ala
+    if (xAbs >= b_alma && xAbs <= b_ala && yAbs >= 0 && yAbs <= h_ala) return true
+    return false
+  }
+  // Rectangular
+  const bw = geo.b || 0, hw = geo.h || 0
+  return Math.abs(x) <= bw / 2 && Math.abs(y) <= hw / 2
+}
+
+// ── Obtener bounding box de la sección ────────────────────────────────────
+function getBoundingBox(geo) {
+  if (geo.tipo === 'circular') {
+    return { bx: geo.D, by: geo.D }
+  }
+  if (geo.tipo === 'T') {
+    return { bx: geo.b_ala, by: geo.h_total }
+  }
+  if (geo.tipo === 'L') {
+    return { bx: geo.b_ala, by: geo.h_total }
+  }
+  return { bx: geo.b, by: geo.h }
+}
+
 // ── Cálculo de fuerzas internas para un estado de deformación ─────────────
 export function calcularFuerzasInternas(input, angulo, c) {
   const { fc, fy } = input.material
@@ -33,8 +101,9 @@ export function calcularFuerzasInternas(input, angulo, c) {
   const b1 = beta1(fc)
   const a = b1 * c
   const esCircular = geo.tipo === 'circular'
-  const b = esCircular ? geo.D : geo.b
-  const h = esCircular ? geo.D : geo.h
+  const { bx, by } = getBoundingBox(geo)
+  const b = bx
+  const h = by
   const R = esCircular ? geo.D / 2 : 0
 
   // Grilla para integración numérica del bloque de compresión
@@ -52,8 +121,8 @@ export function calcularFuerzasInternas(input, angulo, c) {
     const x = -b / 2 + (ix + 0.5) * dx
     for (let iy = 0; iy < NY; iy++) {
       const y = -h / 2 + (iy + 0.5) * dy
-      // Para circular, excluir puntos fuera del círculo
-      if (esCircular && (x * x + y * y) > R * R) continue
+      // Verificar si el punto está dentro de la sección
+      if (!puntoEnSeccion(x, y, geo)) continue
       const dist = x * cosA + y * sinA
       const dRel = distMax - dist
       if (dRel <= a) {
@@ -97,15 +166,14 @@ export function calcularFuerzasInternas(input, angulo, c) {
 export function generarSuperficie(input, onProgress) {
   const { fc, fy } = input.material
   const geo = input.geometria
-  const esCircular = geo.tipo === 'circular'
-  const b = esCircular ? geo.D : geo.b
-  const h = esCircular ? geo.D : geo.h
+  const { bx, by } = getBoundingBox(geo)
+  const b = bx, h = by
   const barras = input.refuerzo.barras
   const nAngulos = input.angulos_neutro || 36
   const nPasos   = input.pasos_profundidad || 50
   const sistema  = input.sistema_estructural || 'SMF'
 
-  const Ag = esCircular ? Math.PI * (geo.D / 2) ** 2 : b * h
+  const Ag = calcularAreaSeccion(geo)
   const As = barras.reduce((s, bar) => s + (bar.area || Math.PI * bar.diametro ** 2 / 4), 0)
   const rho = As / Ag
 
@@ -315,6 +383,95 @@ export function generarDisposicionCircular(D, recub, nBarras, diametro) {
       diametro,
       area,
     })
+  }
+  return bars
+}
+
+// ── Disposición de barras para sección T ──────────────────────────────────
+export function generarDisposicionT(b_alma, h_total, b_ala, h_ala, recub, nBarras, diametro) {
+  const cover = recub + diametro / 2
+  const areaBar = Math.PI * diametro ** 2 / 4
+  const bars = []
+  const h_alma = h_total - h_ala
+
+  // Centroide de la T
+  const A = b_alma * h_alma + b_ala * h_ala
+  const yc = (b_alma * h_alma * (h_alma / 2) + b_ala * h_ala * (h_alma + h_ala / 2)) / A
+
+  // Distribuir barras en el perímetro de la T
+  // Esquinas del alma (abajo)
+  const n = Math.max(6, nBarras)
+  const xAlmaMin = -b_alma / 2 + cover, xAlmaMax = b_alma / 2 - cover
+  const yBase = -yc + cover
+  const yTopAlma = -yc + h_alma
+  const xAlaMin = -b_ala / 2 + cover, xAlaMax = b_ala / 2 - cover
+  const yTopAla = -yc + h_total - cover
+
+  // 6 esquinas mínimas: 2 abajo alma, 2 top alma/base ala transición, 2 top ala
+  bars.push({ x: +xAlmaMin.toFixed(3), y: +yBase.toFixed(3), diametro, area: areaBar })
+  bars.push({ x: +xAlmaMax.toFixed(3), y: +yBase.toFixed(3), diametro, area: areaBar })
+  bars.push({ x: +xAlaMin.toFixed(3), y: +yTopAla.toFixed(3), diametro, area: areaBar })
+  bars.push({ x: +xAlaMax.toFixed(3), y: +yTopAla.toFixed(3), diametro, area: areaBar })
+  bars.push({ x: +xAlmaMin.toFixed(3), y: +(yTopAlma - cover).toFixed(3), diametro, area: areaBar })
+  bars.push({ x: +xAlmaMax.toFixed(3), y: +(yTopAlma - cover).toFixed(3), diametro, area: areaBar })
+
+  // Distribuir restantes en los lados
+  const nRest = n - 6
+  if (nRest > 0) {
+    // Lados verticales del alma
+    const nPerSide = Math.ceil(nRest / 2)
+    for (let i = 1; i <= Math.floor(nRest / 2); i++) {
+      const y = yBase + i * (yTopAlma - cover - yBase) / (nPerSide + 1)
+      bars.push({ x: +xAlmaMin.toFixed(3), y: +y.toFixed(3), diametro, area: areaBar })
+    }
+    for (let i = 1; i <= nRest - Math.floor(nRest / 2); i++) {
+      const y = yBase + i * (yTopAlma - cover - yBase) / (nPerSide + 1)
+      bars.push({ x: +xAlmaMax.toFixed(3), y: +y.toFixed(3), diametro, area: areaBar })
+    }
+  }
+  return bars
+}
+
+// ── Disposición de barras para sección L ──────────────────────────────────
+export function generarDisposicionL(b_alma, h_total, b_ala, h_ala, recub, nBarras, diametro) {
+  const cover = recub + diametro / 2
+  const areaBar = Math.PI * diametro ** 2 / 4
+  const bars = []
+
+  // Centroide de la L
+  const A = b_alma * h_total + (b_ala - b_alma) * h_ala
+  const xc = (b_alma * h_total * (b_alma / 2) + (b_ala - b_alma) * h_ala * (b_alma + (b_ala - b_alma) / 2)) / A
+  const yc = (b_alma * h_total * (h_total / 2) + (b_ala - b_alma) * h_ala * (h_ala / 2)) / A
+
+  const n = Math.max(6, nBarras)
+
+  // Esquinas principales
+  const pts = [
+    [-xc + cover, -yc + cover],                         // esquina inf-izq alma
+    [-xc + b_alma - cover, -yc + cover],                 // esquina inf-der alma (si no hay ala)
+    [-xc + cover, -yc + h_total - cover],                // esquina sup-izq alma
+    [-xc + b_alma - cover, -yc + h_total - cover],       // esquina sup-der alma
+    [-xc + b_ala - cover, -yc + cover],                   // esquina inf-der ala
+    [-xc + b_ala - cover, -yc + h_ala - cover],           // esquina sup-der ala
+  ]
+
+  for (const [px, py] of pts) {
+    bars.push({ x: +px.toFixed(3), y: +py.toFixed(3), diametro, area: areaBar })
+  }
+
+  const nRest = n - 6
+  if (nRest > 0) {
+    // Distribuir en el lado izquierdo del alma (vertical)
+    const nVert = Math.ceil(nRest / 2)
+    const nHoriz = nRest - nVert
+    for (let i = 1; i <= nVert; i++) {
+      const y = (-yc + cover) + i * (h_total - 2 * cover) / (nVert + 1)
+      bars.push({ x: +(-xc + cover).toFixed(3), y: +y.toFixed(3), diametro, area: areaBar })
+    }
+    for (let i = 1; i <= nHoriz; i++) {
+      const x = (-xc + b_alma) + i * (b_ala - b_alma - cover) / (nHoriz + 1)
+      bars.push({ x: +x.toFixed(3), y: +(-yc + cover).toFixed(3), diametro, area: areaBar })
+    }
   }
   return bars
 }
