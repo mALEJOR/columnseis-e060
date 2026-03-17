@@ -1,5 +1,5 @@
-import { useRef, useMemo, useState, useEffect } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { useRef, useMemo, useState } from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Grid, Text } from '@react-three/drei'
 import * as THREE from 'three'
 
@@ -130,9 +130,8 @@ function DemandPointMesh({ demandPoint, scale }) {
 }
 
 // ── Ejes coordinados ──────────────────────────────────────────────────────────
-function AxesLabels({ scale }) {
+function AxesLabels() {
   const axLen = 1.3
-  const origin = [0, 0, 0]
 
   const axisLine = (dir, color) => {
     const pts = new Float32Array([0, 0, 0, ...dir])
@@ -159,7 +158,7 @@ function AxesLabels({ scale }) {
 }
 
 // ── Escena 3D completa ────────────────────────────────────────────────────────
-function Scene({ surfaceData, demandPoint, pointSize, showMesh }) {
+function Scene({ surfaceData, demandPoint, pointSize }) {
   const { puntos, P_max, P_min } = surfaceData
 
   const scale = useMemo(() => {
@@ -191,7 +190,7 @@ function Scene({ surfaceData, demandPoint, pointSize, showMesh }) {
         <DemandPointMesh demandPoint={demandPoint} scale={scale} />
       )}
 
-      <AxesLabels scale={scale} />
+      <AxesLabels />
 
       {/* Plano P=0 */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
@@ -259,7 +258,7 @@ const demandPointLegend = (
 // ── Componente principal exportado ────────────────────────────────────────────
 export default function Surface3D({ surfaceData, demandPoint }) {
   const [pointSize, setPointSize] = useState(0.025)
-  const [bgColor, setBgColor] = useState('#0a0c10')
+  const [bgColor] = useState('#0a0c10')
 
   const fmt = (v) => Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(1)}T` : `${Math.round(v)}kg`
 

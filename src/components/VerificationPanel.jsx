@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { verificarPunto } from '../utils/engine'
 
 const fmt = (v, d=2) => isNaN(v) ? '—' : Number(v).toFixed(d)
@@ -26,7 +26,7 @@ export default function VerificationPanel({ surfaceData, onDemandChange }) {
     setCombos(p=>[...p,{id:Date.now(),label:`Combo ${p.length+1}`,Pu:'',Mux:'',Muy:'',color:cols[p.length%cols.length]}])
   }
 
-  const verificar = useCallback(() => {
+  const verificar = () => {
     const res = combos.map(c=>{
       if(!c.Pu||!c.Mux||!c.Muy) return null
       const PuKg=toKg(c.Pu), MuxKgcm=toKgcm(c.Mux), MuyKgcm=toKgcm(c.Muy)
@@ -39,7 +39,7 @@ export default function VerificationPanel({ surfaceData, onDemandChange }) {
       setCritIdx(idx)
       onDemandChange({Pu:res[idx].Pu,Mux:res[idx].Mux,Muy:res[idx].Muy})
     }
-  },[combos,surfaceData,unit])
+  }
 
   const anyFail = results.some(r=>!r.dentro)
 

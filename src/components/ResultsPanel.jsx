@@ -1,13 +1,6 @@
 export default function ResultsPanel({ surfaceData }) {
   const { P_max, P_min, cuantia_acero, area_acero, area_concreto, puntos } = surfaceData
 
-  const fmt = (v) => {
-    const abs = Math.abs(v)
-    if (abs >= 1000000) return `${(v / 1000000).toFixed(2)} MN`
-    if (abs >= 1000) return `${(v / 1000).toFixed(1)} ton`
-    return `${Math.round(v)} kg`
-  }
-
   const rhoOk = cuantia_acero >= 1.0 && cuantia_acero <= 6.0
   const rhoColor = rhoOk ? 'var(--success)' : 'var(--danger)'
 

@@ -53,7 +53,6 @@ export default function InteractionChart({ curva, demandPoint, title, labelX, co
       const Pv = curva.map(p => p.P / 1000)
 
       const maxP = Math.max(...Pv)
-      const minP = Math.min(...Pv)
       const maxM = Math.max(...Mv)
       const minM = Math.min(...Mv)
 

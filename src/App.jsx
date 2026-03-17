@@ -2,7 +2,9 @@ import { useState, useCallback } from 'react'
 import SidebarInputs from './components/SidebarInputs'
 import ThreeSurfaceViewer from './three_scene/ThreeSurfaceViewer'
 import InteractionChart from './charts/InteractionDiagramMx'
+import StirrupDesign from './components/StirrupDesign'
 import { generarSuperficie } from './utils/engine'
+import { generarPDF } from './components/PDFReport'
 import './App.css'
 
 const fmt = (v, d=1) => (isNaN(v)||v===undefined) ? '—' : Number(v).toFixed(d)
@@ -17,6 +19,8 @@ export default function App() {
   const [proyecto, setProyecto]       = useState({ nombre:'', licencia:'', autor:'' })
   const [dcrMax, setDcrMax]           = useState(null)
   const [dcrOk, setDcrOk]            = useState(true)
+  const [activeTab, setActiveTab]     = useState('interaccion')
+  const [estribosData, setEstribosData] = useState(null)
 
   // Viewer settings (controlled from sidebar)
   const [ptSize, setPtSize]       = useState(4)
@@ -33,6 +37,10 @@ export default function App() {
       } finally { setLoading(false) }
     }, 50)
   }, [])
+
+  const handleExportPDF = () => {
+    generarPDF({ proyecto, columnData, surfaceData, estribosData })
+  }
 
   const geo = columnData?.geometria
   const mat = columnData?.material
@@ -67,7 +75,7 @@ export default function App() {
           {geo && <>
             <div className="topbar-field" style={{marginLeft:8}}>
               <label>Sección</label>
-              <input readOnly value={`${geo.b} x ${geo.h} cm`} style={{width:70}}/>
+              <input readOnly value={geo.tipo==='circular' ? `∅${geo.D} cm` : `${geo.b} x ${geo.h} cm`} style={{width:70}}/>
             </div>
             <div className="topbar-field">
               <label>f'c</label>
@@ -76,6 +84,19 @@ export default function App() {
           </>}
         </div>
         <div className="topbar-badges">
+          {/* Tabs */}
+          <button className={`tab-btn ${activeTab==='interaccion'?'active':''}`} onClick={()=>setActiveTab('interaccion')}>Interacción</button>
+          <button className={`tab-btn ${activeTab==='estribos'?'active':''}`} onClick={()=>setActiveTab('estribos')}>Estribos</button>
+          <span style={{width:1,height:20,background:'var(--border)',margin:'0 4px'}}/>
+          <button className="btn-pdf" onClick={handleExportPDF} disabled={!surfaceData} title="Exportar reporte PDF">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/>
+              <polyline points="9 15 12 18 15 15"/>
+            </svg>
+            PDF
+          </button>
+          <span style={{width:1,height:20,background:'var(--border)',margin:'0 4px'}}/>
           <span className="badge norm">NTP E.060</span>
           <span className="badge norm">ACI 318</span>
           <span className="badge accent">v2.1</span>
@@ -88,7 +109,6 @@ export default function App() {
           <SidebarInputs
             onCalculate={handleCalculate}
             loading={loading}
-            columnData={columnData}
             surfaceData={surfaceData}
             onDemandChange={setDemandPoint}
             ptSize={ptSize}
@@ -129,53 +149,64 @@ export default function App() {
         <main className="main-content">
           {error && <div className="err-bar">⚠ {error}</div>}
 
-          {/* Visor 3D */}
-          <div className="viewer-wrapper">
-            <ThreeSurfaceViewer
-              surfaceData={surfaceData}
-              demandPoint={demandPoint}
-              loading={loading}
-              progress={progress}
-              ptSize={ptSize}
-              viewType={viewType}
-            />
-          </div>
+          {activeTab === 'interaccion' && (
+            <>
+              {/* Visor 3D */}
+              <div className="viewer-wrapper">
+                <ThreeSurfaceViewer
+                  surfaceData={surfaceData}
+                  demandPoint={demandPoint}
+                  loading={loading}
+                  progress={progress}
+                  ptSize={ptSize}
+                  viewType={viewType}
+                />
+              </div>
 
-          {/* Grilla 2x2 de diagramas */}
-          <div className="charts-grid">
-            <InteractionChart
-              curva={surfaceData?.puntos_curva_PMx}
-              demandPoint={demandPoint ? {P:demandPoint.Pu, M:demandPoint.Mux} : null}
-              title="P-M33 (Sismo X)"
-              labelX="M33"
-              color="#2563eb"
-              dotColor="#2563eb"
+              {/* Grilla 2x2 de diagramas */}
+              <div className="charts-grid">
+                <InteractionChart
+                  curva={surfaceData?.puntos_curva_PMx}
+                  demandPoint={demandPoint ? {P:demandPoint.Pu, M:demandPoint.Mux} : null}
+                  title="P-M33 (Sismo X)"
+                  labelX="M33"
+                  color="#2563eb"
+                  dotColor="#2563eb"
+                />
+                <InteractionChart
+                  curva={surfaceData?.puntos_curva_PMy}
+                  demandPoint={demandPoint ? {P:demandPoint.Pu, M:demandPoint.Muy} : null}
+                  title="P-M22 (Sismo X)"
+                  labelX="M22"
+                  color="#d97706"
+                  dotColor="#d97706"
+                />
+                <InteractionChart
+                  curva={surfaceData?.puntos_curva_PMx}
+                  demandPoint={null}
+                  title="P-M33 (Sismo Y)"
+                  labelX="M33"
+                  color="#dc2626"
+                  dotColor="#dc2626"
+                />
+                <InteractionChart
+                  curva={surfaceData?.puntos_curva_PMy}
+                  demandPoint={null}
+                  title="P-M22 (Sismo Y)"
+                  labelX="M22"
+                  color="#059669"
+                  dotColor="#059669"
+                />
+              </div>
+            </>
+          )}
+
+          {activeTab === 'estribos' && (
+            <StirrupDesign
+              columnData={columnData}
+              onEstribosCalc={setEstribosData}
             />
-            <InteractionChart
-              curva={surfaceData?.puntos_curva_PMy}
-              demandPoint={demandPoint ? {P:demandPoint.Pu, M:demandPoint.Muy} : null}
-              title="P-M22 (Sismo X)"
-              labelX="M22"
-              color="#d97706"
-              dotColor="#d97706"
-            />
-            <InteractionChart
-              curva={surfaceData?.puntos_curva_PMx}
-              demandPoint={null}
-              title="P-M33 (Sismo Y)"
-              labelX="M33"
-              color="#dc2626"
-              dotColor="#dc2626"
-            />
-            <InteractionChart
-              curva={surfaceData?.puntos_curva_PMy}
-              demandPoint={null}
-              title="P-M22 (Sismo Y)"
-              labelX="M22"
-              color="#059669"
-              dotColor="#059669"
-            />
-          </div>
+          )}
         </main>
       </div>
     </div>

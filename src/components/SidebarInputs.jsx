@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { generarDisposicion, disenarEstribos, verificarPunto } from '../utils/engine'
+import { useState } from 'react'
+import { generarDisposicion, generarDisposicionCircular, verificarPunto } from '../utils/engine'
 import SectionViewer from './SectionViewer'
 
 const DIAMS_MM = [
@@ -48,13 +48,13 @@ const COMBOS_INI = [
 ]
 
 export default function SidebarInputs({
-  onCalculate, loading, columnData, surfaceData, onDemandChange,
+  onCalculate, loading, surfaceData, onDemandChange,
   ptSize, setPtSize, viewType, setViewType, onDcrUpdate,
 }) {
   // ── MATERIALES
   const [fc,  setFc]  = useState(280)
   const [fy,  setFy]  = useState(4200)
-  const [Es,  setEs]  = useState(2000000)
+  const [Es]  = useState(2000000)
   const [sis, setSis]  = useState('SMF')
 
   // ── GEOMETRÍA
@@ -63,6 +63,7 @@ export default function SidebarInputs({
   const [rec,  setRec]  = useState(4)
   const [lon,  setLon]  = useState(300)
   const [tipo, setTipo] = useState('rectangular')
+  const [diam, setDiam] = useState(50) // diámetro para sección circular
 
   // ── REFUERZO
   const [barras,  setBarras]  = useState([])
@@ -110,17 +111,27 @@ export default function SidebarInputs({
     }
   }
 
+  const esCircular = tipo === 'circular'
+
   const generar = () => {
-    const tipo_disp = arrConf === 'circular' ? 'circular' : 'rectangular'
-    const bs = generarDisposicion(+b, +h, +rec, +nB, dSel, tipo_disp)
-    setBarras(bs)
+    if (esCircular) {
+      const bs = generarDisposicionCircular(+diam, +rec, +nB, dSel)
+      setBarras(bs)
+    } else {
+      const tipo_disp = arrConf === 'circular' ? 'circular' : 'rectangular'
+      const bs = generarDisposicion(+b, +h, +rec, +nB, dSel, tipo_disp)
+      setBarras(bs)
+    }
   }
 
   const calcular = () => {
     if (!barras.length) { alert('Defina barras de refuerzo'); return }
+    const geometria = esCircular
+      ? { tipo:'circular', D:+diam, recubrimiento:+rec, longitud:+lon }
+      : { b:+b, h:+h, recubrimiento:+rec, longitud:+lon }
     onCalculate({
       material: { fc:+fc, fy:+fy, Es:+Es },
-      geometria: { b:+b, h:+h, recubrimiento:+rec, longitud:+lon },
+      geometria,
       refuerzo: { barras },
       sistema_estructural: sis,
       angulos_neutro: +ang,
@@ -129,16 +140,17 @@ export default function SidebarInputs({
   }
 
   const ejemplo = () => {
+    setTipo('rectangular')
     setFc(280);setFy(4200);setB(40);setH(50);setRec(4);setLon(300);setSis('SMF');setAng(36);setPas(50)
-    const d=2.540, a=area(d)
+    const d=2.540
     const bs = generarDisposicion(40, 50, 4, 8, d, 'rectangular')
     setBarras(bs)
     setNB(8)
     setDSel(d)
   }
 
-  const As  = barras.reduce((s,b)=>s+(b.area||0), 0)
-  const Ag  = (+b)*(+h)
+  const As  = barras.reduce((s,br)=>s+(br.area||0), 0)
+  const Ag  = esCircular ? Math.PI*(+diam/2)**2 : (+b)*(+h)
   const rho = Ag ? (As/Ag*100) : 0
   const rhoOk = rho>=1&&rho<=6
 
@@ -158,18 +170,43 @@ export default function SidebarInputs({
           </Field>
         </div>
 
+        {/* Tipo de sección */}
+        <Field label="Tipo de sección">
+          <div className="view-btns">
+            {['rectangular','circular'].map(t => (
+              <button key={t}
+                className={`view-btn ${tipo===t?'active':''}`}
+                onClick={()=>{ setTipo(t); setBarras([]) }}
+              >
+                {t==='rectangular'?'Rectangular':'Circular'}
+              </button>
+            ))}
+          </div>
+        </Field>
+
         {/* Geometría */}
-        <div className="field-row col3">
-          <Field label="b (cm)">
-            <input className="f-input" type="number" value={b} onChange={e=>{ setB(e.target.value); if(tipo==='cuadrada') setH(e.target.value) }} min="15"/>
-          </Field>
-          <Field label="h (cm)">
-            <input className="f-input" type="number" value={tipo==='cuadrada'?b:h} onChange={e=>setH(e.target.value)} min="15" readOnly={tipo==='cuadrada'}/>
-          </Field>
-          <Field label="r (cm)">
-            <input className="f-input" type="number" value={rec} onChange={e=>setRec(e.target.value)} min="2" step="0.5"/>
-          </Field>
-        </div>
+        {esCircular ? (
+          <div className="field-row col2">
+            <Field label="D (cm)" tip="Diámetro de la sección circular">
+              <input className="f-input" type="number" value={diam} onChange={e=>setDiam(e.target.value)} min="20"/>
+            </Field>
+            <Field label="r (cm)">
+              <input className="f-input" type="number" value={rec} onChange={e=>setRec(e.target.value)} min="2" step="0.5"/>
+            </Field>
+          </div>
+        ) : (
+          <div className="field-row col3">
+            <Field label="b (cm)">
+              <input className="f-input" type="number" value={b} onChange={e=>setB(e.target.value)} min="15"/>
+            </Field>
+            <Field label="h (cm)">
+              <input className="f-input" type="number" value={h} onChange={e=>setH(e.target.value)} min="15"/>
+            </Field>
+            <Field label="r (cm)">
+              <input className="f-input" type="number" value={rec} onChange={e=>setRec(e.target.value)} min="2" step="0.5"/>
+            </Field>
+          </div>
+        )}
 
         {/* Barras config */}
         <div style={{borderTop:'0.5px solid var(--border)',paddingTop:8,marginTop:4}}>
@@ -228,7 +265,7 @@ export default function SidebarInputs({
         </div>
 
         {/* Section viewer */}
-        <SectionViewer b={+b} h={+h} rec={+rec} barras={barras} compact />
+        <SectionViewer b={esCircular?+diam:+b} h={esCircular?+diam:+h} rec={+rec} barras={barras} compact circular={esCircular} />
 
         {/* Switches */}
         <div style={{display:'flex',flexDirection:'column',gap:6,marginTop:8,paddingTop:8,borderTop:'0.5px solid var(--border)'}}>

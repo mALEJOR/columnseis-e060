@@ -28,10 +28,14 @@ export function phiFactor(epsilonNeto, sistema = 'SMF') {
 // ── Cálculo de fuerzas internas para un estado de deformación ─────────────
 export function calcularFuerzasInternas(input, angulo, c) {
   const { fc, fy } = input.material
-  const { b, h } = input.geometria
+  const geo = input.geometria
   const barras = input.refuerzo.barras
   const b1 = beta1(fc)
   const a = b1 * c
+  const esCircular = geo.tipo === 'circular'
+  const b = esCircular ? geo.D : geo.b
+  const h = esCircular ? geo.D : geo.h
+  const R = esCircular ? geo.D / 2 : 0
 
   // Grilla para integración numérica del bloque de compresión
   const NX = 50, NY = 50
@@ -40,7 +44,7 @@ export function calcularFuerzasInternas(input, angulo, c) {
   const cosA = Math.cos(angulo), sinA = Math.sin(angulo)
 
   // Distancia máxima desde centroide en dirección del eje neutro
-  const distMax = (b / 2) * Math.abs(cosA) + (h / 2) * Math.abs(sinA)
+  const distMax = esCircular ? R : (b / 2) * Math.abs(cosA) + (h / 2) * Math.abs(sinA)
 
   let Fc = 0, Mx_c = 0, My_c = 0
 
@@ -48,6 +52,8 @@ export function calcularFuerzasInternas(input, angulo, c) {
     const x = -b / 2 + (ix + 0.5) * dx
     for (let iy = 0; iy < NY; iy++) {
       const y = -h / 2 + (iy + 0.5) * dy
+      // Para circular, excluir puntos fuera del círculo
+      if (esCircular && (x * x + y * y) > R * R) continue
       const dist = x * cosA + y * sinA
       const dRel = distMax - dist
       if (dRel <= a) {
@@ -90,13 +96,16 @@ export function calcularFuerzasInternas(input, angulo, c) {
 // ── Generación de la superficie de interacción P-Mx-My ─────────────────────
 export function generarSuperficie(input, onProgress) {
   const { fc, fy } = input.material
-  const { b, h } = input.geometria
+  const geo = input.geometria
+  const esCircular = geo.tipo === 'circular'
+  const b = esCircular ? geo.D : geo.b
+  const h = esCircular ? geo.D : geo.h
   const barras = input.refuerzo.barras
   const nAngulos = input.angulos_neutro || 36
   const nPasos   = input.pasos_profundidad || 50
   const sistema  = input.sistema_estructural || 'SMF'
 
-  const Ag = b * h
+  const Ag = esCircular ? Math.PI * (geo.D / 2) ** 2 : b * h
   const As = barras.reduce((s, bar) => s + (bar.area || Math.PI * bar.diametro ** 2 / 4), 0)
   const rho = As / Ag
 
@@ -113,7 +122,6 @@ export function generarSuperficie(input, onProgress) {
   for (let i = 0; i < n2; i++) cVals.push(diag * 0.5 + i * (diag * 2.5) / (n2 - 1))
 
   const puntos = []
-  const total = nAngulos * nPasos
 
   for (let ia = 0; ia < nAngulos; ia++) {
     const angulo = (2 * Math.PI * ia) / nAngulos
@@ -289,6 +297,24 @@ export function generarDisposicion(b, h, recub, nBarras, diametro, tipo = 'recta
       const y = yMax - i * lH / (nLeft + 1)
       bars.push({ x: +xMin.toFixed(3), y: +y.toFixed(3), diametro, area })
     }
+  }
+  return bars
+}
+
+// ── Disposición circular de barras ────────────────────────────────────────
+export function generarDisposicionCircular(D, recub, nBarras, diametro) {
+  const cover = recub + diametro / 2
+  const r = D / 2 - cover
+  const area = Math.PI * diametro ** 2 / 4
+  const bars = []
+  for (let i = 0; i < nBarras; i++) {
+    const theta = 2 * Math.PI * i / nBarras
+    bars.push({
+      x: +(r * Math.cos(theta)).toFixed(3),
+      y: +(r * Math.sin(theta)).toFixed(3),
+      diametro,
+      area,
+    })
   }
   return bars
 }
