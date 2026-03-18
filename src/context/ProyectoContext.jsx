@@ -117,6 +117,68 @@ function reducer(state, action) {
       }
     }
 
+    case 'IMPORTAR_COLUMNAS': {
+      // action.columnas = [{ nombre, eje, nivel, combinaciones: [{label,Pu,Mux,Muy}] }]
+      const nuevas = []
+      for (const imp of action.columnas) {
+        const existente = state.columnas.find(c => c.nombre === imp.nombre)
+        if (existente && action.modo === 'agregar') {
+          // Agregar combinaciones a columna existente
+          const maxId = existente.combinaciones.reduce((m, c) => Math.max(m, c.id || 0), 0)
+          const combosNuevos = imp.combinaciones.map((c, i) => ({
+            id: maxId + i + 1,
+            label: c.label || `Combo ${maxId + i + 1}`,
+            Pu: c.Pu, Mux: c.Mux, Muy: c.Muy,
+            activa: true,
+          }))
+          nuevas.push({
+            ...existente,
+            combinaciones: [...existente.combinaciones, ...combosNuevos],
+            estado: 'sin_calcular',
+          })
+        } else if (existente && action.modo === 'sobreescribir') {
+          const combos = imp.combinaciones.map((c, i) => ({
+            id: i + 1,
+            label: c.label || `Combo ${i + 1}`,
+            Pu: c.Pu, Mux: c.Mux, Muy: c.Muy,
+            activa: true,
+          }))
+          nuevas.push({
+            ...existente,
+            eje: imp.eje || existente.eje,
+            nivel: imp.nivel || existente.nivel,
+            combinaciones: combos,
+            superficie: null, resultados: null, dcr_max: null,
+            estado: 'sin_calcular',
+          })
+        } else {
+          // Nueva columna
+          const col = crearColumna({
+            nombre: imp.nombre,
+            eje: imp.eje || '',
+            nivel: imp.nivel || '',
+            combinaciones: imp.combinaciones.map((c, i) => ({
+              id: i + 1,
+              label: c.label || `Combo ${i + 1}`,
+              Pu: c.Pu, Mux: c.Mux, Muy: c.Muy,
+              activa: true,
+            })),
+          })
+          nuevas.push(col)
+        }
+      }
+      // Merge: reemplazar existentes, agregar nuevas
+      const colsMap = new Map(state.columnas.map(c => [c.id, c]))
+      for (const n of nuevas) {
+        if (colsMap.has(n.id)) {
+          colsMap.set(n.id, n)
+        } else {
+          colsMap.set(n.id, n)
+        }
+      }
+      return { ...state, columnas: [...colsMap.values()] }
+    }
+
     case 'NAVEGAR_COLUMNA': {
       const idx = state.columnas.findIndex(c => c.id === state.columnaActivaId)
       const newIdx = idx + action.dir

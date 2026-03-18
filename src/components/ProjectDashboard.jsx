@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useProyecto, crearColumna } from '../context/ProyectoContext'
 import { generarSuperficie, calcularAreaSeccion, verificarPunto } from '../utils/engine'
+import ImportadorETABS from './ImportadorETABS'
 
 // ── Helpers ──
 const fmt = (v, d = 1) => (v == null || isNaN(v)) ? '—' : Number(v).toFixed(d)
@@ -136,6 +137,7 @@ function ModalNuevaColumna({ open, onClose, onAdd, columnas }) {
 export default function ProjectDashboard() {
   const { nombre, ingeniero, fecha, columnas, dispatch } = useProyecto()
   const [modalOpen, setModalOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [calculando, setCalculando] = useState(false)
   const calculandoRef = useRef(false)
 
@@ -267,14 +269,28 @@ export default function ProjectDashboard() {
         {/* Toolbar */}
         <div className="dash-toolbar">
           <span className="dash-toolbar-title">Columnas del Proyecto</span>
-          <button
-            className="btn-calc"
-            style={{ width: 'auto', padding: '7px 20px', fontSize: 10 }}
-            onClick={calcularTodas}
-            disabled={calculando}
-          >
-            {calculando ? 'CALCULANDO...' : 'CALCULAR TODAS'}
-          </button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              className="btn-sec"
+              style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, padding: '7px 14px' }}
+              onClick={() => setImportOpen(true)}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              IMPORTAR ETABS
+            </button>
+            <button
+              className="btn-calc"
+              style={{ width: 'auto', padding: '7px 20px', fontSize: 10 }}
+              onClick={calcularTodas}
+              disabled={calculando}
+            >
+              {calculando ? 'CALCULANDO...' : 'CALCULAR TODAS'}
+            </button>
+          </div>
         </div>
 
         {/* Tabla */}
@@ -406,13 +422,16 @@ export default function ProjectDashboard() {
         </svg>
       </button>
 
-      {/* Modal */}
+      {/* Modal nueva columna */}
       <ModalNuevaColumna
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onAdd={agregarColumna}
         columnas={columnas}
       />
+
+      {/* Modal importador ETABS */}
+      {importOpen && <ImportadorETABS onClose={() => setImportOpen(false)} />}
     </div>
   )
 }
