@@ -508,7 +508,7 @@ export default function SidebarInputs({
 
       {/* ══ TABLA DE BARRAS REDISEÑADA ══ */}
       {barras.length > 0 && (
-        <Section num="T" title={<span style={{display:'flex',alignItems:'center',gap:6}}>
+        <Section num="T" title={<span style={{display:'flex',alignItems:'center',gap:6,width:'100%'}}>
           <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
             <rect x="1" y="1" width="14" height="14" rx="1.5"/>
             <line x1="1" y1="5.5" x2="15" y2="5.5"/>
@@ -517,51 +517,51 @@ export default function SidebarInputs({
           </svg>
           Tabla de Barras
           <span className="bt-badge">{barras.length}</span>
+          <button className="bt-clear" onClick={(e)=>{e.stopPropagation();setBarras([])}} title="Limpiar todas">✕</button>
         </span>} defaultOpen={false} color="var(--text2)">
-          <div className="bt-wrap">
+          <div className="bt-wrap" style={{maxHeight:220}}>
             <table className="bt-table">
               <thead>
                 <tr>
-                  <th style={{width:28}}>#</th>
-                  <th style={{width:60}}>X</th>
-                  <th style={{width:60}}>Y</th>
-                  <th style={{width:70}}>∅ (cm)</th>
-                  <th style={{width:55}}>As</th>
-                  <th style={{width:28}}/>
+                  <th style={{width:24}}>#</th>
+                  <th style={{width:52}}>X (cm)</th>
+                  <th style={{width:52}}>Y (cm)</th>
+                  <th style={{width:80}}>∅</th>
+                  <th style={{width:48}}>As (cm²)</th>
+                  <th style={{width:20}}/>
                 </tr>
               </thead>
               <tbody>
                 {barras.map((bar,i) => (
-                  <tr key={i} className={i%2===0?'bt-even':'bt-odd'}>
-                    <td className="bt-num">{i+1}</td>
-                    <td>
+                  <tr key={i} className={i%2===0?'bt-even':'bt-odd'} style={{height:28}}>
+                    <td className="bt-num" style={{width:24,fontSize:9,color:'#606880'}}>{i+1}</td>
+                    <td style={{width:52,padding:'0 6px'}}>
                       <input type="number" value={bar.x} step="0.01"
                         onChange={e=>setBarras(p=>p.map((b,j)=>j===i?{...b,x:+e.target.value}:b))}
-                        className="bt-input"/>
+                        className="bt-input" style={{textAlign:'right',fontSize:10}}/>
                     </td>
-                    <td>
+                    <td style={{width:52,padding:'0 6px'}}>
                       <input type="number" value={bar.y} step="0.01"
                         onChange={e=>setBarras(p=>p.map((b,j)=>j===i?{...b,y:+e.target.value}:b))}
-                        className="bt-input"/>
+                        className="bt-input" style={{textAlign:'right',fontSize:10}}/>
                     </td>
-                    <td>
+                    <td style={{width:80,padding:'0 4px'}}>
                       <select value={bar.diametro}
                         onChange={e=>setBarras(p=>p.map((b,j)=>j===i?{...b,diametro:+e.target.value,area:areaFn(+e.target.value)}:b))}
-                        className="bt-input bt-select">
-                        {DIAMS_MM.map(d=><option key={d.label} value={d.d}>{d.d}</option>)}
+                        className="bt-input bt-select" style={{fontSize:10}}>
+                        {DIAMS_MM.map(d=><option key={d.label} value={d.d}>{d.label}</option>)}
                       </select>
                     </td>
-                    <td className="bt-as">{(bar.area||0).toFixed(2)}</td>
-                    <td><button className="bt-del" onClick={()=>setBarras(p=>p.filter((_,j)=>j!==i))}>✕</button></td>
+                    <td className="bt-as" style={{width:48,textAlign:'right',fontSize:11,color:'#4d8aff',fontWeight:500,padding:'0 6px'}}>{(bar.area||0).toFixed(2)}</td>
+                    <td style={{width:20,padding:0}}><button className="bt-del" onClick={()=>setBarras(p=>p.filter((_,j)=>j!==i))}>✕</button></td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
                 <tr className="bt-total">
-                  <td colSpan="2">TOTAL</td>
-                  <td>—</td>
-                  <td>—</td>
-                  <td className="bt-as">{As.toFixed(2)}</td>
+                  <td colSpan="3" style={{textAlign:'left'}}>TOTAL</td>
+                  <td style={{textAlign:'right',color:rhoOk?'var(--teal)':'var(--red)',fontWeight:700,fontSize:9}}>ρ={rho.toFixed(2)}%</td>
+                  <td style={{textAlign:'right',color:'#4d8aff',fontWeight:700,fontSize:11}}>{As.toFixed(2)}</td>
                   <td/>
                 </tr>
               </tfoot>

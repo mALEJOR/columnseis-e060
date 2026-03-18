@@ -330,6 +330,12 @@ select.f-input option{background:var(--surface3);color:var(--text0)}
 }
 .bt-table tbody tr:hover .bt-del{opacity:1}
 .bt-del:hover{background:var(--red-l)}
+.bt-clear{
+  margin-left:auto;padding:1px 5px;border:1px solid rgba(220,38,38,0.3);border-radius:3px;
+  background:transparent;color:var(--red);font-size:8px;cursor:pointer;
+  transition:all .15s;line-height:1;
+}
+.bt-clear:hover{background:var(--red-l)}
 .bt-total td{
   background:#1e2235 !important;
   font-size:8px;font-weight:700;text-transform:uppercase;

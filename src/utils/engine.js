@@ -387,93 +387,115 @@ export function generarDisposicionCircular(D, recub, nBarras, diametro) {
   return bars
 }
 
-// ── Disposición de barras para sección T ──────────────────────────────────
-export function generarDisposicionT(b_alma, h_total, b_ala, h_ala, recub, nBarras, diametro) {
-  const cover = recub + diametro / 2
+// ── Distribuir n barras uniformemente en un perímetro poligonal ──────────
+// vertices: [[x,y],...] en orden, cover ya aplicado internamente
+function distribuirEnPerimetro(vertices, nBarras, diametro, cover) {
   const areaBar = Math.PI * diametro ** 2 / 4
-  const bars = []
-  const h_alma = h_total - h_ala
 
-  // Centroide de la T
-  const A = b_alma * h_alma + b_ala * h_ala
-  const yc = (b_alma * h_alma * (h_alma / 2) + b_ala * h_ala * (h_alma + h_ala / 2)) / A
+  // Calcular perímetro interior (con offset de cover)
+  // Primero: generar vértices interiores con offset
+  const n = vertices.length
+  const inner = []
+  for (let i = 0; i < n; i++) {
+    const prev = vertices[(i - 1 + n) % n]
+    const curr = vertices[i]
+    const next = vertices[(i + 1) % n]
 
-  // Distribuir barras en el perímetro de la T
-  // Esquinas del alma (abajo)
-  const n = Math.max(6, nBarras)
-  const xAlmaMin = -b_alma / 2 + cover, xAlmaMax = b_alma / 2 - cover
-  const yBase = -yc + cover
-  const yTopAlma = -yc + h_alma
-  const xAlaMin = -b_ala / 2 + cover, xAlaMax = b_ala / 2 - cover
-  const yTopAla = -yc + h_total - cover
+    // Vectores de los dos bordes adyacentes
+    const dx1 = curr[0] - prev[0], dy1 = curr[1] - prev[1]
+    const dx2 = next[0] - curr[0], dy2 = next[1] - curr[1]
+    const len1 = Math.sqrt(dx1 * dx1 + dy1 * dy1)
+    const len2 = Math.sqrt(dx2 * dx2 + dy2 * dy2)
 
-  // 6 esquinas mínimas: 2 abajo alma, 2 top alma/base ala transición, 2 top ala
-  bars.push({ x: +xAlmaMin.toFixed(3), y: +yBase.toFixed(3), diametro, area: areaBar })
-  bars.push({ x: +xAlmaMax.toFixed(3), y: +yBase.toFixed(3), diametro, area: areaBar })
-  bars.push({ x: +xAlaMin.toFixed(3), y: +yTopAla.toFixed(3), diametro, area: areaBar })
-  bars.push({ x: +xAlaMax.toFixed(3), y: +yTopAla.toFixed(3), diametro, area: areaBar })
-  bars.push({ x: +xAlmaMin.toFixed(3), y: +(yTopAlma - cover).toFixed(3), diametro, area: areaBar })
-  bars.push({ x: +xAlmaMax.toFixed(3), y: +(yTopAlma - cover).toFixed(3), diametro, area: areaBar })
+    // Normales interiores (apuntando hacia adentro)
+    const nx1 = -dy1 / len1, ny1 = dx1 / len1
+    const nx2 = -dy2 / len2, ny2 = dx2 / len2
 
-  // Distribuir restantes en los lados
-  const nRest = n - 6
-  if (nRest > 0) {
-    // Lados verticales del alma
-    const nPerSide = Math.ceil(nRest / 2)
-    for (let i = 1; i <= Math.floor(nRest / 2); i++) {
-      const y = yBase + i * (yTopAlma - cover - yBase) / (nPerSide + 1)
-      bars.push({ x: +xAlmaMin.toFixed(3), y: +y.toFixed(3), diametro, area: areaBar })
+    // Bisectriz
+    const bx = nx1 + nx2, by = ny1 + ny2
+    const bLen = Math.sqrt(bx * bx + by * by)
+    if (bLen < 1e-9) {
+      inner.push([curr[0] + nx1 * cover, curr[1] + ny1 * cover])
+    } else {
+      // Distancia a lo largo de la bisectriz para mantener cover desde ambos lados
+      const sinHalf = Math.abs(nx1 * (by / bLen) - ny1 * (bx / bLen))
+      const d = sinHalf > 1e-9 ? cover / sinHalf : cover
+      inner.push([curr[0] + bx / bLen * d, curr[1] + by / bLen * d])
     }
-    for (let i = 1; i <= nRest - Math.floor(nRest / 2); i++) {
-      const y = yBase + i * (yTopAlma - cover - yBase) / (nPerSide + 1)
-      bars.push({ x: +xAlmaMax.toFixed(3), y: +y.toFixed(3), diametro, area: areaBar })
+  }
+
+  // Calcular longitudes de cada segmento del perímetro interior
+  const segs = []
+  let totalLen = 0
+  for (let i = 0; i < inner.length; i++) {
+    const a = inner[i], b = inner[(i + 1) % inner.length]
+    const len = Math.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2)
+    segs.push({ ax: a[0], ay: a[1], bx: b[0], by: b[1], len })
+    totalLen += len
+  }
+
+  // Distribuir barras uniformemente a lo largo del perímetro
+  const bars = []
+  const spacing = totalLen / nBarras
+  for (let i = 0; i < nBarras; i++) {
+    let dist = i * spacing
+    for (const seg of segs) {
+      if (dist <= seg.len + 1e-9) {
+        const t = seg.len > 1e-9 ? dist / seg.len : 0
+        const x = seg.ax + t * (seg.bx - seg.ax)
+        const y = seg.ay + t * (seg.by - seg.ay)
+        bars.push({ x: +x.toFixed(3), y: +y.toFixed(3), diametro, area: areaBar })
+        break
+      }
+      dist -= seg.len
     }
   }
   return bars
 }
 
+// ── Disposición de barras para sección T ──────────────────────────────────
+export function generarDisposicionT(b_alma, h_total, b_ala, h_ala, recub, nBarras, diametro) {
+  const cover = recub + diametro / 2
+  const n = Math.max(4, nBarras)
+
+  // Perímetro de la T centrado en el origen geométrico
+  // Vértices en orden antihorario
+  const vertices = [
+    [-b_ala / 2,  -h_total / 2],                  // esquina inf-izq ala
+    [ b_ala / 2,  -h_total / 2],                  // esquina inf-der ala
+    [ b_ala / 2,  -h_total / 2 + h_ala],          // esquina der ala→alma
+    [ b_alma / 2, -h_total / 2 + h_ala],          // esquina der alma (abajo)
+    [ b_alma / 2,  h_total / 2],                  // esquina sup-der alma
+    [-b_alma / 2,  h_total / 2],                  // esquina sup-izq alma
+    [-b_alma / 2, -h_total / 2 + h_ala],          // esquina izq alma (abajo)
+    [-b_ala / 2,  -h_total / 2 + h_ala],          // esquina izq ala→alma
+  ]
+
+  return distribuirEnPerimetro(vertices, n, diametro, cover)
+}
+
 // ── Disposición de barras para sección L ──────────────────────────────────
 export function generarDisposicionL(b_alma, h_total, b_ala, h_ala, recub, nBarras, diametro) {
   const cover = recub + diametro / 2
-  const areaBar = Math.PI * diametro ** 2 / 4
-  const bars = []
+  const n = Math.max(4, nBarras)
 
-  // Centroide de la L
+  // Centroide de la L desde esquina inferior izquierda
   const A = b_alma * h_total + (b_ala - b_alma) * h_ala
   const xc = (b_alma * h_total * (b_alma / 2) + (b_ala - b_alma) * h_ala * (b_alma + (b_ala - b_alma) / 2)) / A
   const yc = (b_alma * h_total * (h_total / 2) + (b_ala - b_alma) * h_ala * (h_ala / 2)) / A
 
-  const n = Math.max(6, nBarras)
-
-  // Esquinas principales
-  const pts = [
-    [-xc + cover, -yc + cover],                         // esquina inf-izq alma
-    [-xc + b_alma - cover, -yc + cover],                 // esquina inf-der alma (si no hay ala)
-    [-xc + cover, -yc + h_total - cover],                // esquina sup-izq alma
-    [-xc + b_alma - cover, -yc + h_total - cover],       // esquina sup-der alma
-    [-xc + b_ala - cover, -yc + cover],                   // esquina inf-der ala
-    [-xc + b_ala - cover, -yc + h_ala - cover],           // esquina sup-der ala
+  // Perímetro de la L centrado en el centroide
+  // Vértices en orden: (0,0) → (b_ala,0) → (b_ala,h_ala) → (b_alma,h_ala) → (b_alma,h_total) → (0,h_total)
+  const vertices = [
+    [0     - xc, 0       - yc],
+    [b_ala - xc, 0       - yc],
+    [b_ala - xc, h_ala   - yc],
+    [b_alma- xc, h_ala   - yc],
+    [b_alma- xc, h_total - yc],
+    [0     - xc, h_total - yc],
   ]
 
-  for (const [px, py] of pts) {
-    bars.push({ x: +px.toFixed(3), y: +py.toFixed(3), diametro, area: areaBar })
-  }
-
-  const nRest = n - 6
-  if (nRest > 0) {
-    // Distribuir en el lado izquierdo del alma (vertical)
-    const nVert = Math.ceil(nRest / 2)
-    const nHoriz = nRest - nVert
-    for (let i = 1; i <= nVert; i++) {
-      const y = (-yc + cover) + i * (h_total - 2 * cover) / (nVert + 1)
-      bars.push({ x: +(-xc + cover).toFixed(3), y: +y.toFixed(3), diametro, area: areaBar })
-    }
-    for (let i = 1; i <= nHoriz; i++) {
-      const x = (-xc + b_alma) + i * (b_ala - b_alma - cover) / (nHoriz + 1)
-      bars.push({ x: +x.toFixed(3), y: +(-yc + cover).toFixed(3), diametro, area: areaBar })
-    }
-  }
-  return bars
+  return distribuirEnPerimetro(vertices, n, diametro, cover)
 }
 
 // ── Diseño de estribos (E.060 Cap. 21) ────────────────────────────────────
