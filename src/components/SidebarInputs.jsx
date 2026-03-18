@@ -49,7 +49,6 @@ const COMBOS_INI = [
 
 const TIPOS_SECCION = [
   { key:'rectangular', label:'Rect' },
-  { key:'cuadrada',    label:'Cuad' },
   { key:'circular',    label:'Circ' },
   { key:'T',           label:'T' },
   { key:'L',           label:'L' },
@@ -128,16 +127,14 @@ export default function SidebarInputs({
   const esCircular = tipo === 'circular'
   const esT = tipo === 'T'
   const esL = tipo === 'L'
-  const esCuadrada = tipo === 'cuadrada'
 
   // Dimensiones efectivas para cálculos
-  const bEff = esCircular ? +diam : esT ? +bAla : esL ? +bAla : esCuadrada ? +b : +b
-  const hEff = esCircular ? +diam : esT ? +hTotal : esL ? +hTotal : esCuadrada ? +b : +h
+  const bEff = esCircular ? +diam : esT ? +bAla : esL ? +bAla : +b
+  const hEff = esCircular ? +diam : esT ? +hTotal : esL ? +hTotal : +h
 
   const handleTipoChange = (t) => {
     setTipo(t)
     setBarras([])
-    if (t === 'cuadrada') setH(b)
   }
 
   const generar = () => {
@@ -151,10 +148,8 @@ export default function SidebarInputs({
       const bs = generarDisposicionL(+bAlma, +hTotal, +bAla, +hAla, +rec, +nB, dSel)
       setBarras(bs)
     } else {
-      const bVal = esCuadrada ? +b : +b
-      const hVal = esCuadrada ? +b : +h
       const tipo_disp = arrConf === 'circular' ? 'circular' : 'rectangular'
-      const bs = generarDisposicion(bVal, hVal, +rec, +nB, dSel, tipo_disp)
+      const bs = generarDisposicion(+b, +h, +rec, +nB, dSel, tipo_disp)
       setBarras(bs)
     }
   }
@@ -169,9 +164,7 @@ export default function SidebarInputs({
     if (esL) {
       return { tipo:'L', b_alma:+bAlma, h_total:+hTotal, b_ala:+bAla, h_ala:+hAla, recubrimiento:+rec, longitud:+lon }
     }
-    const bVal = esCuadrada ? +b : +b
-    const hVal = esCuadrada ? +b : +h
-    return { tipo:'rectangular', b:bVal, h:hVal, recubrimiento:+rec, longitud:+lon }
+    return { tipo:'rectangular', b:+b, h:+h, recubrimiento:+rec, longitud:+lon }
   }
 
   const calcular = () => {
@@ -203,8 +196,8 @@ export default function SidebarInputs({
   const rhoOk = rho>=1&&rho<=6
 
   // Section viewer props
-  const viewerB = esCircular ? +diam : esT ? +bAla : esL ? +bAla : esCuadrada ? +b : +b
-  const viewerH = esCircular ? +diam : esT ? +hTotal : esL ? +hTotal : esCuadrada ? +b : +h
+  const viewerB = esCircular ? +diam : esT ? +bAla : esL ? +bAla : +b
+  const viewerH = esCircular ? +diam : esT ? +hTotal : esL ? +hTotal : +h
 
   return (
     <div className="sidebar-scroll">
@@ -271,15 +264,6 @@ export default function SidebarInputs({
               <div/>
             </div>
           </>
-        ) : esCuadrada ? (
-          <div className="field-row col2">
-            <Field label="L (cm)" tip="Lado de la sección cuadrada">
-              <input className="f-input" type="number" value={b} onChange={e=>{setB(e.target.value);setH(e.target.value)}} min="15"/>
-            </Field>
-            <Field label="r (cm)">
-              <input className="f-input" type="number" value={rec} onChange={e=>setRec(e.target.value)} min="2" step="0.5"/>
-            </Field>
-          </div>
         ) : (
           <div className="field-row col3">
             <Field label="b (cm)">

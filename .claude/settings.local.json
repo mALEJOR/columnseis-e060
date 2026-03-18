@@ -5,7 +5,9 @@
       "Bash(npx vite:*)",
       "Bash(npm run:*)",
       "Bash(find src:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git push:*)",
+      "mcp__ide__getDiagnostics"
     ]
   }
 }
