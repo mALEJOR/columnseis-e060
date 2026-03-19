@@ -57,23 +57,33 @@ function dcrBar(dcr) {
 }
 
 // ── Modal para agregar columna ──
-function ModalNuevaColumna({ open, onClose, onAdd, columnas }) {
+function ModalNuevaColumna({ open, onClose, onAdd, columnas, tiposColumna }) {
   const [nombre, setNombre] = useState('C-' + (columnas.length + 1))
   const [eje, setEje] = useState('')
   const [nivel, setNivel] = useState('')
   const [copiarDe, setCopiarDe] = useState('')
+  const [tipoSel, setTipoSel] = useState('')
 
   if (!open) return null
 
   const handleAdd = () => {
     let overrides = { nombre, eje, nivel }
-    if (copiarDe) {
+    if (tipoSel) {
+      const tipo = tiposColumna.find(t => t.id === +tipoSel)
+      if (tipo) {
+        overrides = {
+          ...overrides, tipoId: tipo.id,
+          material: { ...tipo.material }, geometria: { ...tipo.geometria },
+          sistema_estructural: tipo.sistema_estructural,
+          refuerzo: JSON.parse(JSON.stringify(tipo.refuerzo)),
+        }
+      }
+    } else if (copiarDe) {
       const src = columnas.find(c => c.id === copiarDe)
       if (src) {
         overrides = {
           ...overrides,
-          material: { ...src.material },
-          geometria: { ...src.geometria },
+          material: { ...src.material }, geometria: { ...src.geometria },
           sistema_estructural: src.sistema_estructural,
           refuerzo: JSON.parse(JSON.stringify(src.refuerzo)),
           combinaciones: JSON.parse(JSON.stringify(src.combinaciones)),
@@ -82,10 +92,7 @@ function ModalNuevaColumna({ open, onClose, onAdd, columnas }) {
     }
     onAdd(overrides)
     onClose()
-    setNombre('C-' + (columnas.length + 2))
-    setEje('')
-    setNivel('')
-    setCopiarDe('')
+    setNombre('C-' + (columnas.length + 2)); setEje(''); setNivel(''); setCopiarDe(''); setTipoSel('')
   }
 
   return (
@@ -111,14 +118,25 @@ function ModalNuevaColumna({ open, onClose, onAdd, columnas }) {
             </div>
           </div>
           <div className="modal-field">
-            <label>Copiar configuración de</label>
-            <select className="f-input" value={copiarDe} onChange={e => setCopiarDe(e.target.value)}>
-              <option value="">— Ninguna (valores por defecto) —</option>
-              {columnas.map(c => (
-                <option key={c.id} value={c.id}>{c.nombre} ({c.eje})</option>
+            <label>Tipo de columna</label>
+            <select className="f-input" value={tipoSel} onChange={e => { setTipoSel(e.target.value); if (e.target.value) setCopiarDe('') }}>
+              <option value="">— Personalizada —</option>
+              {tiposColumna.map(t => (
+                <option key={t.id} value={t.id}>{t.codigo} — {t.descripcion}</option>
               ))}
             </select>
           </div>
+          {!tipoSel && (
+            <div className="modal-field">
+              <label>Copiar configuracion de</label>
+              <select className="f-input" value={copiarDe} onChange={e => setCopiarDe(e.target.value)}>
+                <option value="">— Ninguna (valores por defecto) —</option>
+                {columnas.map(c => (
+                  <option key={c.id} value={c.id}>{c.nombre} ({c.eje})</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
         <div className="modal-footer">
           <button className="btn-sec" onClick={onClose}>Cancelar</button>
@@ -135,7 +153,7 @@ function ModalNuevaColumna({ open, onClose, onAdd, columnas }) {
 //  DASHBOARD PRINCIPAL
 // ══════════════════════════════════════════════════════════════════
 export default function ProjectDashboard() {
-  const { nombre, ingeniero, fecha, columnas, dispatch } = useProyecto()
+  const { nombre, ingeniero, fecha, columnas, tiposColumna, dispatch } = useProyecto()
   const [modalOpen, setModalOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [calculando, setCalculando] = useState(false)
@@ -233,6 +251,10 @@ export default function ProjectDashboard() {
             </svg>
             <span className="topbar-title">Column<span>Seis</span></span>
           </div>
+          <div className="dash-nav-tabs">
+            <button className="dash-nav-tab active">Proyecto</button>
+            <button className="dash-nav-tab" onClick={() => dispatch({ type: 'SET_VISTA', vista: 'biblioteca' })}>Biblioteca</button>
+          </div>
           <div className="dash-project-name">
             <input
               value={nombre}
@@ -299,6 +321,7 @@ export default function ProjectDashboard() {
             <thead>
               <tr>
                 <th style={{ width: 40 }}>#</th>
+                <th style={{ width: 80 }}>Tipo</th>
                 <th style={{ width: 120 }}>Nombre</th>
                 <th style={{ width: 80 }}>Eje</th>
                 <th style={{ width: 70 }}>Nivel</th>
@@ -324,6 +347,14 @@ export default function ProjectDashboard() {
                     style={{ cursor: 'pointer' }}
                   >
                     <td className="dash-num">{i + 1}</td>
+                    <td onClick={e => e.stopPropagation()}>
+                      {(() => {
+                        const tipo = col.tipoId ? tiposColumna.find(t => t.id === col.tipoId) : null
+                        return tipo
+                          ? <span className="badge-tipo-code">{tipo.codigo}</span>
+                          : <span className="badge-estado badge-gray" style={{fontSize:7}}>SIN TIPO</span>
+                      })()}
+                    </td>
                     <td>
                       <input
                         className="dash-inline-input"
@@ -428,6 +459,7 @@ export default function ProjectDashboard() {
         onClose={() => setModalOpen(false)}
         onAdd={agregarColumna}
         columnas={columnas}
+        tiposColumna={tiposColumna}
       />
 
       {/* Modal importador ETABS */}
