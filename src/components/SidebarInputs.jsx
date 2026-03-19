@@ -1,17 +1,12 @@
 import { useState } from 'react'
 import { generarDisposicion, generarDisposicionCircular, generarDisposicionT, generarDisposicionL, calcularAreaSeccion, verificarPunto } from '../utils/engine'
+import { VARILLAS_PERU, VARILLAS_LONGITUDINALES, buscarVarilla } from '../utils/varillas'
 import SectionViewer from './SectionViewer'
 
-const DIAMS_MM = [
-  { label:'8 mm',  d:0.800 },{ label:'10 mm', d:1.000 },{ label:'12 mm', d:1.200 },
-  { label:'16 mm', d:1.600 },{ label:'20 mm', d:2.000 },{ label:'25 mm', d:2.500 },
-  { label:'#3 (9.5mm)',  d:0.953 },{ label:'#4 (12.7mm)', d:1.270 },
-  { label:'#5 (15.9mm)', d:1.588 },{ label:'#6 (19.1mm)', d:1.905 },
-  { label:'#7 (22.2mm)', d:2.222 },{ label:'#8 (25.4mm)', d:2.540 },
-  { label:'#9 (28.6mm)', d:2.857 },{ label:'#10 (32.3mm)',d:3.225 },
-  { label:'#11 (35.8mm)',d:3.581 },
-]
-const areaFn = d => Math.PI*d*d/4
+const areaFn = d => {
+  const v = buscarVarilla(d)
+  return v ? v.area : Math.PI * d * d / 4
+}
 
 function Section({ num, title, children, defaultOpen=true, color }) {
   const [open, setOpen] = useState(defaultOpen)
@@ -286,7 +281,7 @@ export default function SidebarInputs({
             </Field>
             <Field label="∅ Esquinas">
               <select className="f-input" value={dEsq} onChange={e=>setDEsq(parseFloat(e.target.value))}>
-                {DIAMS_MM.map(d=><option key={d.label} value={d.d}>{d.label}</option>)}
+                {VARILLAS_PERU.map(v=><option key={v.numero} value={v.d}>{v.label}</option>)}
               </select>
             </Field>
           </div>
@@ -296,7 +291,7 @@ export default function SidebarInputs({
             </Field>
             <Field label="∅ Barras">
               <select className="f-input" value={dSel} onChange={e=>setDSel(parseFloat(e.target.value))}>
-                {DIAMS_MM.map(d=><option key={d.label} value={d.d}>{d.label}</option>)}
+                {VARILLAS_PERU.map(v=><option key={v.numero} value={v.d}>{v.label}</option>)}
               </select>
             </Field>
           </div>
@@ -549,7 +544,7 @@ export default function SidebarInputs({
                       <select value={bar.diametro}
                         onChange={e=>setBarras(p=>p.map((b,j)=>j===i?{...b,diametro:+e.target.value,area:areaFn(+e.target.value)}:b))}
                         className="bt-input bt-select" style={{fontSize:10}}>
-                        {DIAMS_MM.map(d=><option key={d.label} value={d.d}>{d.label}</option>)}
+                        {VARILLAS_PERU.map(v=><option key={v.numero} value={v.d}>{v.label}</option>)}
                       </select>
                     </td>
                     <td className="bt-as" style={{width:48,textAlign:'right',fontSize:11,color:'#4d8aff',fontWeight:500,padding:'0 6px'}}>{(bar.area||0).toFixed(2)}</td>

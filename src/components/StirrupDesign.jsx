@@ -1,22 +1,6 @@
 import { useState } from 'react'
 import { disenarEstribos } from '../utils/engine'
-
-const DIAMS_ESTRIBO = [
-  { label:'#3 (9.5mm)',  d:0.953 },
-  { label:'#4 (12.7mm)', d:1.270 },
-  { label:'#5 (15.9mm)', d:1.588 },
-]
-
-const DIAMS_LONG = [
-  { label:'#4 (12.7mm)', d:1.270 },
-  { label:'#5 (15.9mm)', d:1.588 },
-  { label:'#6 (19.1mm)', d:1.905 },
-  { label:'#7 (22.2mm)', d:2.222 },
-  { label:'#8 (25.4mm)', d:2.540 },
-  { label:'#9 (28.6mm)', d:2.857 },
-  { label:'#10 (32.3mm)',d:3.225 },
-  { label:'#11 (35.8mm)',d:3.581 },
-]
+import { VARILLAS_LONGITUDINALES, VARILLAS_ESTRIBOS } from '../utils/varillas'
 
 function Check({ ok, label, value, req }) {
   return (
@@ -150,7 +134,7 @@ export default function StirrupDesign({ columnData, onEstribosCalc }) {
               <label style={{fontSize:9,color:'var(--text2)',display:'block',marginBottom:3}}>Diámetro estribo</label>
               <select value={dEstr} onChange={e=>setDEstr(+e.target.value)}
                 style={{width:'100%',padding:'6px 8px',fontSize:11,fontFamily:'var(--mono)',background:'var(--surface3)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text0)',outline:'none'}}>
-                {DIAMS_ESTRIBO.map(d=><option key={d.label} value={d.d}>{d.label}</option>)}
+                {VARILLAS_ESTRIBOS.map(v=><option key={v.numero} value={v.d}>{v.label}</option>)}
               </select>
             </div>
             <div>
@@ -165,7 +149,7 @@ export default function StirrupDesign({ columnData, onEstribosCalc }) {
               <label style={{fontSize:9,color:'var(--text2)',display:'block',marginBottom:3}}>∅ barra longitudinal</label>
               <select value={dLong} onChange={e=>setDLong(+e.target.value)}
                 style={{width:'100%',padding:'6px 8px',fontSize:11,fontFamily:'var(--mono)',background:'var(--surface3)',border:'1px solid var(--border)',borderRadius:4,color:'var(--text0)',outline:'none'}}>
-                {DIAMS_LONG.map(d=><option key={d.label} value={d.d}>{d.label}</option>)}
+                {VARILLAS_LONGITUDINALES.map(v=><option key={v.numero} value={v.d}>{v.label}</option>)}
               </select>
             </div>
             <div>

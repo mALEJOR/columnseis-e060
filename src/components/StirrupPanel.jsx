@@ -1,11 +1,5 @@
 import { useState, useMemo } from 'react'
-
-// ── Diámetros comerciales de estribos ────────────────────────────────────────
-const ESTRIBOS = [
-  { nombre: '#3', d: 0.953, area: 0.713 },
-  { nombre: '#4', d: 1.270, area: 1.267 },
-  { nombre: '#5', d: 1.588, area: 1.979 },
-]
+import { VARILLAS_PERU, VARILLAS_ESTRIBOS, VARILLAS_LONGITUDINALES, buscarVarilla, labelVarilla } from '../utils/varillas'
 
 function Resultado({ label, value, unit, ok, info }) {
   return (
@@ -155,7 +149,7 @@ export default function StirrupPanel({ columnData }) {
             <div className="form-row">
               <label>Diámetro estribo</label>
               <select value={dEstribo} onChange={e => setDEstribo(parseFloat(e.target.value))}>
-                {ESTRIBOS.map(e => <option key={e.nombre} value={e.d}>{e.nombre} (ø{e.d}cm)</option>)}
+                {VARILLAS_ESTRIBOS.map(v => <option key={v.numero} value={v.d}>{v.label}</option>)}
               </select>
             </div>
             <div className="form-row">
@@ -167,8 +161,8 @@ export default function StirrupPanel({ columnData }) {
             <div className="form-row">
               <label>ø barra longit. (cm)</label>
               <select value={dLong} onChange={e => setDLong(parseFloat(e.target.value))}>
-                {[0.953,1.270,1.588,1.905,2.222,2.540,2.857,3.225,3.581].map(d => (
-                  <option key={d} value={d}>ø{d}</option>
+                {VARILLAS_LONGITUDINALES.map(v => (
+                  <option key={v.numero} value={v.d}>{v.label}</option>
                 ))}
               </select>
             </div>
@@ -280,7 +274,7 @@ export default function StirrupPanel({ columnData }) {
             {(calc.ok_Ash_b && calc.ok_Ash_h && calc.ok_rho && calc.ok_diam) ? (
               <div style={{ background: 'rgba(0,229,200,0.07)', border: '1px solid rgba(0,229,200,0.25)', borderRadius: 10, padding: '12px 16px', fontSize: 12, color: 'var(--text1)' }}>
                 <span style={{ color: 'var(--success)', fontWeight: 700, fontFamily: 'var(--display)' }}>✓ Diseño de estribos CONFORME — </span>
-                Estribo {ESTRIBOS.find(e => e.d === dEstribo)?.nombre} @ {calc.so} cm en zona de confinamiento ({calc.lo} cm desde nudo) y @ {calc.s_fuera} cm en zona central.
+                Estribo {labelVarilla(dEstribo)} @ {calc.so} cm en zona de confinamiento ({calc.lo} cm desde nudo) y @ {calc.s_fuera} cm en zona central.
               </div>
             ) : (
               <div style={{ background: 'rgba(255,95,87,0.07)', border: '1px solid rgba(255,95,87,0.25)', borderRadius: 10, padding: '12px 16px', fontSize: 12 }}>

@@ -1,12 +1,11 @@
 import { useState } from 'react'
 import { generarDisposicion } from '../utils/engine'
+import { VARILLAS_PERU, VARILLAS_ESTRIBOS, buscarVarilla } from '../utils/varillas'
 
-const DIAMS = [
-  {n:'#3',d:0.953},{n:'#4',d:1.270},{n:'#5',d:1.588},
-  {n:'#6',d:1.905},{n:'#7',d:2.222},{n:'#8',d:2.540},
-  {n:'#9',d:2.857},{n:'#10',d:3.225},{n:'#11',d:3.581},
-]
-const area = d => Math.PI*d*d/4
+const area = d => {
+  const v = buscarVarilla(d)
+  return v ? v.area : Math.PI * d * d / 4
+}
 
 export default function InputPanel({ onCalculate, loading }) {
   const [fc, setFc]   = useState(280)
@@ -110,7 +109,7 @@ export default function InputPanel({ onCalculate, loading }) {
           <div className="form-row">
             <label>∅ Estribo</label>
             <select value={dSel} onChange={e=>setDSel(parseFloat(e.target.value))}>
-              {DIAMS.slice(0,3).map(d=><option key={d.n} value={d.d}>{d.n}</option>)}
+              {VARILLAS_ESTRIBOS.map(v=><option key={v.numero} value={v.d}>{v.label}</option>)}
             </select>
           </div>
         </div>
@@ -145,7 +144,7 @@ export default function InputPanel({ onCalculate, loading }) {
             <div className="form-row">
               <label>∅ Esquinas</label>
               <select value={dSel} onChange={e=>setDSel(parseFloat(e.target.value))}>
-                {DIAMS.map(d=><option key={d.n} value={d.d}>{d.n}</option>)}
+                {VARILLAS_PERU.map(v=><option key={v.numero} value={v.d}>{v.label}</option>)}
               </select>
             </div>
             <div className="form-row">
@@ -183,7 +182,7 @@ export default function InputPanel({ onCalculate, loading }) {
                     <td><input type="number" value={bar.y} step="0.01" onChange={e=>updBar(i,'y',e.target.value)} style={{width:55,padding:'2px 4px',fontSize:9}}/></td>
                     <td>
                       <select value={bar.diametro} onChange={e=>updBar(i,'diametro',e.target.value)} style={{width:62,padding:'2px 4px',fontSize:9}}>
-                        {DIAMS.map(d=><option key={d.n} value={d.d}>{d.n}</option>)}
+                        {VARILLAS_PERU.map(v=><option key={v.numero} value={v.d}>{v.label}</option>)}
                       </select>
                     </td>
                     <td style={{color:'var(--accent)',fontWeight:500}}>{(bar.area||0).toFixed(2)}</td>
