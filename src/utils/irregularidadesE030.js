@@ -150,8 +150,9 @@ export function calcularEsquinasEntrantes(aEntrante, aTotal, bEntrante, bTotal) 
   const limB = 0.2 * (bTotal || 0)
   const irregX = (aEntrante || 0) > limA
   const irregY = (bEntrante || 0) > limB
-  const ip = (irregX || irregY) ? 0.9 : 1
-  return { limA, limB, irregX, irregY, ip }
+  const ipX = irregX ? 0.9 : 1
+  const ipY = irregY ? 0.9 : 1
+  return { limA, limB, irregX, irregY, ipX, ipY }
 }
 
 // 3. Discontinuidad del Diafragma
@@ -193,9 +194,9 @@ export function calcularNoParalelos(activo, elementos) {
 }
 
 // Summary Ip
-export function calcularIpFinal(ipTorsionX, ipTorsionY, ipEsquinas, ipDiafragmaX, ipDiafragmaY, ipSistemas) {
-  const ipX = Math.min(ipTorsionX, ipEsquinas, ipDiafragmaX, ipSistemas)
-  const ipY = Math.min(ipTorsionY, ipEsquinas, ipDiafragmaY, ipSistemas)
+export function calcularIpFinal(ipTorsionX, ipTorsionY, ipEsquinasX, ipEsquinasY, ipDiafragmaX, ipDiafragmaY, ipSistemas) {
+  const ipX = Math.min(ipTorsionX, ipEsquinasX, ipDiafragmaX, ipSistemas)
+  const ipY = Math.min(ipTorsionY, ipEsquinasY, ipDiafragmaY, ipSistemas)
   return { ipX, ipY }
 }
 

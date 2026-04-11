@@ -505,7 +505,7 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
   }, [state.noParalelos])
 
   const ipFinal = useMemo(() => {
-    return E030.calcularIpFinal(torsionXRes.ipTorsion, torsionYRes.ipTorsion, esquinasRes.ip, diafRes.ipX, diafRes.ipY, npRes.ip)
+    return E030.calcularIpFinal(torsionXRes.ipTorsion, torsionYRes.ipTorsion, esquinasRes.ipX, esquinasRes.ipY, diafRes.ipX, diafRes.ipY, npRes.ip)
   }, [torsionXRes, torsionYRes, esquinasRes, diafRes, npRes])
 
   const renderTorsionTable = (dir, res, arrayName) => (
@@ -618,7 +618,8 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
           </div>
         </div>
         <div className="e030-summary-row" style={{ marginTop: 8 }}>
-          <span>Ip Esquinas: <b style={{ color: '#ffc107', fontSize: 13 }}>{esquinasRes.ip}</b></span>
+          <span>Ip Esquinas X-X: <b style={{ color: '#ffc107', fontSize: 13 }}>{esquinasRes.ipX}</b></span>
+          <span>Ip Esquinas Y-Y: <b style={{ color: '#ffc107', fontSize: 13 }}>{esquinasRes.ipY}</b></span>
         </div>
       </Section>
 
@@ -795,8 +796,8 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
             </tr>
             <tr>
               <td style={S.cell}>2. Esquinas (0.90)</td>
-              <td style={S.cell}>{esquinasRes.ip}</td>
-              <td style={S.cell}>{esquinasRes.ip}</td>
+              <td style={S.cell}>{esquinasRes.ipX}</td>
+              <td style={S.cell}>{esquinasRes.ipY}</td>
             </tr>
             <tr>
               <td style={S.cell}>3. Diafragma (0.85)</td>
@@ -1883,7 +1884,7 @@ export default function IrregularidadesE030({ onBack }) {
   }, [state.noParalelos])
 
   const ipFinal = useMemo(() => {
-    return E030.calcularIpFinal(torsionXRes.ipTorsion, torsionYRes.ipTorsion, esquinasRes.ip, diafRes.ipX, diafRes.ipY, npRes.ip)
+    return E030.calcularIpFinal(torsionXRes.ipTorsion, torsionYRes.ipTorsion, esquinasRes.ipX, esquinasRes.ipY, diafRes.ipX, diafRes.ipY, npRes.ip)
   }, [torsionXRes, torsionYRes, esquinasRes, diafRes, npRes])
 
   // ── R calculation ──
@@ -1920,7 +1921,7 @@ export default function IrregularidadesE030({ onBack }) {
 
   const ipDetails = useMemo(() => [
     { nombre: '1. Torsion (0.75/0.60)', x: torsionXRes.ipTorsion, y: torsionYRes.ipTorsion },
-    { nombre: '2. Esquinas Entrantes (0.90)', x: esquinasRes.ip, y: esquinasRes.ip },
+    { nombre: '2. Esquinas Entrantes (0.90)', x: esquinasRes.ipX, y: esquinasRes.ipY },
     { nombre: '3. Discontinuidad Diafragma (0.85)', x: diafRes.ipX, y: diafRes.ipY },
     { nombre: '4. Sistemas No Paralelos (0.90)', x: npRes.ip, y: npRes.ip },
   ], [torsionXRes, torsionYRes, esquinasRes, diafRes, npRes])
