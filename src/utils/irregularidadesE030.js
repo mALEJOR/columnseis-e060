@@ -177,26 +177,58 @@ export function calcularDiafragma(areaBruta, areaAberturas, dimLx, sumaHuecosX, 
   return { pctAberturas, crit1, netaX, pctNetaX, crit2X, netaY, pctNetaY, crit2Y, ipX, ipY }
 }
 
-// 4. Sistemas No Paralelos
+// 4. Sistemas No Paralelos — verificacion por direccion X-X e Y-Y
 export function calcularNoParalelos(activo, elementos) {
   // elementos = [{nombre, angulo, vElem, vPiso}]
-  if (!activo) return { rows: [], ip: 1, irregular: false }
+  if (!activo) return { rows: [], ipX: 1, ipY: 1, irregularX: false, irregularY: false }
 
-  const rows = elementos.map(el => {
-    const pctCort = (el.vPiso && el.vPiso > 0) ? (el.vElem / el.vPiso) * 100 : ''
-    const verif = (el.angulo != null && typeof pctCort === 'number')
-      ? ((el.angulo >= 30 && pctCort >= 10) ? 'IRREG' : 'REG') : ''
-    return { ...el, pctCort, verif }
-  })
+  let irregularX = false, irregularY = false
 
-  const irregular = rows.some(r => r.verif === 'IRREG')
-  return { rows, ip: irregular ? 0.9 : 1, irregular }
+  const rows = elementos
+    .filter(el => el.nombre || el.angulo !== '' || el.vElem !== '')
+    .map(el => {
+      // Angulo respecto a X (normalizar a 0-90)
+      let angRaw = typeof el.angulo === 'number' ? el.angulo : parseFloat(el.angulo)
+      if (isNaN(angRaw)) angRaw = null
+
+      let angVsX = null, angVsY = null
+      if (angRaw != null) {
+        angVsX = angRaw % 180
+        if (angVsX > 90) angVsX = 180 - angVsX
+        angVsY = Math.abs(90 - angVsX)
+      }
+
+      const pctCort = (el.vPiso && el.vPiso > 0) ? (el.vElem / el.vPiso) * 100 : ''
+      const superaCort = typeof pctCort === 'number' && pctCort >= 10
+
+      const noParaleloX = angVsX != null && angVsX >= 30
+      const noParaleloY = angVsY != null && angVsY >= 30
+
+      const esIrregX = noParaleloX && superaCort
+      const esIrregY = noParaleloY && superaCort
+
+      if (esIrregX) irregularX = true
+      if (esIrregY) irregularY = true
+
+      return {
+        nombre: el.nombre, angulo: el.angulo, vElem: el.vElem, vPiso: el.vPiso,
+        angVsX, angVsY, pctCort, superaCort,
+        noParaleloX, noParaleloY, esIrregX, esIrregY,
+      }
+    })
+
+  return {
+    rows,
+    irregularX, irregularY,
+    ipX: irregularX ? 0.9 : 1,
+    ipY: irregularY ? 0.9 : 1,
+  }
 }
 
 // Summary Ip
-export function calcularIpFinal(ipTorsionX, ipTorsionY, ipEsquinasX, ipEsquinasY, ipDiafragmaX, ipDiafragmaY, ipSistemas) {
-  const ipX = Math.min(ipTorsionX, ipEsquinasX, ipDiafragmaX, ipSistemas)
-  const ipY = Math.min(ipTorsionY, ipEsquinasY, ipDiafragmaY, ipSistemas)
+export function calcularIpFinal(ipTorsionX, ipTorsionY, ipEsquinasX, ipEsquinasY, ipDiafragmaX, ipDiafragmaY, ipSistemasX, ipSistemasY) {
+  const ipX = Math.min(ipTorsionX, ipEsquinasX, ipDiafragmaX, ipSistemasX)
+  const ipY = Math.min(ipTorsionY, ipEsquinasY, ipDiafragmaY, ipSistemasY)
   return { ipX, ipY }
 }
 
