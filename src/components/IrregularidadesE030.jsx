@@ -1382,14 +1382,14 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
     const esp = dir === 'X' ? espX : espY
     if (esp.length === 0) return
     const txt = Espectro.exportarETABS(esp, modo)
-    const blob = new Blob([txt], { type: 'text/plain' })
+    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `Espectro_E030_${dir}${dir}.txt`
+    a.download = `Espectro_E030_${dir}-${dir}_R${(dir === 'X' ? Rx : Ry).toFixed(2)}.txt`
     a.click()
     URL.revokeObjectURL(url)
-  }, [espX, espY])
+  }, [espX, espY, Rx, Ry])
 
   // SVG chart helpers (shared scale for both charts)
   const W = 560, H = 260

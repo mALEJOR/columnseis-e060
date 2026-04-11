@@ -173,12 +173,14 @@ export function generarEspectro(Z, U, S, Ro, Ia, Ip, Tp, TL) {
 
 /**
  * Genera string para exportar a ETABS
+ * Formato: T[TAB]Sa/g por linea, sin headers, con \r\n (Windows/ETABS)
+ * Compatible con: ETABS > Define > Functions > Response Spectrum > From File
  * @param {Array} espectro - Array de {T, SaG}
  * @param {'completo'|'reducido'} modo - Completo (201 pts) o Reducido (41 pts)
  * @returns {string} Contenido del archivo .txt
  */
 export function exportarETABS(espectro, modo = 'completo') {
-  const paso = modo === 'reducido' ? 5 : 1 // cada 5 = Dt=0.10, cada 1 = Dt=0.02
+  const paso = modo === 'reducido' ? 5 : 1
   const lineas = []
 
   for (let i = 0; i < espectro.length; i += paso) {
@@ -186,5 +188,5 @@ export function exportarETABS(espectro, modo = 'completo') {
     lineas.push(pt.T.toFixed(2) + '\t' + pt.SaG.toFixed(5))
   }
 
-  return lineas.join('\n')
+  return lineas.join('\r\n') + '\r\n'
 }
