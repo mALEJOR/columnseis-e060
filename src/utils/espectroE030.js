@@ -172,21 +172,53 @@ export function generarEspectro(Z, U, S, Ro, Ia, Ip, Tp, TL) {
 }
 
 /**
- * Genera string para exportar a ETABS
- * Formato: T[TAB]Sa/g por linea, sin headers, con \r\n (Windows/ETABS)
+ * Genera string para exportar a ETABS con headers $ (comentarios ETABS)
  * Compatible con: ETABS > Define > Functions > Response Spectrum > From File
- * @param {Array} espectro - Array de {T, SaG}
- * @param {'completo'|'reducido'} modo - Completo (201 pts) o Reducido (41 pts)
- * @returns {string} Contenido del archivo .txt
+ * Header Lines to Skip: 0 (las lineas con $ se saltan automaticamente)
  */
-export function exportarETABS(espectro, modo = 'completo') {
-  const paso = modo === 'reducido' ? 5 : 1
-  const lineas = []
+export function exportarETABS(espectro, params, direccion, deltaT = 0.02) {
+  const fecha = new Date().toISOString().split('T')[0]
+  const { zona, Z, suelo, S, categoria, U, sistema, Ro, Ia, Ip, R, Tp, TL } = params
+  const sagMax = espectro.length > 0 ? Math.max(...espectro.map(p => p.SaG)) : 0
+  const saMax = sagMax * G
 
+  const lines = []
+  lines.push('$ ================================================================')
+  lines.push('$ ESPECTRO DE RESPUESTA - NTE E.030-2025')
+  lines.push('$ Generado por ColumnSeis - columnseis-e060.vercel.app')
+  lines.push('$ Fecha: ' + fecha)
+  lines.push('$ ================================================================')
+  lines.push('$ Zona: ' + zona + ' (Z=' + Z.toFixed(2) + ')')
+  lines.push('$ Suelo: ' + suelo + ' (S=' + S.toFixed(2) + ')')
+  lines.push('$ Categoria: ' + categoria + ' (U=' + U.toFixed(2) + ')')
+  lines.push('$ Sistema: ' + sistema + ' (Ro=' + Ro + ')')
+  lines.push('$ Ia = ' + Ia.toFixed(2) + ' | Ip = ' + Ip.toFixed(2))
+  lines.push('$ R = Ro*Ia*Ip = ' + R.toFixed(2))
+  lines.push('$ Tp = ' + Tp.toFixed(2) + ' s | TL = ' + TL.toFixed(2) + ' s')
+  lines.push('$ Sa max = ' + saMax.toFixed(4) + ' m/s2 | Sa/g max = ' + sagMax.toFixed(5))
+  lines.push('$ Direccion: ' + direccion)
+  lines.push('$ ================================================================')
+  lines.push('$ Formato: Periodo(s) [TAB] Sa/g')
+  lines.push('$ En ETABS: Define > Functions > Response Spectrum > From File')
+  lines.push('$ Header Lines to Skip: 0 (lineas con $ se saltan automaticamente)')
+  lines.push('$ Seleccionar: Period vs Value')
+  lines.push('$ ================================================================')
+
+  // Filtrar puntos segun deltaT
+  const paso = Math.max(1, Math.round(deltaT / 0.02))
   for (let i = 0; i < espectro.length; i += paso) {
     const pt = espectro[i]
-    lineas.push(pt.T.toFixed(2) + '\t' + pt.SaG.toFixed(5))
+    lines.push(pt.T.toFixed(2) + '\t' + pt.SaG.toFixed(5))
   }
 
-  return lineas.join('\r\n') + '\r\n'
+  return lines.join('\r\n')
+}
+
+/**
+ * Genera nombre de archivo sugerido
+ */
+export function generarNombreArchivo(direccion, params) {
+  const dir = direccion.replace('-', '')
+  const zn = params.zona.replace('Zona ', 'Z')
+  return `Espectro_E030_${dir}_${zn}_${params.suelo}_R${params.R.toFixed(2)}.txt`
 }

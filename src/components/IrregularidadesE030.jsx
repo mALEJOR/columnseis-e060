@@ -1378,18 +1378,65 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
   const sagMaxX = useMemo(() => espX.length > 0 ? Math.max(...espX.map(p => p.SaG)) : 0, [espX])
   const sagMaxY = useMemo(() => espY.length > 0 ? Math.max(...espY.map(p => p.SaG)) : 0, [espY])
 
-  const descargar = useCallback((dir, modo) => {
+  // Export state
+  const [showExport, setShowExport] = useState(false)
+  const [expDir, setExpDir] = useState('X')
+  const [expRes, setExpRes] = useState('completo') // 'completo'|'reducido'|'custom'
+  const [expDT, setExpDT] = useState(0.05)
+  const [expName, setExpName] = useState('')
+  const [copied, setCopied] = useState(false)
+
+  const mkParams = (dir) => ({
+    zona, Z, suelo: sKey, S: sVal, categoria, U, sistema: dir === 'X' ? sistemaXName : sistemaYName,
+    Ro: dir === 'X' ? RoX : RoY, Ia: dir === 'X' ? IaX : IaY, Ip: dir === 'X' ? IpX : IpY,
+    R: dir === 'X' ? Rx : Ry, Tp, TL,
+  })
+
+  const expDeltaT = expRes === 'completo' ? 0.02 : expRes === 'reducido' ? 0.10 : expDT
+  const expContent = useMemo(() => {
+    if (!showExport || esEMS) return ''
+    const esp = expDir === 'X' ? espX : espY
+    if (esp.length === 0) return ''
+    return Espectro.exportarETABS(esp, mkParams(expDir), expDir + '-' + expDir, expDeltaT)
+  }, [showExport, expDir, expDeltaT, espX, espY, esEMS, zona, sKey, sVal, categoria, U, Rx, Ry, IaX, IaY, IpX, IpY])
+
+  const openExport = (dir) => {
+    setExpDir(dir || 'X')
+    setExpName(Espectro.generarNombreArchivo(dir + '-' + dir, mkParams(dir)))
+    setCopied(false)
+    setShowExport(true)
+  }
+
+  const doDownload = (dir) => {
     const esp = dir === 'X' ? espX : espY
     if (esp.length === 0) return
-    const txt = Espectro.exportarETABS(esp, modo)
+    const txt = Espectro.exportarETABS(esp, mkParams(dir), dir + '-' + dir, expDeltaT)
     const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `Espectro_E030_${dir}-${dir}_R${(dir === 'X' ? Rx : Ry).toFixed(2)}.txt`
+    a.download = expDir === dir ? expName : Espectro.generarNombreArchivo(dir + '-' + dir, mkParams(dir))
     a.click()
     URL.revokeObjectURL(url)
-  }, [espX, espY, Rx, Ry])
+  }
+
+  const handleExportDownload = () => {
+    if (expDir === 'ambos') { doDownload('X'); setTimeout(() => doDownload('Y'), 300) }
+    else doDownload(expDir)
+    setShowExport(false)
+  }
+
+  const handleCopy = () => {
+    if (expDir === 'ambos') {
+      const txtX = Espectro.exportarETABS(espX, mkParams('X'), 'X-X', expDeltaT)
+      const txtY = Espectro.exportarETABS(espY, mkParams('Y'), 'Y-Y', expDeltaT)
+      navigator.clipboard.writeText(txtX + '\r\n\r\n' + txtY)
+    } else {
+      navigator.clipboard.writeText(expContent)
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   // SVG chart helpers (shared scale for both charts)
   const W = 560, H = 260
@@ -1765,10 +1812,8 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
           )}
           {!esEMS && (
             <div className="esp-btn-row">
-              <button className="esp-btn" onClick={() => descargar('X','completo')} disabled={espX.length===0}>Exportar X-X</button>
-              <button className="esp-btn yy" onClick={() => descargar('Y','completo')} disabled={espY.length===0}>Exportar Y-Y</button>
-              <button className="esp-btn" onClick={() => descargar('X','reducido')} disabled={espX.length===0} style={{fontSize:8,padding:'3px 8px'}}>X-X red.</button>
-              <button className="esp-btn yy" onClick={() => descargar('Y','reducido')} disabled={espY.length===0} style={{fontSize:8,padding:'3px 8px'}}>Y-Y red.</button>
+              <button className="esp-btn" onClick={() => openExport('X')} disabled={espX.length===0}>Exportar X-X para ETABS</button>
+              <button className="esp-btn yy" onClick={() => openExport('Y')} disabled={espY.length===0}>Exportar Y-Y para ETABS</button>
             </div>
           )}
         </div>
@@ -1812,6 +1857,116 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
             </table>
           </div>
         </Section>
+      )}
+
+      {/* ── EXPORT MODAL ── */}
+      {showExport && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}
+          onClick={e => { if (e.target === e.currentTarget) setShowExport(false) }}>
+          <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r3)',
+            width:'100%',maxWidth:600,maxHeight:'90vh',overflow:'auto',padding:'20px 24px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+              <span style={{fontFamily:'var(--cond)',fontSize:14,fontWeight:700,color:'var(--text0)',letterSpacing:'.5px'}}>EXPORTAR ESPECTRO PARA ETABS</span>
+              <button onClick={() => setShowExport(false)} style={{background:'none',border:'none',color:'var(--text3)',cursor:'pointer',fontSize:18}}>&times;</button>
+            </div>
+
+            {/* Direction */}
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:8,color:'var(--text3)',fontFamily:'var(--cond)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:4}}>Direccion</div>
+              <div style={{display:'flex',gap:6}}>
+                {[{k:'X',label:'X-X (R='+Rx.toFixed(2)+')',c:'#64b5f6'},{k:'Y',label:'Y-Y (R='+Ry.toFixed(2)+')',c:'#ef9a9a'},{k:'ambos',label:'Ambos (2 archivos)',c:'var(--text1)'}].map(d => (
+                  <button key={d.k} onClick={() => { setExpDir(d.k); if(d.k!=='ambos') setExpName(Espectro.generarNombreArchivo(d.k+'-'+d.k,mkParams(d.k))); setCopied(false) }}
+                    style={{padding:'4px 12px',fontSize:9,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
+                      border: expDir===d.k ? '1px solid '+d.c : '1px solid var(--border)',
+                      background: expDir===d.k ? 'rgba(255,255,255,0.08)' : 'var(--surface3)',
+                      color: expDir===d.k ? d.c : 'var(--text3)',
+                    }}>{d.label}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Resolution */}
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:8,color:'var(--text3)',fontFamily:'var(--cond)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:4}}>Resolucion</div>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
+                {[{k:'completo',label:'Completo (201 pts, dT=0.02s)'},{k:'reducido',label:'Reducido (41 pts, dT=0.10s)'},{k:'custom',label:'Personalizado'}].map(r => (
+                  <button key={r.k} onClick={() => setExpRes(r.k)}
+                    style={{padding:'4px 10px',fontSize:9,fontFamily:'var(--cond)',fontWeight:500,borderRadius:'var(--r)',cursor:'pointer',
+                      border: expRes===r.k ? '1px solid #4caf50' : '1px solid var(--border)',
+                      background: expRes===r.k ? 'rgba(46,125,50,0.15)' : 'var(--surface3)',
+                      color: expRes===r.k ? '#4caf50' : 'var(--text3)',
+                    }}>{r.label}</button>
+                ))}
+                {expRes === 'custom' && (
+                  <div style={{display:'flex',alignItems:'center',gap:4}}>
+                    <span style={{fontSize:8,color:'var(--text2)',fontFamily:'var(--mono)'}}>dT=</span>
+                    <input type="number" min={0.01} max={0.50} step={0.01} value={expDT}
+                      onChange={e => setExpDT(Math.max(0.01,Math.min(0.50,parseFloat(e.target.value)||0.05)))}
+                      style={{width:50,background:'var(--surface3)',border:'1px solid var(--border)',borderRadius:'var(--r)',
+                        color:'var(--text0)',fontFamily:'var(--mono)',fontSize:10,padding:'3px 6px',outline:'none',textAlign:'center'}} />
+                    <span style={{fontSize:8,color:'var(--text3)',fontFamily:'var(--mono)'}}>s ({Math.floor(4/expDeltaT)+1} pts)</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Filename */}
+            {expDir !== 'ambos' && (
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:8,color:'var(--text3)',fontFamily:'var(--cond)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:4}}>Nombre del archivo</div>
+                <div style={{display:'flex',alignItems:'center',gap:4}}>
+                  <input value={expName} onChange={e => setExpName(e.target.value)}
+                    style={{flex:1,background:'var(--surface3)',border:'1px solid var(--border)',borderRadius:'var(--r)',
+                      color:'var(--text0)',fontFamily:'var(--mono)',fontSize:10,padding:'5px 8px',outline:'none'}} />
+                </div>
+              </div>
+            )}
+
+            {/* Preview */}
+            <div style={{marginBottom:12}}>
+              <div style={{fontSize:8,color:'var(--text3)',fontFamily:'var(--cond)',textTransform:'uppercase',letterSpacing:'.5px',marginBottom:4}}>Vista previa</div>
+              <pre style={{background:'#0a0b10',border:'1px solid var(--border)',borderRadius:'var(--r)',
+                padding:10,fontFamily:'var(--mono)',fontSize:8,color:'var(--text1)',
+                maxHeight:180,overflow:'auto',whiteSpace:'pre',lineHeight:1.4,margin:0}}>
+                {(() => {
+                  const lines = expContent.split('\r\n')
+                  if (lines.length <= 30) return expContent
+                  const header = lines.filter(l => l.startsWith('$'))
+                  const data = lines.filter(l => !l.startsWith('$') && l.trim())
+                  const first5 = data.slice(0, 5)
+                  const last3 = data.slice(-3)
+                  return [...header, ...first5, '...   (' + data.length + ' puntos en total)', ...last3].join('\r\n')
+                })()}
+              </pre>
+            </div>
+
+            {/* ETABS instructions */}
+            <div style={{padding:'8px 10px',background:'rgba(68,114,196,0.08)',border:'1px solid rgba(68,114,196,0.2)',
+              borderRadius:'var(--r)',marginBottom:14,fontSize:8,fontFamily:'var(--cond)',color:'#90caf9',lineHeight:1.6}}>
+              <b>Como importar en ETABS:</b><br/>
+              1. Define &gt; Functions &gt; Response Spectrum<br/>
+              2. Choose Function Type: "From File"<br/>
+              3. Browse &gt; seleccionar el .txt descargado<br/>
+              4. Header Lines to Skip: <b>0</b> (las lineas con $ se saltan solas)<br/>
+              5. Function is: <b>Period vs Value</b><br/>
+              6. Click "Convert to User Defined" (recomendado)
+            </div>
+
+            {/* Actions */}
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button onClick={handleCopy}
+                style={{padding:'6px 14px',fontSize:10,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
+                  border:'1px solid rgba(155,89,182,0.4)',background:'rgba(155,89,182,0.12)',color:'#ce93d8',letterSpacing:'.3px'}}>
+                {copied ? 'Copiado!' : 'Copiar al portapapeles'}
+              </button>
+              <button onClick={handleExportDownload}
+                style={{padding:'6px 14px',fontSize:10,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
+                  border:'1px solid rgba(46,125,50,0.5)',background:'rgba(46,125,50,0.2)',color:'#4caf50',letterSpacing:'.3px'}}>
+                Descargar .txt
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
