@@ -12,35 +12,38 @@ const fmtPct = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : (Number(v) 
 const fmtPctRaw = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v).toFixed(1) + '%'
 const pisoLabel = (idx, nPisos) => idx === nPisos - 1 ? 'Azotea' : (nPisos - idx)
 
-/** Descarga texto como archivo .txt — triple fallback para maxima compatibilidad */
-function descargarTxt(contenido, nombre) {
+/** Descarga texto como archivo .txt — showSaveFilePicker + fallback Blob */
+async function descargarTxt(contenido, nombre) {
   const fileName = nombre.endsWith('.txt') ? nombre : nombre + '.txt'
-  const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' })
 
-  // Fallback 1: msSaveBlob (Edge legacy / IE)
-  if (typeof window.navigator.msSaveBlob === 'function') {
-    window.navigator.msSaveBlob(blob, fileName)
-    return
+  // Metodo 1: File System Access API (funciona en Brave/Chrome/Edge modernos)
+  if (typeof window.showSaveFilePicker === 'function') {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: fileName,
+        types: [{ description: 'Archivo de texto', accept: { 'text/plain': ['.txt'] } }],
+      })
+      const writable = await handle.createWritable()
+      await writable.write(contenido)
+      await writable.close()
+      return
+    } catch (e) {
+      if (e.name === 'AbortError') return // usuario cancelo
+      // Si falla, caer al metodo 2
+    }
   }
 
-  // Fallback 2: Blob URL con <a download> insertado en DOM
+  // Metodo 2: Blob URL + <a download> (fallback para Firefox/Safari)
+  const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0'
+  a.style.cssText = 'position:fixed;left:-9999px;top:-9999px'
   a.href = url
   a.download = fileName
-  a.setAttribute('download', fileName) // doble asignacion para Edge Chromium
-  a.type = 'text/plain'
+  a.setAttribute('download', fileName)
   document.body.appendChild(a)
-
-  // Usar requestAnimationFrame para asegurar que el DOM se actualice
-  requestAnimationFrame(() => {
-    a.click()
-    setTimeout(() => {
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    }, 500)
-  })
+  a.click()
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 500)
 }
 
 const SISTEMAS = E030.SISTEMAS_ESTRUCTURALES.map(s => s.nombre)
@@ -1438,17 +1441,17 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
     setShowExport(true)
   }
 
-  const doDownload = (dir) => {
+  const doDownload = async (dir) => {
     const esp = dir === 'X' ? espX : espY
     if (esp.length === 0) return
     const txt = Espectro.exportarETABS(esp, mkParams(dir), dir + '-' + dir, expDeltaT)
     const nombre = (expDir === dir && expName) ? expName : Espectro.generarNombreArchivo(dir + '-' + dir, mkParams(dir))
-    descargarTxt(txt, nombre)
+    await descargarTxt(txt, nombre)
   }
 
-  const handleExportDownload = () => {
-    if (expDir === 'ambos') { doDownload('X'); setTimeout(() => doDownload('Y'), 300) }
-    else doDownload(expDir)
+  const handleExportDownload = async () => {
+    if (expDir === 'ambos') { await doDownload('X'); await doDownload('Y') }
+    else await doDownload(expDir)
     setShowExport(false)
   }
 
