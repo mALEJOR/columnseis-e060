@@ -1,0 +1,231 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - button [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - img [ref=e9]
+      - generic [ref=e13]: ColumnSeis
+    - generic [ref=e14]:
+      - button "DERIVAS" [ref=e15] [cursor=pointer]
+      - button "IRREG. PLANTA" [ref=e16] [cursor=pointer]
+      - button "IRREG. ALTURA" [ref=e17] [cursor=pointer]
+      - button "RESUMEN" [ref=e18] [cursor=pointer]
+      - button "ESPECTRO" [active] [ref=e19] [cursor=pointer]
+    - generic [ref=e20]:
+      - generic [ref=e21]: NTE E.030
+      - generic [ref=e22]: v1.0
+  - generic [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: N. Pisos
+      - spinbutton [ref=e26]: "6"
+    - generic [ref=e27]:
+      - generic [ref=e28]: Irregular
+      - combobox [ref=e29] [cursor=pointer]:
+        - option "SI" [selected]
+        - option "NO"
+    - generic [ref=e30]:
+      - generic [ref=e31]: Sistema X
+      - combobox [ref=e32] [cursor=pointer]:
+        - option "Pórticos C.A."
+        - option "Dual C.A."
+        - option "Muros C.A." [selected]
+        - option "Muros Duct. Limitada"
+        - option "Albañilería"
+        - option "Madera"
+    - generic [ref=e33]:
+      - generic [ref=e34]: Sistema Y
+      - combobox [ref=e35] [cursor=pointer]:
+        - option "Pórticos C.A."
+        - option "Dual C.A."
+        - option "Muros C.A." [selected]
+        - option "Muros Duct. Limitada"
+        - option "Albañilería"
+        - option "Madera"
+    - generic [ref=e36]:
+      - generic [ref=e37]: Material X
+      - combobox [ref=e38] [cursor=pointer]:
+        - option "Concreto Armado" [selected]
+        - option "Acero"
+        - option "Albañilería"
+        - option "Madera"
+        - option "Muros Duct. Limitada"
+    - generic [ref=e39]:
+      - generic [ref=e40]: Material Y
+      - combobox [ref=e41] [cursor=pointer]:
+        - option "Concreto Armado" [selected]
+        - option "Acero"
+        - option "Albañilería"
+        - option "Madera"
+        - option "Muros Duct. Limitada"
+    - generic [ref=e42]:
+      - generic [ref=e43]: Ro X
+      - generic [ref=e44]: "6"
+    - generic [ref=e45]:
+      - generic [ref=e46]: Ro Y
+      - generic [ref=e47]: "6"
+    - generic [ref=e48]:
+      - generic [ref=e49]: Factor
+      - generic [ref=e50]: "0.85"
+    - generic [ref=e51]:
+      - generic [ref=e52]: R(X)
+      - generic [ref=e53]: "6.00"
+    - generic [ref=e54]:
+      - generic [ref=e55]: R(Y)
+      - generic [ref=e56]: "6.00"
+  - generic [ref=e58]:
+    - generic [ref=e59]:
+      - generic [ref=e60]:
+        - generic [ref=e61]:
+          - generic [ref=e62]:
+            - generic [ref=e63]: Zona Sismica
+            - combobox [ref=e64] [cursor=pointer]:
+              - option "Zona 1 (Z=0.1)"
+              - option "Zona 2 (Z=0.25)" [selected]
+              - option "Zona 3 (Z=0.35)"
+              - option "Zona 4 (Z=0.45)"
+          - generic [ref=e65]:
+            - generic [ref=e66]: Perfil de Suelo
+            - combobox [ref=e67] [cursor=pointer]:
+              - option "S0"
+              - option "S1" [selected]
+              - option "S2"
+              - option "S3"
+              - option "S4"
+          - generic [ref=e68]:
+            - generic [ref=e69]: Categoria
+            - combobox [ref=e70] [cursor=pointer]:
+              - option "A1 - Salud"
+              - option "A2 - Esenciales"
+              - option "B - Importantes"
+              - option "C - Comunes" [selected]
+              - option "D - Temporales"
+            - generic [ref=e71]: U = 1.0
+          - generic [ref=e72]:
+            - generic [ref=e73]: Sistema (Barra Sup.)
+            - generic [ref=e74]:
+              - generic [ref=e75]: "X: Muros C.A. (Ro=6)"
+              - generic [ref=e76]: "Y: Muros C.A. (Ro=6)"
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - generic [ref=e79]: Ia (Altura)
+            - generic [ref=e80]:
+              - button "Auto" [ref=e81] [cursor=pointer]
+              - button "Manual" [ref=e82] [cursor=pointer]
+          - generic [ref=e83]:
+            - generic [ref=e84]:
+              - generic [ref=e85]: X-X
+              - text: "1.00"
+            - generic [ref=e86]:
+              - generic [ref=e87]: Y-Y
+              - text: "1.00"
+        - generic [ref=e88]:
+          - generic [ref=e89]:
+            - generic [ref=e90]: Ip (Planta)
+            - generic [ref=e91]:
+              - button "Auto" [ref=e92] [cursor=pointer]
+              - button "Manual" [ref=e93] [cursor=pointer]
+          - generic [ref=e94]:
+            - generic [ref=e95]:
+              - generic [ref=e96]: X-X
+              - text: "1.00"
+            - generic [ref=e97]:
+              - generic [ref=e98]: Y-Y
+              - text: "1.00"
+      - generic [ref=e99]:
+        - table [ref=e100]:
+          - rowgroup [ref=e101]:
+            - row "Dir X-X Dir Y-Y" [ref=e102]:
+              - columnheader [ref=e103]
+              - columnheader "Dir X-X" [ref=e104]
+              - columnheader "Dir Y-Y" [ref=e105]
+          - rowgroup [ref=e106]:
+            - row "Sistema Muros C.A. Muros C.A." [ref=e107]:
+              - cell "Sistema" [ref=e108]
+              - cell "Muros C.A." [ref=e109]
+              - cell "Muros C.A." [ref=e110]
+            - row "Ro 6 6" [ref=e111]:
+              - cell "Ro" [ref=e112]
+              - cell "6" [ref=e113]
+              - cell "6" [ref=e114]
+            - row "Ia 1.00 1.00" [ref=e115]:
+              - cell "Ia" [ref=e116]
+              - cell "1.00" [ref=e117]
+              - cell "1.00" [ref=e118]
+            - row "Ip 1.00 1.00" [ref=e119]:
+              - cell "Ip" [ref=e120]
+              - cell "1.00" [ref=e121]
+              - cell "1.00" [ref=e122]
+            - row "R = Ro*Ia*Ip 6.00 6.00" [ref=e123]:
+              - cell "R = Ro*Ia*Ip" [ref=e124]
+              - cell "6.00" [ref=e125]
+              - cell "6.00" [ref=e126]
+            - row "Sa max (m/s2) 1.0219 1.0219" [ref=e127]:
+              - cell "Sa max (m/s2)" [ref=e128]
+              - cell "1.0219" [ref=e129]
+              - cell "1.0219" [ref=e130]
+            - row "Sa/g max 0.10417 0.10417" [ref=e131]:
+              - cell "Sa/g max" [ref=e132]
+              - cell "0.10417" [ref=e133]
+              - cell "0.10417" [ref=e134]
+            - row "Z=0.25 S=1.00 U=1.0 Tp=0.4s TL=3s" [ref=e135]:
+              - cell "Z=0.25 S=1.00 U=1.0 Tp=0.4s TL=3s" [ref=e136]
+        - generic [ref=e137]:
+          - button "Exportar X-X para ETABS" [ref=e138] [cursor=pointer]
+          - button "Exportar Y-Y para ETABS" [ref=e139] [cursor=pointer]
+    - generic [ref=e140]:
+      - button "Sa (m/s2)" [ref=e141] [cursor=pointer]
+      - button "Sa/g" [ref=e142] [cursor=pointer]
+    - generic [ref=e143]:
+      - generic [ref=e144]:
+        - generic [ref=e146]:
+          - text: ESPECTRO X-X
+          - generic [ref=e147]: R=6.00 | Sa max=1.0219 m/s2
+        - img [ref=e148]:
+          - generic [ref=e150]: "0.00"
+          - generic [ref=e152]: "0.20"
+          - generic [ref=e154]: "0.40"
+          - generic [ref=e156]: "0.60"
+          - generic [ref=e158]: "0.80"
+          - generic [ref=e160]: "1.0"
+          - generic [ref=e162]: "0.0"
+          - generic [ref=e164]: "0.5"
+          - generic [ref=e166]: "1.0"
+          - generic [ref=e168]: "1.5"
+          - generic [ref=e170]: "2.0"
+          - generic [ref=e172]: "2.5"
+          - generic [ref=e174]: "3.0"
+          - generic [ref=e176]: "3.5"
+          - generic [ref=e178]: "4.0"
+          - generic [ref=e179]: T (s)
+          - generic [ref=e180]: Sa (m/s2)
+          - generic [ref=e181]: 0.2Tp
+          - generic [ref=e182]: Tp=0.4
+          - generic [ref=e183]: TL=3
+      - generic [ref=e186]:
+        - generic [ref=e188]:
+          - text: ESPECTRO Y-Y
+          - generic [ref=e189]: R=6.00 | Sa max=1.0219 m/s2
+        - img [ref=e190]:
+          - generic [ref=e192]: "0.00"
+          - generic [ref=e194]: "0.20"
+          - generic [ref=e196]: "0.40"
+          - generic [ref=e198]: "0.60"
+          - generic [ref=e200]: "0.80"
+          - generic [ref=e202]: "1.0"
+          - generic [ref=e204]: "0.0"
+          - generic [ref=e206]: "0.5"
+          - generic [ref=e208]: "1.0"
+          - generic [ref=e210]: "1.5"
+          - generic [ref=e212]: "2.0"
+          - generic [ref=e214]: "2.5"
+          - generic [ref=e216]: "3.0"
+          - generic [ref=e218]: "3.5"
+          - generic [ref=e220]: "4.0"
+          - generic [ref=e221]: T (s)
+          - generic [ref=e222]: Sa (m/s2)
+          - generic [ref=e223]: 0.2Tp
+          - generic [ref=e224]: Tp=0.4
+          - generic [ref=e225]: TL=3
+    - generic [ref=e229] [cursor=pointer]:
+      - generic [ref=e230]: ▶
+      - generic [ref=e231]: TABLA DE ESPECTRO (201 puntos)

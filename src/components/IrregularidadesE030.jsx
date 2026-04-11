@@ -12,18 +12,35 @@ const fmtPct = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : (Number(v) 
 const fmtPctRaw = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v).toFixed(1) + '%'
 const pisoLabel = (idx, nPisos) => idx === nPisos - 1 ? 'Azotea' : (nPisos - idx)
 
-/** Descarga texto como archivo .txt — usa data URI para maxima compatibilidad */
+/** Descarga texto como archivo .txt — triple fallback para maxima compatibilidad */
 function descargarTxt(contenido, nombre) {
   const fileName = nombre.endsWith('.txt') ? nombre : nombre + '.txt'
-  // Data URI en vez de Blob URL — mas compatible con Edge/Chrome/Vercel
-  const dataUri = 'data:text/plain;charset=utf-8,' + encodeURIComponent(contenido)
+  const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' })
+
+  // Fallback 1: msSaveBlob (Edge legacy / IE)
+  if (typeof window.navigator.msSaveBlob === 'function') {
+    window.navigator.msSaveBlob(blob, fileName)
+    return
+  }
+
+  // Fallback 2: Blob URL con <a download> insertado en DOM
+  const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
-  a.style.display = 'none'
-  a.href = dataUri
+  a.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0'
+  a.href = url
   a.download = fileName
+  a.setAttribute('download', fileName) // doble asignacion para Edge Chromium
+  a.type = 'text/plain'
   document.body.appendChild(a)
-  a.click()
-  setTimeout(() => { document.body.removeChild(a) }, 200)
+
+  // Usar requestAnimationFrame para asegurar que el DOM se actualice
+  requestAnimationFrame(() => {
+    a.click()
+    setTimeout(() => {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }, 500)
+  })
 }
 
 const SISTEMAS = E030.SISTEMAS_ESTRUCTURALES.map(s => s.nombre)

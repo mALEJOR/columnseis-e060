@@ -1,0 +1,62 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - button [ref=e6] [cursor=pointer]
+      - img [ref=e9]
+      - generic [ref=e13]: ColumnSeis
+    - generic [ref=e14]:
+      - button "DERIVAS" [ref=e15] [cursor=pointer]
+      - button "IRREG. PLANTA" [ref=e16] [cursor=pointer]
+      - button "IRREG. ALTURA" [ref=e17] [cursor=pointer]
+      - button "RESUMEN" [ref=e18] [cursor=pointer]
+      - button "ESPECTRO" [active] [ref=e19] [cursor=pointer]
+    - generic [ref=e20]:
+      - generic [ref=e21]: NTE E.030
+      - generic [ref=e22]: v1.0
+  - generic [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: N. Pisos
+      - spinbutton [ref=e26]: "6"
+    - generic [ref=e27]:
+      - generic [ref=e28]: Irregular
+      - combobox [ref=e29] [cursor=pointer]
+    - generic [ref=e30]:
+      - generic [ref=e31]: Sistema X
+      - combobox [ref=e32] [cursor=pointer]
+    - generic [ref=e33]:
+      - generic [ref=e34]: Sistema Y
+      - combobox [ref=e35] [cursor=pointer]
+    - generic [ref=e36]:
+      - generic [ref=e37]: Material X
+      - combobox [ref=e38] [cursor=pointer]
+    - generic [ref=e39]:
+      - generic [ref=e40]: Material Y
+      - combobox [ref=e41] [cursor=pointer]
+    - generic [ref=e42]:
+      - generic [ref=e43]: Ro X
+      - generic [ref=e44]: "6"
+    - generic [ref=e45]:
+      - generic [ref=e46]: Ro Y
+      - generic [ref=e47]: "6"
+    - generic [ref=e48]:
+      - generic [ref=e49]: Factor
+      - generic [ref=e50]: "0.85"
+    - generic [ref=e51]:
+      - generic [ref=e52]: R(X)
+      - generic [ref=e53]: "6.00"
+    - generic [ref=e54]:
+      - generic [ref=e55]: R(Y)
+      - generic [ref=e56]: "6.00"
+  - generic [ref=e58]:
+    - generic [ref=e59]:
+      - generic [ref=e60]
+      - generic [ref=e99]
+    - generic [ref=e140]:
+      - button "Sa (m/s2)" [ref=e141] [cursor=pointer]
+      - button "Sa/g" [ref=e142] [cursor=pointer]
+    - generic [ref=e143]:
+      - generic [ref=e144]
+      - generic [ref=e186]
+    - generic [ref=e229] [cursor=pointer]:
+      - generic [ref=e230]: ▶
+      - generic [ref=e231]: TABLA DE ESPECTRO (201 puntos)
