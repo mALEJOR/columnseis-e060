@@ -13,44 +13,26 @@ const fmtPctRaw = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v
 const pisoLabel = (idx, nPisos) => idx === nPisos - 1 ? 'Azotea' : (nPisos - idx)
 
 /**
- * Componente <a> que genera el blob URL al hover/focus y descarga al click.
- * Compatible con Chrome, Brave, Edge, Firefox, Safari.
+ * Descarga texto como .txt — metodo universal base64 data URI.
+ * Funciona en Chrome, Brave, Edge, Firefox, Safari.
  */
-function DownloadLink({ contenido, fileName, children, style }) {
-  const ref = useRef(null)
-  const blobUrl = useRef(null)
-
-  const prepareUrl = useCallback(() => {
-    // Revocar URL anterior si existe
-    if (blobUrl.current) URL.revokeObjectURL(blobUrl.current)
-    // Crear nuevo blob URL justo antes del click
-    const blob = new Blob([contenido], { type: 'application/octet-stream' })
-    blobUrl.current = URL.createObjectURL(blob)
-    if (ref.current) {
-      ref.current.href = blobUrl.current
-      ref.current.download = fileName.endsWith('.txt') ? fileName : fileName + '.txt'
-    }
-  }, [contenido, fileName])
-
-  // Cleanup on unmount
-  const cleanup = useCallback(() => {
-    if (blobUrl.current) { URL.revokeObjectURL(blobUrl.current); blobUrl.current = null }
-  }, [])
-
-  return (
-    <a ref={ref} href="#" download={fileName.endsWith('.txt') ? fileName : fileName + '.txt'}
-      onMouseEnter={prepareUrl} onFocus={prepareUrl}
-      onMouseDown={prepareUrl}
-      onClick={(e) => {
-        // Asegurar que la URL esta lista justo en el click
-        prepareUrl()
-        // Limpiar despues de un delay
-        setTimeout(cleanup, 1000)
-      }}
-      style={{ ...style, textDecoration: 'none', display: 'inline-block' }}>
-      {children}
-    </a>
-  )
+function descargarTxt(contenido, nombre) {
+  const fileName = nombre.endsWith('.txt') ? nombre : nombre + '.txt'
+  try {
+    // base64 data URI — el metodo mas compatible con todos los navegadores
+    const b64 = btoa(unescape(encodeURIComponent(contenido)))
+    const a = document.createElement('a')
+    a.href = 'data:application/octet-stream;base64,' + b64
+    a.download = fileName
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    setTimeout(() => document.body.removeChild(a), 300)
+  } catch (e) {
+    // Fallback: abrir en nueva ventana para guardar manualmente
+    const w = window.open('', '_blank')
+    if (w) { w.document.write('<pre>' + contenido.replace(/</g, '&lt;') + '</pre>'); w.document.title = fileName }
+  }
 }
 
 const SISTEMAS = E030.SISTEMAS_ESTRUCTURALES.map(s => s.nombre)
@@ -1996,23 +1978,17 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
                 {copied ? 'Copiado!' : 'Copiar al portapapeles'}
               </button>
               {expDir === 'ambos' ? (<>
-                <DownloadLink contenido={dlContentX} fileName={dlNameX}
+                <button onClick={() => { descargarTxt(dlContentX, dlNameX); setTimeout(() => descargarTxt(dlContentY, dlNameY), 500) }}
                   style={{padding:'6px 14px',fontSize:10,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
-                    border:'1px solid rgba(68,114,196,0.5)',background:'rgba(68,114,196,0.2)',color:'#64b5f6',letterSpacing:'.3px'}}>
-                  Descargar X-X .txt
-                </DownloadLink>
-                <DownloadLink contenido={dlContentY} fileName={dlNameY}
-                  style={{padding:'6px 14px',fontSize:10,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
-                    border:'1px solid rgba(198,40,40,0.5)',background:'rgba(198,40,40,0.2)',color:'#ef9a9a',letterSpacing:'.3px'}}>
-                  Descargar Y-Y .txt
-                </DownloadLink>
+                    border:'1px solid rgba(46,125,50,0.5)',background:'rgba(46,125,50,0.2)',color:'#4caf50',letterSpacing:'.3px'}}>
+                  Descargar ambos .txt
+                </button>
               </>) : (
-                <DownloadLink contenido={expDir === 'X' ? dlContentX : dlContentY}
-                  fileName={expDir === 'X' ? dlNameX : dlNameY}
+                <button onClick={() => { descargarTxt(expDir === 'X' ? dlContentX : dlContentY, expDir === 'X' ? dlNameX : dlNameY); setTimeout(() => setShowExport(false), 300) }}
                   style={{padding:'6px 14px',fontSize:10,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
                     border:'1px solid rgba(46,125,50,0.5)',background:'rgba(46,125,50,0.2)',color:'#4caf50',letterSpacing:'.3px'}}>
                   Descargar .txt
-                </DownloadLink>
+                </button>
               )}
             </div>
           </div>
