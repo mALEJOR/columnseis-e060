@@ -794,20 +794,28 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
                     value={state.noParalelos.dy}
                     onChange={e => dispatch({ type: 'SET_NO_PARALELOS_GLOBAL', field: 'dy', value: parseNum(e.target.value) })} />
                 </div>
-                <div style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 'var(--r)', background: angBg, border: '1px solid var(--border)' }}>
-                  {angG.theta != null ? <>&theta; = {angG.theta.toFixed(1)}°</> : '\u2014'}
-                </div>
+                {angG.thetaX != null && (<>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 'var(--r)',
+                    background: angG.thetaX >= 30 ? 'rgba(198,40,40,0.15)' : 'rgba(46,125,50,0.1)', border: '1px solid var(--border)' }}>
+                    &theta;<sub>X</sub> = {angG.thetaX.toFixed(1)}°
+                  </div>
+                  <div style={{ fontFamily: 'var(--mono)', fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 'var(--r)',
+                    background: angG.thetaY >= 30 ? 'rgba(198,40,40,0.15)' : 'rgba(46,125,50,0.1)', border: '1px solid var(--border)' }}>
+                    &theta;<sub>Y</sub> = {angG.thetaY.toFixed(1)}°
+                  </div>
+                </>)}
                 {angG.cos != null && (
                   <div style={{ fontFamily: 'var(--mono)', fontSize: 9, color: 'var(--text2)' }}>
                     cos(&theta;) = {angG.cos.toFixed(4)} &nbsp; sen(&theta;) = {angG.sin.toFixed(4)}
                   </div>
                 )}
               </div>
-              {angG.theta != null && (
+              {angG.thetaX != null && (
                 <div style={{ marginTop: 6, fontSize: 8, fontFamily: 'var(--cond)', color: 'var(--text3)' }}>
-                  {angG.theta < 15 && 'Sistema aprox. paralelo a X — no generaria irregularidad tipicamente.'}
-                  {angG.theta >= 15 && angG.theta <= 75 && 'Sistema NO paralelo a ambos ejes — verificar cortantes.'}
-                  {angG.theta > 75 && 'Sistema aprox. paralelo a Y — no generaria irregularidad tipicamente.'}
+                  {angG.thetaX >= 30 && angG.thetaY >= 30 && 'Sistema NO paralelo a ambos ejes — verificar cortantes en X-X e Y-Y.'}
+                  {angG.thetaX >= 30 && angG.thetaY < 30 && 'Sistema NO paralelo al eje X — verificar cortantes en X-X.'}
+                  {angG.thetaX < 30 && angG.thetaY >= 30 && 'Sistema NO paralelo al eje Y — verificar cortantes en Y-Y.'}
+                  {angG.thetaX < 30 && angG.thetaY < 30 && 'Sistema paralelo a ambos ejes — no hay irregularidad.'}
                 </div>
               )}
             </div>
