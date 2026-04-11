@@ -1326,7 +1326,7 @@ const SISTEMAS_ESP = Object.keys(Espectro.SISTEMA_RO)
 function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, sistemaXName, sistemaYName }) {
   const [zona, setZona] = useState('Zona 2')
   const [suelo, setSuelo] = useState('S1')
-  const [categoria, setCategoria] = useState('C (Temporal)')
+  const [categoria, setCategoria] = useState('C - Comunes')
   const [iaMode, setIaMode] = useState('auto')
   const [ipMode, setIpMode] = useState('auto')
   const [iaManIdx, setIaManIdx] = useState(0)

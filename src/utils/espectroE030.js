@@ -23,11 +23,11 @@ export const SUELO_TP = { S0: 0.3, S1: 0.4, S2: 0.6, S3: 0.9, S4: 1.0 }
 export const SUELO_TL = { S0: 3.0, S1: 3.0, S2: 3.0, S3: 2.5, S4: 2.0 }
 
 export const CATEGORIA_U = {
-  'A1 (Esencial)': 1.50,
-  'A2 (Importante)': 1.50,
-  'B (Comun)': 1.30,
-  'C (Temporal)': 1.00,
-  'D (Menor)': 1.00,
+  'A1 - Salud': 1.50,
+  'A2 - Esenciales': 1.50,
+  'B - Importantes': 1.30,
+  'C - Comunes': 1.00,
+  'D - Temporales': 1.00,
 }
 
 export const SISTEMA_RO = {
