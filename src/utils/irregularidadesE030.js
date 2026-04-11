@@ -177,10 +177,13 @@ export function calcularDiafragma(areaBruta, areaAberturas, dimLx, sumaHuecosX, 
   return { pctAberturas, crit1, netaX, pctNetaX, crit2X, netaY, pctNetaY, crit2Y, ipX, ipY }
 }
 
-// 4. Sistemas No Paralelos — verificacion por direccion X-X e Y-Y
-// elementos = [{nombre, vx, vy, npX, npY}]
-export function calcularNoParalelos(activo, elementos) {
-  const empty = { rows: [], ipX: 1, ipY: 1, irregularX: false, irregularY: false, vPisoX: 0, vPisoY: 0, vNoparX: 0, vNoparY: 0, pctX: 0, pctY: 0 }
+// 4. Sistemas No Paralelos — logica dual: angulo + cortante
+// elementos = [{nombre, vx, vy, npX, npY}], angulo = {thetaX, thetaY}
+export function calcularNoParalelos(activo, elementos, angulo) {
+  const empty = { rows: [], ipX: 1, ipY: 1, irregularX: false, irregularY: false,
+    vPisoX: 0, vPisoY: 0, vNoparX: 0, vNoparY: 0, pctX: 0, pctY: 0,
+    angXCumple: false, angYCumple: false, cortXCumple: false, cortYCumple: false,
+    resultadoX: 'REG', resultadoY: 'REG' }
   if (!activo) return empty
 
   const rows = elementos
@@ -198,18 +201,31 @@ export function calcularNoParalelos(activo, elementos) {
   const pctX = vPisoX > 0 ? (vNoparX / vPisoX) * 100 : 0
   const pctY = vPisoY > 0 ? (vNoparY / vPisoY) * 100 : 0
 
+  // Logica dual: angulo >= 30 Y cortante >= 10% → IRREG
+  const angXCumple = angulo?.thetaX != null && angulo.thetaX >= 30
+  const angYCumple = angulo?.thetaY != null && angulo.thetaY >= 30
+  const cortXCumple = pctX >= 10
+  const cortYCumple = pctY >= 10
+
+  const classify = (a, c) => (a && c) ? 'IRREG' : (a || c) ? 'REG (excepcion)' : 'REG'
+  const resultadoX = classify(angXCumple, cortXCumple)
+  const resultadoY = classify(angYCumple, cortYCumple)
+
   return {
     rows, vPisoX, vPisoY, vNoparX, vNoparY, pctX, pctY,
-    irregularX: pctX >= 10, irregularY: pctY >= 10,
-    ipX: pctX >= 10 ? 0.9 : 1, ipY: pctY >= 10 ? 0.9 : 1,
+    angXCumple, angYCumple, cortXCumple, cortYCumple,
+    resultadoX, resultadoY,
+    irregularX: resultadoX === 'IRREG', irregularY: resultadoY === 'IRREG',
+    ipX: resultadoX === 'IRREG' ? 0.9 : 1, ipY: resultadoY === 'IRREG' ? 0.9 : 1,
   }
 }
 
-// Angulo global del sistema no paralelo
+// Angulo global del sistema no paralelo + angulos por eje
 export function calcularAnguloGlobal(dx, dy) {
-  if ((!dx && !dy) || (dx === 0 && dy === 0)) return { theta: null, cos: null, sin: null }
+  if ((!dx && !dy) || (dx === 0 && dy === 0)) return { theta: null, thetaX: null, thetaY: null, cos: null, sin: null }
   const rad = Math.atan2(dy, dx)
-  return { theta: rad * 180 / Math.PI, cos: Math.cos(rad), sin: Math.sin(rad) }
+  const deg = rad * 180 / Math.PI
+  return { theta: deg, thetaX: deg, thetaY: Math.abs(90 - deg), cos: Math.cos(rad), sin: Math.sin(rad) }
 }
 
 // Summary Ip

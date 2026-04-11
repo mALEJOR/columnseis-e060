@@ -548,7 +548,8 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
     const elems = state.noParalelos.elementos.map(e => ({
       nombre: e.nombre, vx: parseNum(e.vx), vy: parseNum(e.vy), npX: e.npX, npY: e.npY,
     }))
-    return E030.calcularNoParalelos(state.noParalelos.activo, elems)
+    const ang = E030.calcularAnguloGlobal(parseNum(state.noParalelos.dx), parseNum(state.noParalelos.dy))
+    return E030.calcularNoParalelos(state.noParalelos.activo, elems, ang)
   }, [state.noParalelos])
 
   const ipFinal = useMemo(() => {
@@ -872,38 +873,56 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
               </button>
             </div>
 
-            {/* VERIFICACION DE CORTANTES */}
+            {/* VERIFICACION DUAL: ANGULO + CORTANTE */}
             {npRes.rows.length > 0 && (
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 10 }}>
-                {[{ dir: 'X-X', color: '#64b5f6', vP: npRes.vPisoX, vN: npRes.vNoparX, pct: npRes.pctX, irreg: npRes.irregularX },
-                  { dir: 'Y-Y', color: '#ef9a9a', vP: npRes.vPisoY, vN: npRes.vNoparY, pct: npRes.pctY, irreg: npRes.irregularY }].map(d => (
-                  <div key={d.dir} style={{ padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r2)' }}>
-                    <div style={{ fontFamily: 'var(--cond)', fontSize: 10, color: d.color, fontWeight: 700, marginBottom: 8, letterSpacing: '.5px' }}>DIRECCION {d.dir}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: 'var(--mono)', fontSize: 10 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text2)' }}>V piso (SUM todos)</span>
-                        <span style={{ color: 'var(--text0)', fontWeight: 600 }}>{d.vP.toFixed(1)} Tn</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text2)' }}>V no paral. (SUM marcados)</span>
-                        <span style={{ color: d.color, fontWeight: 600 }}>{d.vN.toFixed(1)} Tn</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 4 }}>
-                        <span style={{ color: 'var(--text2)' }}>% V_nopar / V_piso</span>
-                        <span style={{ color: d.pct >= 10 ? '#ef5350' : '#4caf50', fontWeight: 700 }}>{d.pct.toFixed(1)}%</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--text2)' }}>&ge;10%?</span>
-                        <span style={{ color: d.irreg ? '#ef5350' : '#4caf50', fontWeight: 700 }}>{d.irreg ? 'SI → IRREGULAR' : 'NO → REGULAR'}</span>
+                {[{ dir: 'X-X', color: '#64b5f6', angLabel: 'theta_X', angVal: angG.thetaX, angCumple: npRes.angXCumple,
+                    vP: npRes.vPisoX, vN: npRes.vNoparX, pct: npRes.pctX, cortCumple: npRes.cortXCumple, resultado: npRes.resultadoX },
+                  { dir: 'Y-Y', color: '#ef9a9a', angLabel: 'theta_Y', angVal: angG.thetaY, angCumple: npRes.angYCumple,
+                    vP: npRes.vPisoY, vN: npRes.vNoparY, pct: npRes.pctY, cortCumple: npRes.cortYCumple, resultado: npRes.resultadoY }].map(d => {
+                  const resBg = d.resultado === 'IRREG' ? 'rgba(198,40,40,0.2)' : d.resultado.includes('excepcion') ? 'rgba(217,119,6,0.15)' : 'rgba(46,125,50,0.15)'
+                  const resColor = d.resultado === 'IRREG' ? '#ef5350' : d.resultado.includes('excepcion') ? '#ffa726' : '#4caf50'
+                  return (
+                    <div key={d.dir} style={{ padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r2)' }}>
+                      <div style={{ fontFamily: 'var(--cond)', fontSize: 10, color: d.color, fontWeight: 700, marginBottom: 8, letterSpacing: '.5px' }}>DIRECCION {d.dir}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontFamily: 'var(--mono)', fontSize: 10 }}>
+                        {/* Angulo */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--text2)' }}>Angulo vs eje ({d.angLabel})</span>
+                          <span style={{ color: 'var(--text0)', fontWeight: 600 }}>{d.angVal != null ? d.angVal.toFixed(1) + '°' : '\u2014'}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--text2)' }}>Angulo &ge;30°?</span>
+                          <span style={{ color: d.angCumple ? '#ef5350' : '#4caf50', fontWeight: 600 }}>{d.angCumple ? 'SI' : 'NO'}</span>
+                        </div>
+                        <div style={{ height: 1, background: 'var(--border)', margin: '2px 0' }} />
+                        {/* Cortante */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--text2)' }}>V piso (SUM todos)</span>
+                          <span style={{ color: 'var(--text0)', fontWeight: 600 }}>{d.vP.toFixed(1)} Tn</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--text2)' }}>V no paral. (SUM marcados)</span>
+                          <span style={{ color: d.color, fontWeight: 600 }}>{d.vN.toFixed(1)} Tn</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--text2)' }}>% V_nopar / V_piso</span>
+                          <span style={{ fontWeight: 600, color: d.cortCumple ? '#ef5350' : '#4caf50' }}>{d.pct.toFixed(1)}%</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: 'var(--text2)' }}>%V &ge;10%?</span>
+                          <span style={{ color: d.cortCumple ? '#ef5350' : '#4caf50', fontWeight: 600 }}>{d.cortCumple ? 'SI' : 'NO'}</span>
+                        </div>
+                        {/* Resultado dual */}
+                        <div style={{ marginTop: 4, padding: '5px 8px', borderRadius: 'var(--r)', background: resBg, textAlign: 'center', fontWeight: 700, fontSize: 11, color: resColor }}>
+                          {d.resultado}
+                          {d.resultado === 'IRREG' && <span style={{ fontWeight: 400, fontSize: 8 }}> (&theta;&ge;30° Y %V&ge;10%)</span>}
+                          {d.resultado.includes('excepcion') && <span style={{ fontWeight: 400, fontSize: 8 }}> (solo 1 condicion)</span>}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {angG.theta != null && (
-              <div style={{ fontSize: 8, fontFamily: 'var(--mono)', color: 'var(--text3)', marginBottom: 6 }}>
-                Angulo del sistema: &theta; = {angG.theta.toFixed(1)}° | cos(&theta;) = {angG.cos.toFixed(4)} | sen(&theta;) = {angG.sin.toFixed(4)}
+                  )
+                })}
               </div>
             )}
           </>)
@@ -2242,7 +2261,8 @@ export default function IrregularidadesE030({ onBack }) {
     const elems = state.noParalelos.elementos.map(e => ({
       nombre: e.nombre, vx: parseNum(e.vx), vy: parseNum(e.vy), npX: e.npX, npY: e.npY,
     }))
-    return E030.calcularNoParalelos(state.noParalelos.activo, elems)
+    const ang = E030.calcularAnguloGlobal(parseNum(state.noParalelos.dx), parseNum(state.noParalelos.dy))
+    return E030.calcularNoParalelos(state.noParalelos.activo, elems, ang)
   }, [state.noParalelos])
 
   const ipFinal = useMemo(() => {
