@@ -178,16 +178,15 @@ export function calcularDiafragma(areaBruta, areaAberturas, dimLx, sumaHuecosX, 
 }
 
 // 4. Sistemas No Paralelos — verificacion por direccion X-X e Y-Y
-export function calcularNoParalelos(activo, elementos) {
-  // elementos = [{nombre, angulo, vElem, vPiso}]
+// elementos = [{nombre, angulo, vElemX, vElemY}], vPisoX/vPisoY globales
+export function calcularNoParalelos(activo, elementos, vPisoX, vPisoY) {
   if (!activo) return { rows: [], ipX: 1, ipY: 1, irregularX: false, irregularY: false }
 
   let irregularX = false, irregularY = false
 
   const rows = elementos
-    .filter(el => el.nombre || el.angulo !== '' || el.vElem !== '')
+    .filter(el => el.nombre || el.angulo !== '' || el.angulo === 0)
     .map(el => {
-      // Angulo respecto a X (normalizar a 0-90)
       let angRaw = typeof el.angulo === 'number' ? el.angulo : parseFloat(el.angulo)
       if (isNaN(angRaw)) angRaw = null
 
@@ -198,31 +197,43 @@ export function calcularNoParalelos(activo, elementos) {
         angVsY = Math.abs(90 - angVsX)
       }
 
-      const pctCort = (el.vPiso && el.vPiso > 0) ? (el.vElem / el.vPiso) * 100 : ''
-      const superaCort = typeof pctCort === 'number' && pctCort >= 10
+      const paraleloX = angVsX == null || angVsX < 30
+      const paraleloY = angVsY == null || angVsY < 30
 
-      const noParaleloX = angVsX != null && angVsX >= 30
-      const noParaleloY = angVsY != null && angVsY >= 30
+      // Verificacion X
+      let pctVx = '', esIrregX = false
+      if (!paraleloX) {
+        const ve = typeof el.vElemX === 'number' ? el.vElemX : parseFloat(el.vElemX)
+        const vp = typeof vPisoX === 'number' ? vPisoX : parseFloat(vPisoX)
+        if (!isNaN(ve) && !isNaN(vp) && vp > 0) {
+          pctVx = (ve / vp) * 100
+          esIrregX = pctVx >= 10
+        }
+      }
 
-      const esIrregX = noParaleloX && superaCort
-      const esIrregY = noParaleloY && superaCort
+      // Verificacion Y
+      let pctVy = '', esIrregY = false
+      if (!paraleloY) {
+        const ve = typeof el.vElemY === 'number' ? el.vElemY : parseFloat(el.vElemY)
+        const vp = typeof vPisoY === 'number' ? vPisoY : parseFloat(vPisoY)
+        if (!isNaN(ve) && !isNaN(vp) && vp > 0) {
+          pctVy = (ve / vp) * 100
+          esIrregY = pctVy >= 10
+        }
+      }
 
       if (esIrregX) irregularX = true
       if (esIrregY) irregularY = true
 
       return {
-        nombre: el.nombre, angulo: el.angulo, vElem: el.vElem, vPiso: el.vPiso,
-        angVsX, angVsY, pctCort, superaCort,
-        noParaleloX, noParaleloY, esIrregX, esIrregY,
+        nombre: el.nombre, angulo: el.angulo,
+        angVsX, angVsY, paraleloX, paraleloY,
+        vElemX: el.vElemX, vElemY: el.vElemY,
+        pctVx, pctVy, esIrregX, esIrregY,
       }
     })
 
-  return {
-    rows,
-    irregularX, irregularY,
-    ipX: irregularX ? 0.9 : 1,
-    ipY: irregularY ? 0.9 : 1,
-  }
+  return { rows, irregularX, irregularY, ipX: irregularX ? 0.9 : 1, ipY: irregularY ? 0.9 : 1 }
 }
 
 // Summary Ip

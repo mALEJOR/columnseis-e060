@@ -95,7 +95,7 @@ function initState() {
     torsionY: emptyFloors(),
     esquinas: { aEntrante: 0, aTotal: 30, bEntrante: 0, bTotal: 15 },
     diafragma: { areaBruta: '', areaAberturas: '', dimLx: '', sumaHuecosX: '', dimLy: '', sumaHuecosY: '' },
-    noParalelos: { activo: false, elementos: Array.from({ length: 5 }, () => ({ nombre: '', angulo: '', vElem: '', vPiso: '' })) },
+    noParalelos: { activo: false, vPisoX: '', vPisoY: '', elementos: Array.from({ length: 3 }, () => ({ nombre: '', angulo: '', vElemX: '', vElemY: '' })) },
     rigidezX: emptyFloors(),
     rigidezY: emptyFloors(),
     resistenciaX: emptyFloors(),
@@ -122,8 +122,9 @@ function reducer(state, action) {
       elems[action.index] = { ...elems[action.index], [action.field]: action.value }
       return { ...state, noParalelos: { ...state.noParalelos, elementos: elems } }
     }
+    case 'SET_NO_PARALELOS_VPISO': return { ...state, noParalelos: { ...state.noParalelos, [action.field]: action.value } }
     case 'ADD_NO_PARALELOS_ELEM': {
-      return { ...state, noParalelos: { ...state.noParalelos, elementos: [...state.noParalelos.elementos, { nombre: '', angulo: '', vElem: '', vPiso: '' }] } }
+      return { ...state, noParalelos: { ...state.noParalelos, elementos: [...state.noParalelos.elementos, { nombre: '', angulo: '', vElemX: '', vElemY: '' }] } }
     }
     case 'DEL_NO_PARALELOS_ELEM': {
       const elems = state.noParalelos.elementos.filter((_, i) => i !== action.index)
@@ -545,12 +546,10 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
   // No Paralelos
   const npRes = useMemo(() => {
     const elems = state.noParalelos.elementos.map(e => ({
-      nombre: e.nombre,
-      angulo: parseNum(e.angulo),
-      vElem: parseNum(e.vElem),
-      vPiso: parseNum(e.vPiso),
+      nombre: e.nombre, angulo: parseNum(e.angulo),
+      vElemX: parseNum(e.vElemX), vElemY: parseNum(e.vElemY),
     }))
-    return E030.calcularNoParalelos(state.noParalelos.activo, elems)
+    return E030.calcularNoParalelos(state.noParalelos.activo, elems, parseNum(state.noParalelos.vPisoX), parseNum(state.noParalelos.vPisoY))
   }, [state.noParalelos])
 
   const ipFinal = useMemo(() => {
@@ -763,7 +762,7 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
       </Section>
 
       <Section title="4. IRREGULARIDAD POR SISTEMAS NO PARALELOS (Ip = 0.90)" dark>
-        <p className="e030-hint">Elementos NO paralelos a ejes X-Y | Excepcion: angulo &lt; 30° o V &lt; 10% cortante piso | Verificacion por direccion</p>
+        <p className="e030-hint">Elementos NO paralelos a ejes X-Y | Excepcion: angulo &lt; 30° respecto al eje → paralelo (no aplica) | V &lt; 10% Vpiso → no aplica</p>
         <div className="e030-field-row" style={{ marginBottom: 12 }}>
           <label>Calcular Sistemas No Paralelos?</label>
           <select className="e030-field-input" style={{ width: 80 }}
@@ -774,18 +773,16 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
           </select>
         </div>
         {state.noParalelos.activo && (<>
-          {/* TABLA 1: DATOS DE ENTRADA */}
-          <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#2e75b6', marginBottom: 6, letterSpacing: .5 }}>DATOS DE ELEMENTOS</h4>
-          <p className="e030-hint">Angulo: respecto al eje X global (0°=paralelo a X, 90°=paralelo a Y)</p>
+          {/* TABLA 1: DATOS DE ELEMENTOS */}
+          <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#2e75b6', marginBottom: 6, letterSpacing: .5 }}>TABLA 1: DATOS DE ELEMENTOS</h4>
+          <p className="e030-hint">Angulo: respecto al eje X global (0°=paralelo a X, 90°=paralelo a Y). Solo nombre y angulo aqui; los cortantes van en las tablas de verificacion.</p>
           <div style={{ overflowX: 'auto', marginBottom: 14 }}>
-            <table className="e030-table" style={{ maxWidth: 650 }}>
+            <table className="e030-table" style={{ maxWidth: 400 }}>
               <thead>
                 <tr>
                   <th style={{ ...S.headerCell, width: 28 }}>#</th>
                   <th style={{ ...S.headerCell, ...S.inputCell }}>Elemento</th>
                   <th style={{ ...S.headerCell, ...S.inputCell }}>Angulo (°)</th>
-                  <th style={{ ...S.headerCell, ...S.inputCell }}>V elem (tn)</th>
-                  <th style={{ ...S.headerCell, ...S.inputCell }}>V piso (tn)</th>
                   <th style={{ ...S.headerCell, width: 28 }}></th>
                 </tr>
               </thead>
@@ -802,16 +799,6 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
                       <input type="number" min={0} max={180} style={S.tableInput}
                         value={el.angulo}
                         onChange={e => dispatch({ type: 'SET_NO_PARALELOS_ELEM', index: i, field: 'angulo', value: parseNum(e.target.value) })} />
-                    </td>
-                    <td style={{ ...S.cell, ...S.inputCell }}>
-                      <input type="number" style={S.tableInput}
-                        value={el.vElem}
-                        onChange={e => dispatch({ type: 'SET_NO_PARALELOS_ELEM', index: i, field: 'vElem', value: parseNum(e.target.value) })} />
-                    </td>
-                    <td style={{ ...S.cell, ...S.inputCell }}>
-                      <input type="number" style={S.tableInput}
-                        value={el.vPiso}
-                        onChange={e => dispatch({ type: 'SET_NO_PARALELOS_ELEM', index: i, field: 'vPiso', value: parseNum(e.target.value) })} />
                     </td>
                     <td style={{ ...S.cell, padding: 2 }}>
                       {state.noParalelos.elementos.length > 1 && (
@@ -834,79 +821,105 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
 
           {/* TABLA 2: VERIFICACION X-X */}
           {npRes.rows.length > 0 && (<>
-            <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#64b5f6', marginBottom: 6, letterSpacing: .5 }}>VERIFICACION DIR. X-X</h4>
-            <div style={{ overflowX: 'auto', marginBottom: 10 }}>
-              <table className="e030-table" style={{ maxWidth: 700 }}>
+            <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#64b5f6', marginBottom: 6, letterSpacing: .5 }}>TABLA 2: VERIFICACION DIR. X-X</h4>
+            <div className="e030-field-row" style={{ marginBottom: 8 }}>
+              <label>V Piso X-X (Tn):</label>
+              <input type="number" className="e030-field-input" style={{ width: 90 }}
+                value={state.noParalelos.vPisoX}
+                onChange={e => dispatch({ type: 'SET_NO_PARALELOS_VPISO', field: 'vPisoX', value: parseNum(e.target.value) })} />
+            </div>
+            <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+              <table className="e030-table" style={{ maxWidth: 750 }}>
                 <thead>
                   <tr>
                     <th style={S.headerCell}>#</th>
                     <th style={S.headerCell}>Elemento</th>
                     <th style={{ ...S.headerCell, ...S.compCell }}>Ang. vs X</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>&ge;30°?</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>% V</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>&ge;10%?</th>
+                    <th style={S.headerCell}>Verif. Ang.</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>V Elem X (Tn)</th>
+                    <th style={{ ...S.headerCell, ...S.compCell }}>% Cort.</th>
                     <th style={S.headerCell}>Resultado</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {npRes.rows.map((r, i) => (
-                    <tr key={i}>
-                      <td style={{ ...S.cell, color: 'var(--text3)', fontSize: 9 }}>{i + 1}</td>
-                      <td style={{ ...S.cell, textAlign: 'left', fontSize: 9 }}>{r.nombre || '\u2014'}</td>
-                      <td style={{ ...S.cell, ...S.compCell }}>{r.angVsX != null ? r.angVsX.toFixed(1) + '°' : '\u2014'}</td>
-                      <td style={{ ...S.cell, ...S.compCell, color: r.noParaleloX ? '#ef5350' : '#4caf50', fontWeight: 600 }}>
-                        {r.angVsX != null ? (r.noParaleloX ? 'NO PAR.' : 'PAR.') : '\u2014'}
-                      </td>
-                      <td style={{ ...S.cell, ...S.compCell }}>{typeof r.pctCort === 'number' ? r.pctCort.toFixed(1) + '%' : '\u2014'}</td>
-                      <td style={{ ...S.cell, ...S.compCell, color: r.superaCort ? '#ef5350' : '#4caf50', fontWeight: 600 }}>
-                        {typeof r.pctCort === 'number' ? (r.superaCort ? 'SUPERA' : 'NO') : '\u2014'}
-                      </td>
-                      <td style={{ ...S.cell, color: condColor(r.esIrregX ? 'IRREG' : 'OK'), fontWeight: 700 }}>
-                        {r.angVsX != null ? (r.esIrregX ? 'IRREG' : 'REG') : '\u2014'}
-                      </td>
-                    </tr>
-                  ))}
+                  {npRes.rows.map((r, i) => {
+                    const disabled = r.paraleloX
+                    return (
+                      <tr key={i} style={disabled ? { opacity: 0.5 } : undefined}>
+                        <td style={{ ...S.cell, color: 'var(--text3)', fontSize: 9 }}>{i + 1}</td>
+                        <td style={{ ...S.cell, textAlign: 'left', fontSize: 9 }}>{r.nombre || '\u2014'}</td>
+                        <td style={{ ...S.cell, ...S.compCell }}>{r.angVsX != null ? r.angVsX.toFixed(1) + '°' : '\u2014'}</td>
+                        <td style={{ ...S.cell, color: disabled ? '#4caf50' : '#ef5350', fontWeight: 600 }}>
+                          {r.angVsX != null ? (disabled ? '<30° PAR.' : '\u226530° NO PAR.') : '\u2014'}
+                        </td>
+                        <td style={{ ...S.cell, ...(disabled ? {} : S.inputCell) }}>
+                          {disabled ? '\u2014' : (
+                            <input type="number" style={S.tableInput}
+                              value={state.noParalelos.elementos[i]?.vElemX ?? ''}
+                              onChange={e => dispatch({ type: 'SET_NO_PARALELOS_ELEM', index: i, field: 'vElemX', value: parseNum(e.target.value) })} />
+                          )}
+                        </td>
+                        <td style={{ ...S.cell, ...S.compCell }}>{disabled ? '\u2014' : (typeof r.pctVx === 'number' ? r.pctVx.toFixed(1) + '%' : '\u2014')}</td>
+                        <td style={{ ...S.cell, color: condColor(r.esIrregX ? 'IRREG' : 'OK'), fontWeight: 700 }}>
+                          {r.angVsX != null ? (disabled ? 'REG' : (r.esIrregX ? 'IRREG' : 'REG')) : '\u2014'}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
 
             {/* TABLA 3: VERIFICACION Y-Y */}
-            <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#ef9a9a', marginBottom: 6, letterSpacing: .5 }}>VERIFICACION DIR. Y-Y</h4>
+            <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#ef9a9a', marginBottom: 6, letterSpacing: .5 }}>TABLA 3: VERIFICACION DIR. Y-Y</h4>
+            <div className="e030-field-row" style={{ marginBottom: 8 }}>
+              <label>V Piso Y-Y (Tn):</label>
+              <input type="number" className="e030-field-input" style={{ width: 90 }}
+                value={state.noParalelos.vPisoY}
+                onChange={e => dispatch({ type: 'SET_NO_PARALELOS_VPISO', field: 'vPisoY', value: parseNum(e.target.value) })} />
+            </div>
             <div style={{ overflowX: 'auto', marginBottom: 10 }}>
-              <table className="e030-table" style={{ maxWidth: 700 }}>
+              <table className="e030-table" style={{ maxWidth: 750 }}>
                 <thead>
                   <tr>
                     <th style={S.headerCell}>#</th>
                     <th style={S.headerCell}>Elemento</th>
                     <th style={{ ...S.headerCell, ...S.compCell }}>Ang. vs Y</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>&ge;30°?</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>% V</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>&ge;10%?</th>
+                    <th style={S.headerCell}>Verif. Ang.</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>V Elem Y (Tn)</th>
+                    <th style={{ ...S.headerCell, ...S.compCell }}>% Cort.</th>
                     <th style={S.headerCell}>Resultado</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {npRes.rows.map((r, i) => (
-                    <tr key={i}>
-                      <td style={{ ...S.cell, color: 'var(--text3)', fontSize: 9 }}>{i + 1}</td>
-                      <td style={{ ...S.cell, textAlign: 'left', fontSize: 9 }}>{r.nombre || '\u2014'}</td>
-                      <td style={{ ...S.cell, ...S.compCell }}>{r.angVsY != null ? r.angVsY.toFixed(1) + '°' : '\u2014'}</td>
-                      <td style={{ ...S.cell, ...S.compCell, color: r.noParaleloY ? '#ef5350' : '#4caf50', fontWeight: 600 }}>
-                        {r.angVsY != null ? (r.noParaleloY ? 'NO PAR.' : 'PAR.') : '\u2014'}
-                      </td>
-                      <td style={{ ...S.cell, ...S.compCell }}>{typeof r.pctCort === 'number' ? r.pctCort.toFixed(1) + '%' : '\u2014'}</td>
-                      <td style={{ ...S.cell, ...S.compCell, color: r.superaCort ? '#ef5350' : '#4caf50', fontWeight: 600 }}>
-                        {typeof r.pctCort === 'number' ? (r.superaCort ? 'SUPERA' : 'NO') : '\u2014'}
-                      </td>
-                      <td style={{ ...S.cell, color: condColor(r.esIrregY ? 'IRREG' : 'OK'), fontWeight: 700 }}>
-                        {r.angVsY != null ? (r.esIrregY ? 'IRREG' : 'REG') : '\u2014'}
-                      </td>
-                    </tr>
-                  ))}
+                  {npRes.rows.map((r, i) => {
+                    const disabled = r.paraleloY
+                    return (
+                      <tr key={i} style={disabled ? { opacity: 0.5 } : undefined}>
+                        <td style={{ ...S.cell, color: 'var(--text3)', fontSize: 9 }}>{i + 1}</td>
+                        <td style={{ ...S.cell, textAlign: 'left', fontSize: 9 }}>{r.nombre || '\u2014'}</td>
+                        <td style={{ ...S.cell, ...S.compCell }}>{r.angVsY != null ? r.angVsY.toFixed(1) + '°' : '\u2014'}</td>
+                        <td style={{ ...S.cell, color: disabled ? '#4caf50' : '#ef5350', fontWeight: 600 }}>
+                          {r.angVsY != null ? (disabled ? '<30° PAR.' : '\u226530° NO PAR.') : '\u2014'}
+                        </td>
+                        <td style={{ ...S.cell, ...(disabled ? {} : S.inputCell) }}>
+                          {disabled ? '\u2014' : (
+                            <input type="number" style={S.tableInput}
+                              value={state.noParalelos.elementos[i]?.vElemY ?? ''}
+                              onChange={e => dispatch({ type: 'SET_NO_PARALELOS_ELEM', index: i, field: 'vElemY', value: parseNum(e.target.value) })} />
+                          )}
+                        </td>
+                        <td style={{ ...S.cell, ...S.compCell }}>{disabled ? '\u2014' : (typeof r.pctVy === 'number' ? r.pctVy.toFixed(1) + '%' : '\u2014')}</td>
+                        <td style={{ ...S.cell, color: condColor(r.esIrregY ? 'IRREG' : 'OK'), fontWeight: 700 }}>
+                          {r.angVsY != null ? (disabled ? 'REG' : (r.esIrregY ? 'IRREG' : 'REG')) : '\u2014'}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
-            <p className="e030-hint">IRREG = angulo &ge; 30° Y V &ge; 10% cortante piso | REG = angulo &lt; 30° o V &lt; 10%</p>
+            <p className="e030-hint">IRREG = angulo &ge;30° respecto al eje Y V &ge;10% cortante piso | Si angulo &lt;30° → paralelo (celdas V deshabilitadas)</p>
           </>)}
         </>)}
         <div className="e030-summary-row" style={{ marginTop: 8 }}>
@@ -2241,9 +2254,10 @@ export default function IrregularidadesE030({ onBack }) {
 
   const npRes = useMemo(() => {
     const elems = state.noParalelos.elementos.map(e => ({
-      nombre: e.nombre, angulo: parseNum(e.angulo), vElem: parseNum(e.vElem), vPiso: parseNum(e.vPiso),
+      nombre: e.nombre, angulo: parseNum(e.angulo),
+      vElemX: parseNum(e.vElemX), vElemY: parseNum(e.vElemY),
     }))
-    return E030.calcularNoParalelos(state.noParalelos.activo, elems)
+    return E030.calcularNoParalelos(state.noParalelos.activo, elems, parseNum(state.noParalelos.vPisoX), parseNum(state.noParalelos.vPisoY))
   }, [state.noParalelos])
 
   const ipFinal = useMemo(() => {
