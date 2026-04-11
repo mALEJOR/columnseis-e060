@@ -12,38 +12,9 @@ const fmtPct = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : (Number(v) 
 const fmtPctRaw = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v).toFixed(1) + '%'
 const pisoLabel = (idx, nPisos) => idx === nPisos - 1 ? 'Azotea' : (nPisos - idx)
 
-/** Descarga texto como archivo .txt — showSaveFilePicker + fallback Blob */
-async function descargarTxt(contenido, nombre) {
-  const fileName = nombre.endsWith('.txt') ? nombre : nombre + '.txt'
-
-  // Metodo 1: File System Access API (funciona en Brave/Chrome/Edge modernos)
-  if (typeof window.showSaveFilePicker === 'function') {
-    try {
-      const handle = await window.showSaveFilePicker({
-        suggestedName: fileName,
-        types: [{ description: 'Archivo de texto', accept: { 'text/plain': ['.txt'] } }],
-      })
-      const writable = await handle.createWritable()
-      await writable.write(contenido)
-      await writable.close()
-      return
-    } catch (e) {
-      if (e.name === 'AbortError') return // usuario cancelo
-      // Si falla, caer al metodo 2
-    }
-  }
-
-  // Metodo 2: Blob URL + <a download> (fallback para Firefox/Safari)
-  const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.style.cssText = 'position:fixed;left:-9999px;top:-9999px'
-  a.href = url
-  a.download = fileName
-  a.setAttribute('download', fileName)
-  document.body.appendChild(a)
-  a.click()
-  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 500)
+/** Genera una URL de descarga para un contenido de texto */
+function crearUrlDescarga(contenido) {
+  return URL.createObjectURL(new Blob([contenido], { type: 'application/octet-stream' }))
 }
 
 const SISTEMAS = E030.SISTEMAS_ESTRUCTURALES.map(s => s.nombre)
@@ -1441,19 +1412,19 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
     setShowExport(true)
   }
 
-  const doDownload = async (dir) => {
-    const esp = dir === 'X' ? espX : espY
-    if (esp.length === 0) return
-    const txt = Espectro.exportarETABS(esp, mkParams(dir), dir + '-' + dir, expDeltaT)
-    const nombre = (expDir === dir && expName) ? expName : Espectro.generarNombreArchivo(dir + '-' + dir, mkParams(dir))
-    await descargarTxt(txt, nombre)
-  }
+  // Pre-generate download URLs for the modal's <a> tags
+  const dlUrlX = useMemo(() => {
+    if (esEMS || espX.length === 0) return null
+    return crearUrlDescarga(Espectro.exportarETABS(espX, mkParams('X'), 'X-X', expDeltaT))
+  }, [espX, esEMS, expDeltaT, zona, sKey, sVal, categoria, U, Rx, IaX, IpX])
 
-  const handleExportDownload = async () => {
-    if (expDir === 'ambos') { await doDownload('X'); await doDownload('Y') }
-    else await doDownload(expDir)
-    setShowExport(false)
-  }
+  const dlUrlY = useMemo(() => {
+    if (esEMS || espY.length === 0) return null
+    return crearUrlDescarga(Espectro.exportarETABS(espY, mkParams('Y'), 'Y-Y', expDeltaT))
+  }, [espY, esEMS, expDeltaT, zona, sKey, sVal, categoria, U, Ry, IaY, IpY])
+
+  const dlNameX = useMemo(() => expName || Espectro.generarNombreArchivo('X-X', mkParams('X')), [expName, zona, sKey, Rx])
+  const dlNameY = useMemo(() => Espectro.generarNombreArchivo('Y-Y', mkParams('Y')), [zona, sKey, Ry])
 
   const handleCopy = () => {
     if (expDir === 'ambos') {
@@ -1988,11 +1959,26 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
                   border:'1px solid rgba(155,89,182,0.4)',background:'rgba(155,89,182,0.12)',color:'#ce93d8',letterSpacing:'.3px'}}>
                 {copied ? 'Copiado!' : 'Copiar al portapapeles'}
               </button>
-              <button onClick={handleExportDownload}
-                style={{padding:'6px 14px',fontSize:10,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
-                  border:'1px solid rgba(46,125,50,0.5)',background:'rgba(46,125,50,0.2)',color:'#4caf50',letterSpacing:'.3px'}}>
-                Descargar .txt
-              </button>
+              {expDir === 'ambos' ? (<>
+                <a href={dlUrlX || '#'} download={dlNameX} onClick={() => setTimeout(() => setShowExport(false), 200)}
+                  style={{padding:'6px 14px',fontSize:10,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
+                    border:'1px solid rgba(68,114,196,0.5)',background:'rgba(68,114,196,0.2)',color:'#64b5f6',letterSpacing:'.3px',textDecoration:'none',display:'inline-block'}}>
+                  Descargar X-X .txt
+                </a>
+                <a href={dlUrlY || '#'} download={dlNameY} onClick={() => setTimeout(() => setShowExport(false), 200)}
+                  style={{padding:'6px 14px',fontSize:10,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
+                    border:'1px solid rgba(198,40,40,0.5)',background:'rgba(198,40,40,0.2)',color:'#ef9a9a',letterSpacing:'.3px',textDecoration:'none',display:'inline-block'}}>
+                  Descargar Y-Y .txt
+                </a>
+              </>) : (
+                <a href={expDir === 'X' ? dlUrlX : dlUrlY || '#'}
+                  download={expDir === 'X' ? (expName || dlNameX) : dlNameY}
+                  onClick={() => setTimeout(() => setShowExport(false), 200)}
+                  style={{padding:'6px 14px',fontSize:10,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
+                    border:'1px solid rgba(46,125,50,0.5)',background:'rgba(46,125,50,0.2)',color:'#4caf50',letterSpacing:'.3px',textDecoration:'none',display:'inline-block'}}>
+                  Descargar .txt
+                </a>
+              )}
             </div>
           </div>
         </div>
