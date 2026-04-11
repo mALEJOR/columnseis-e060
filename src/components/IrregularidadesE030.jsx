@@ -1321,13 +1321,15 @@ function TabResumen({ state, RoX, RoY, factor, Rx, Ry, iaX, iaY, ipX, ipY, iaDet
 //  TAB 5: ESPECTRO DE PSEUDO-ACELERACIONES (X-X / Y-Y)
 // ══════════════════════════════════════════════════════════════
 const ZONAS = Object.keys(Espectro.ZONA_Z)
-const CATEGORIAS = Object.keys(Espectro.CATEGORIA_U)
+const CATEGORIAS = Espectro.CATEGORIAS_LIST
 const SISTEMAS_ESP = Object.keys(Espectro.SISTEMA_RO)
 
 function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, sistemaXName, sistemaYName }) {
   const [zona, setZona] = useState('Zona 2')
   const [suelo, setSuelo] = useState('S1')
   const [categoria, setCategoria] = useState('C - Comunes')
+  const [usaAislamiento, setUsaAislamiento] = useState(false)
+  const [uManualD, setUManualD] = useState(1.0)
   const [iaMode, setIaMode] = useState('auto')
   const [ipMode, setIpMode] = useState('auto')
   const [iaManIdx, setIaManIdx] = useState(0)
@@ -1350,9 +1352,15 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
   const IpY = (ipMode === 'auto' && hasCalcIp) ? ipCalcY : Espectro.IP_OPTIONS[ipManIdxY]?.value ?? 1
 
   const Z = Espectro.ZONA_Z[zona]
+  const zonaNum = parseInt(zona.replace(/\D/g, '')) || 2
   const sKey = suelo
   const sVal = Espectro.SUELO_S[zona]?.[sKey]
-  const U = Espectro.CATEGORIA_U[categoria]
+  const uResult = useMemo(() => Espectro.calcularFactorU(categoria, zonaNum, usaAislamiento, uManualD), [categoria, zonaNum, usaAislamiento, uManualD])
+  const U = uResult.U
+  const isA1 = categoria.startsWith('A1')
+  const isD = categoria.startsWith('D')
+  const isA1Optional = isA1 && zonaNum <= 2
+  const isA1Obligatorio = isA1 && zonaNum >= 3
   // Ro viene de la barra superior (por direccion)
   const RoX = RoXParam
   const RoY = RoYParam
@@ -1616,10 +1624,14 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
               </select>
             </div>
             <div className="esp-param">
-              <label>Categoria (U)</label>
+              <label>Categoria</label>
               <select style={selSt} value={categoria} onChange={e => setCategoria(e.target.value)}>
-                {CATEGORIAS.map(c => <option key={c} value={c}>{c} (U={Espectro.CATEGORIA_U[c]})</option>)}
+                {CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+              {/* U value display */}
+              <div style={{marginTop:3,fontSize:10,fontFamily:'var(--mono)',fontWeight:600,color:'#4caf50'}}>
+                U = {U.toFixed(1)}
+              </div>
             </div>
             <div className="esp-param">
               <label>Sistema (Barra Sup.)</label>
@@ -1629,6 +1641,49 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
               </div>
             </div>
           </div>
+
+          {/* Nota condicional de U */}
+          {isA1Obligatorio && (
+            <div style={{padding:'6px 10px',background:'rgba(217,119,6,0.12)',border:'1px solid rgba(217,119,6,0.3)',borderRadius:'var(--r2)',fontSize:9,fontFamily:'var(--cond)',color:'#ffa726'}}>
+              Nota 1 (Art. 15): Aislamiento sismico <b>obligatorio</b> en Zona {zonaNum}. U = 1.0
+            </div>
+          )}
+          {isA1Optional && (
+            <div style={{padding:'8px 10px',background:'rgba(68,114,196,0.1)',border:'1px solid rgba(68,114,196,0.25)',borderRadius:'var(--r2)',fontSize:9,fontFamily:'var(--cond)',color:'#90caf9'}}>
+              <div style={{marginBottom:5}}>Nota 1 (Art. 15): En Zona {zonaNum}, el aislamiento sismico es <b>opcional</b> para A1.</div>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <span style={{fontSize:8,color:'var(--text2)'}}>Aislamiento sismico:</span>
+                <button onClick={() => setUsaAislamiento(true)} style={{
+                  padding:'2px 10px',fontSize:8,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
+                  border: usaAislamiento ? '1px solid #2e7d32' : '1px solid var(--border)',
+                  background: usaAislamiento ? 'rgba(46,125,50,0.25)' : 'var(--surface3)',
+                  color: usaAislamiento ? '#4caf50' : 'var(--text3)',
+                }}>SI (U=1.0)</button>
+                <button onClick={() => setUsaAislamiento(false)} style={{
+                  padding:'2px 10px',fontSize:8,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
+                  border: !usaAislamiento ? '1px solid #c62828' : '1px solid var(--border)',
+                  background: !usaAislamiento ? 'rgba(198,40,40,0.15)' : 'var(--surface3)',
+                  color: !usaAislamiento ? '#ef9a9a' : 'var(--text3)',
+                }}>NO (U=1.5)</button>
+              </div>
+            </div>
+          )}
+          {isD && (
+            <div style={{padding:'8px 10px',background:'rgba(68,114,196,0.1)',border:'1px solid rgba(68,114,196,0.25)',borderRadius:'var(--r2)',fontSize:9,fontFamily:'var(--cond)',color:'#90caf9'}}>
+              <div style={{marginBottom:5}}>Nota 2 (Art. 15): Factor U a criterio del proyectista.</div>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                <span style={{fontSize:8,color:'var(--text2)'}}>Factor U:</span>
+                <input type="number" min={0.5} max={1.5} step={0.1} value={uManualD}
+                  onChange={e => {
+                    const v = parseFloat(e.target.value)
+                    if (!isNaN(v)) setUManualD(Math.max(0.5, Math.min(1.5, v)))
+                  }}
+                  style={{width:50,background:'var(--surface3)',border:'1px solid var(--border)',borderRadius:'var(--r)',
+                    color:'var(--text0)',fontFamily:'var(--mono)',fontSize:10,padding:'3px 6px',outline:'none',textAlign:'center'}} />
+                <span style={{fontSize:7,color:'var(--text3)'}}>(0.5 - 1.5)</span>
+              </div>
+            </div>
+          )}
 
           {/* Ia auto/manual */}
           <div className="esp-ia-block">
@@ -1703,7 +1758,7 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
                 <tr><td className="lbl">Sa max (m/s2)</td><td className="vx">{saMaxX.toFixed(4)}</td><td className="vy">{saMaxY.toFixed(4)}</td></tr>
                 <tr><td className="lbl">Sa/g max</td><td className="vx">{sagMaxX.toFixed(5)}</td><td className="vy">{sagMaxY.toFixed(5)}</td></tr>
                 <tr><td className="lbl" colSpan={3} style={{textAlign:'center',color:'var(--text3)',fontSize:8,paddingTop:4}}>
-                  Z={Z} &nbsp; S={sVal?.toFixed(2)} &nbsp; U={U} &nbsp; Tp={Tp}s &nbsp; TL={TL}s
+                  Z={Z} &nbsp; S={sVal?.toFixed(2)} &nbsp; U={U.toFixed(1)} &nbsp; Tp={Tp}s &nbsp; TL={TL}s
                 </td></tr>
               </tbody>
             </table>

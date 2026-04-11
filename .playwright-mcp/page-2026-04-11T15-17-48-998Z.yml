@@ -1,0 +1,268 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - button [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - img [ref=e9]
+      - generic [ref=e13]: ColumnSeis
+    - generic [ref=e14]:
+      - button "DERIVAS" [ref=e15] [cursor=pointer]
+      - button "IRREG. PLANTA" [ref=e16] [cursor=pointer]
+      - button "IRREG. ALTURA" [ref=e17] [cursor=pointer]
+      - button "RESUMEN" [ref=e18] [cursor=pointer]
+      - button "ESPECTRO" [ref=e19] [cursor=pointer]
+    - generic [ref=e20]:
+      - generic [ref=e21]: NTE E.030
+      - generic [ref=e22]: v1.0
+  - generic [ref=e23]:
+    - generic [ref=e24]:
+      - generic [ref=e25]: N. Pisos
+      - spinbutton [active] [ref=e26]: "6"
+    - generic [ref=e27]:
+      - generic [ref=e28]: Irregular
+      - combobox [ref=e29] [cursor=pointer]:
+        - option "SI" [selected]
+        - option "NO"
+    - generic [ref=e30]:
+      - generic [ref=e31]: Sistema X
+      - combobox [ref=e32] [cursor=pointer]:
+        - option "Pórticos C.A."
+        - option "Dual C.A."
+        - option "Muros C.A." [selected]
+        - option "Muros Duct. Limitada"
+        - option "Albañilería"
+        - option "Madera"
+    - generic [ref=e33]:
+      - generic [ref=e34]: Sistema Y
+      - combobox [ref=e35] [cursor=pointer]:
+        - option "Pórticos C.A."
+        - option "Dual C.A."
+        - option "Muros C.A." [selected]
+        - option "Muros Duct. Limitada"
+        - option "Albañilería"
+        - option "Madera"
+    - generic [ref=e36]:
+      - generic [ref=e37]: Material X
+      - combobox [ref=e38] [cursor=pointer]:
+        - option "Concreto Armado" [selected]
+        - option "Acero"
+        - option "Albañilería"
+        - option "Madera"
+        - option "Muros Duct. Limitada"
+    - generic [ref=e39]:
+      - generic [ref=e40]: Material Y
+      - combobox [ref=e41] [cursor=pointer]:
+        - option "Concreto Armado" [selected]
+        - option "Acero"
+        - option "Albañilería"
+        - option "Madera"
+        - option "Muros Duct. Limitada"
+    - generic [ref=e42]:
+      - generic [ref=e43]: Ro X
+      - generic [ref=e44]: "6"
+    - generic [ref=e45]:
+      - generic [ref=e46]: Ro Y
+      - generic [ref=e47]: "6"
+    - generic [ref=e48]:
+      - generic [ref=e49]: Factor
+      - generic [ref=e50]: "0.85"
+    - generic [ref=e51]:
+      - generic [ref=e52]: R(X)
+      - generic [ref=e53]: "6.00"
+    - generic [ref=e54]:
+      - generic [ref=e55]: R(Y)
+      - generic [ref=e56]: "6.00"
+  - generic [ref=e383]:
+    - generic [ref=e384]:
+      - button "Importar Excel ETABS" [ref=e385] [cursor=pointer]
+      - button "Pegar desde ETABS" [ref=e386] [cursor=pointer]
+      - generic [ref=e387]: "Tambien: Ctrl+V directo en celdas de la tabla"
+    - generic [ref=e388]:
+      - generic [ref=e389] [cursor=pointer]:
+        - generic [ref=e390]: ▶
+        - generic [ref=e391]: VERIFICACION DIRECCION X-X
+      - generic [ref=e392]:
+        - generic [ref=e393]:
+          - heading "DIR. X-X" [level=4] [ref=e394]
+          - table [ref=e396]:
+            - rowgroup [ref=e397]:
+              - row "Piso hi (cm) di elast. Di=f*R*di Dperm Di/Dperm Verif." [ref=e398]:
+                - columnheader "Piso" [ref=e399]
+                - columnheader "hi (cm)" [ref=e400]
+                - columnheader "di elast." [ref=e401]
+                - columnheader "Di=f*R*di" [ref=e402]
+                - columnheader "Dperm" [ref=e403]
+                - columnheader "Di/Dperm" [ref=e404]
+                - columnheader "Verif." [ref=e405]
+            - rowgroup [ref=e406]:
+              - row "6 280 — 0.00700 — —" [ref=e407]:
+                - cell "6" [ref=e408]
+                - cell "280" [ref=e409]:
+                  - spinbutton [ref=e410]: "280"
+                - cell [ref=e411]:
+                  - spinbutton [ref=e412]
+                - cell "—" [ref=e413]
+                - cell "0.00700" [ref=e414]
+                - cell "—" [ref=e415]
+                - cell "—" [ref=e416]
+              - row "5 280 — 0.00700 — —" [ref=e417]:
+                - cell "5" [ref=e418]
+                - cell "280" [ref=e419]:
+                  - spinbutton [ref=e420]: "280"
+                - cell [ref=e421]:
+                  - spinbutton [ref=e422]
+                - cell "—" [ref=e423]
+                - cell "0.00700" [ref=e424]
+                - cell "—" [ref=e425]
+                - cell "—" [ref=e426]
+              - row "4 280 — 0.00700 — —" [ref=e427]:
+                - cell "4" [ref=e428]
+                - cell "280" [ref=e429]:
+                  - spinbutton [ref=e430]: "280"
+                - cell [ref=e431]:
+                  - spinbutton [ref=e432]
+                - cell "—" [ref=e433]
+                - cell "0.00700" [ref=e434]
+                - cell "—" [ref=e435]
+                - cell "—" [ref=e436]
+              - row "3 280 — 0.00700 — —" [ref=e437]:
+                - cell "3" [ref=e438]
+                - cell "280" [ref=e439]:
+                  - spinbutton [ref=e440]: "280"
+                - cell [ref=e441]:
+                  - spinbutton [ref=e442]
+                - cell "—" [ref=e443]
+                - cell "0.00700" [ref=e444]
+                - cell "—" [ref=e445]
+                - cell "—" [ref=e446]
+              - row "2 280 — 0.00700 — —" [ref=e447]:
+                - cell "2" [ref=e448]
+                - cell "280" [ref=e449]:
+                  - spinbutton [ref=e450]: "280"
+                - cell [ref=e451]:
+                  - spinbutton [ref=e452]
+                - cell "—" [ref=e453]
+                - cell "0.00700" [ref=e454]
+                - cell "—" [ref=e455]
+                - cell "—" [ref=e456]
+              - row "Azotea 280 — 0.00700 — —" [ref=e457]:
+                - cell "Azotea" [ref=e458]
+                - cell "280" [ref=e459]:
+                  - spinbutton [ref=e460]: "280"
+                - cell [ref=e461]:
+                  - spinbutton [ref=e462]
+                - cell "—" [ref=e463]
+                - cell "0.00700" [ref=e464]
+                - cell "—" [ref=e465]
+                - cell "—" [ref=e466]
+        - generic [ref=e467]:
+          - generic [ref=e468]: "Deriva Max. Calc. X: —"
+          - generic [ref=e469]: "Deriva Permitida X: —"
+          - generic [ref=e470]: "VERIFICACION X-X: —"
+    - generic [ref=e471]:
+      - generic [ref=e472] [cursor=pointer]:
+        - generic [ref=e473]: ▶
+        - generic [ref=e474]: VERIFICACION DIRECCION Y-Y
+      - generic [ref=e475]:
+        - generic [ref=e476]:
+          - heading "DIR. Y-Y" [level=4] [ref=e477]
+          - table [ref=e479]:
+            - rowgroup [ref=e480]:
+              - row "Piso hi (cm) di elast. Di=f*R*di Dperm Di/Dperm Verif." [ref=e481]:
+                - columnheader "Piso" [ref=e482]
+                - columnheader "hi (cm)" [ref=e483]
+                - columnheader "di elast." [ref=e484]
+                - columnheader "Di=f*R*di" [ref=e485]
+                - columnheader "Dperm" [ref=e486]
+                - columnheader "Di/Dperm" [ref=e487]
+                - columnheader "Verif." [ref=e488]
+            - rowgroup [ref=e489]:
+              - row "6 280 — 0.00700 — —" [ref=e490]:
+                - cell "6" [ref=e491]
+                - cell "280" [ref=e492]:
+                  - spinbutton [ref=e493]: "280"
+                - cell [ref=e494]:
+                  - spinbutton [ref=e495]
+                - cell "—" [ref=e496]
+                - cell "0.00700" [ref=e497]
+                - cell "—" [ref=e498]
+                - cell "—" [ref=e499]
+              - row "5 280 — 0.00700 — —" [ref=e500]:
+                - cell "5" [ref=e501]
+                - cell "280" [ref=e502]:
+                  - spinbutton [ref=e503]: "280"
+                - cell [ref=e504]:
+                  - spinbutton [ref=e505]
+                - cell "—" [ref=e506]
+                - cell "0.00700" [ref=e507]
+                - cell "—" [ref=e508]
+                - cell "—" [ref=e509]
+              - row "4 280 — 0.00700 — —" [ref=e510]:
+                - cell "4" [ref=e511]
+                - cell "280" [ref=e512]:
+                  - spinbutton [ref=e513]: "280"
+                - cell [ref=e514]:
+                  - spinbutton [ref=e515]
+                - cell "—" [ref=e516]
+                - cell "0.00700" [ref=e517]
+                - cell "—" [ref=e518]
+                - cell "—" [ref=e519]
+              - row "3 280 — 0.00700 — —" [ref=e520]:
+                - cell "3" [ref=e521]
+                - cell "280" [ref=e522]:
+                  - spinbutton [ref=e523]: "280"
+                - cell [ref=e524]:
+                  - spinbutton [ref=e525]
+                - cell "—" [ref=e526]
+                - cell "0.00700" [ref=e527]
+                - cell "—" [ref=e528]
+                - cell "—" [ref=e529]
+              - row "2 280 — 0.00700 — —" [ref=e530]:
+                - cell "2" [ref=e531]
+                - cell "280" [ref=e532]:
+                  - spinbutton [ref=e533]: "280"
+                - cell [ref=e534]:
+                  - spinbutton [ref=e535]
+                - cell "—" [ref=e536]
+                - cell "0.00700" [ref=e537]
+                - cell "—" [ref=e538]
+                - cell "—" [ref=e539]
+              - row "Azotea 280 — 0.00700 — —" [ref=e540]:
+                - cell "Azotea" [ref=e541]
+                - cell "280" [ref=e542]:
+                  - spinbutton [ref=e543]: "280"
+                - cell [ref=e544]:
+                  - spinbutton [ref=e545]
+                - cell "—" [ref=e546]
+                - cell "0.00700" [ref=e547]
+                - cell "—" [ref=e548]
+                - cell "—" [ref=e549]
+        - generic [ref=e550]:
+          - generic [ref=e551]: "Deriva Max. Calc. Y: —"
+          - generic [ref=e552]: "Deriva Permitida Y: —"
+          - generic [ref=e553]: "VERIFICACION Y-Y: —"
+    - generic [ref=e554]:
+      - generic [ref=e555] [cursor=pointer]:
+        - generic [ref=e556]: ▶
+        - generic [ref=e557]: RESUMEN DE VERIFICACION DE DERIVAS
+      - table [ref=e559]:
+        - rowgroup [ref=e560]:
+          - row "Direccion D Max. Calc. D Permitida Ratio Verificacion" [ref=e561]:
+            - columnheader "Direccion" [ref=e562]
+            - columnheader "D Max. Calc." [ref=e563]
+            - columnheader "D Permitida" [ref=e564]
+            - columnheader "Ratio" [ref=e565]
+            - columnheader "Verificacion" [ref=e566]
+        - rowgroup [ref=e567]:
+          - row "X-X — — — —" [ref=e568]:
+            - cell "X-X" [ref=e569]
+            - cell "—" [ref=e570]
+            - cell "—" [ref=e571]
+            - cell "—" [ref=e572]
+            - cell "—" [ref=e573]
+          - row "Y-Y — — — —" [ref=e574]:
+            - cell "Y-Y" [ref=e575]
+            - cell "—" [ref=e576]
+            - cell "—" [ref=e577]
+            - cell "—" [ref=e578]
+            - cell "—" [ref=e579]

@@ -22,12 +22,54 @@ export const SUELO_S = {
 export const SUELO_TP = { S0: 0.3, S1: 0.4, S2: 0.6, S3: 0.9, S4: 1.0 }
 export const SUELO_TL = { S0: 3.0, S1: 3.0, S2: 3.0, S3: 2.5, S4: 2.0 }
 
+export const CATEGORIAS_LIST = [
+  'A1 - Salud',
+  'A2 - Esenciales',
+  'B - Importantes',
+  'C - Comunes',
+  'D - Temporales',
+]
+
+// Legacy lookup (for fixed-U categories only)
 export const CATEGORIA_U = {
   'A1 - Salud': 1.50,
   'A2 - Esenciales': 1.50,
   'B - Importantes': 1.30,
   'C - Comunes': 1.00,
   'D - Temporales': 1.00,
+}
+
+/**
+ * Calcula el factor U segun Tabla N7 + Nota 1 + Nota 2
+ * @param {string} categoria - Key de CATEGORIAS_LIST
+ * @param {number} zonaNum - 1,2,3,4
+ * @param {boolean|null} usaAislamiento - solo para A1 en zona 1/2
+ * @param {number|null} uManualD - valor manual para cat D
+ */
+export function calcularFactorU(categoria, zonaNum, usaAislamiento, uManualD) {
+  const cat = categoria.substring(0, 2).toUpperCase() // 'A1','A2','B ','C ','D '
+
+  if (cat === 'A1') {
+    if (zonaNum >= 3) {
+      return { U: 1.0, nota: 'Nota 1: Aislamiento sismico obligatorio en Zona ' + zonaNum, obligatorio: true }
+    }
+    // Zona 1 o 2: opcional
+    if (usaAislamiento) {
+      return { U: 1.0, nota: 'Nota 1: Con aislamiento sismico', obligatorio: false }
+    }
+    return { U: 1.5, nota: 'Nota 1: Sin aislamiento sismico, U >= 1.5', obligatorio: false }
+  }
+
+  if (cat === 'A2') return { U: 1.5, nota: null, obligatorio: false }
+  if (cat.startsWith('B'))  return { U: 1.3, nota: null, obligatorio: false }
+  if (cat.startsWith('C'))  return { U: 1.0, nota: null, obligatorio: false }
+
+  if (cat.startsWith('D')) {
+    const val = (uManualD != null && uManualD >= 0.5 && uManualD <= 1.5) ? uManualD : 1.0
+    return { U: val, nota: 'Nota 2: Factor U a criterio del proyectista', obligatorio: false, editable: true }
+  }
+
+  return { U: 1.0, nota: null, obligatorio: false }
 }
 
 export const SISTEMA_RO = {
