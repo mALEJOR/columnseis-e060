@@ -1,6 +1,7 @@
 import { useState, useReducer, useMemo, useCallback, useRef } from 'react'
 import * as E030 from '../utils/irregularidadesE030'
 import * as Espectro from '../utils/espectroE030'
+import { parseExcelFile, parseClipboardText, isETABSTable } from '../utils/etabsDriftsParser'
 
 const MAX_PISOS = 20
 
@@ -174,8 +175,102 @@ function ParamsBar({ state, dispatch, RoX, RoY, factor, Rx, Ry }) {
 // ══════════════════════════════════════════════════════════════
 //  TAB 1: DERIVAS
 // ══════════════════════════════════════════════════════════════
+
+function applyETABSData(datos, arrayName, dispatch, nPisos) {
+  for (let i = 0; i < datos.length && i < nPisos; i++) {
+    dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'hi', value: datos[i].hiCm || 280 })
+    dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'delta', value: datos[i].drift })
+  }
+}
+
 function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY }) {
   const { nPisos } = state
+  const fileRef = useRef(null)
+  const [importMsg, setImportMsg] = useState(null) // {type:'ok'|'err', text}
+  const [pasteMode, setPasteMode] = useState(false)
+  const pasteRef = useRef(null)
+
+  // ── Import Excel ──
+  const handleFileImport = useCallback(async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImportMsg(null)
+    try {
+      const buf = await file.arrayBuffer()
+      const result = parseExcelFile(buf)
+      if (result.error) { setImportMsg({ type: 'err', text: result.error }); return }
+      // Adjust nPisos
+      if (result.numPisos > 0 && result.numPisos <= 20) {
+        dispatch({ type: 'SET_FIELD', field: 'nPisos', value: result.numPisos })
+      }
+      const np = Math.min(result.numPisos, 20)
+      if (result.datosX.length > 0) applyETABSData(result.datosX, 'derivasX', dispatch, np)
+      if (result.datosY.length > 0) applyETABSData(result.datosY, 'derivasY', dispatch, np)
+      const xn = result.datosX.length, yn = result.datosY.length
+      setImportMsg({ type: 'ok', text: `Importados ${np} pisos (X: ${xn}, Y: ${yn} filas)` })
+    } catch (err) {
+      setImportMsg({ type: 'err', text: 'Error leyendo archivo: ' + (err.message || err) })
+    }
+    if (fileRef.current) fileRef.current.value = ''
+  }, [dispatch])
+
+  // ── Paste handler ──
+  const handlePaste = useCallback((e) => {
+    const text = (e.clipboardData || window.clipboardData)?.getData('text/plain')
+    if (!text || !text.trim()) return
+
+    // Check if it's a full ETABS table
+    if (isETABSTable(text)) {
+      e.preventDefault()
+      const result = parseClipboardText(text)
+      if (result.error) { setImportMsg({ type: 'err', text: result.error }); return }
+      if (result.numPisos > 0 && result.numPisos <= 20) {
+        dispatch({ type: 'SET_FIELD', field: 'nPisos', value: result.numPisos })
+      }
+      const np = Math.min(result.numPisos, 20)
+      if (result.datosX.length > 0) applyETABSData(result.datosX, 'derivasX', dispatch, np)
+      if (result.datosY.length > 0) applyETABSData(result.datosY, 'derivasY', dispatch, np)
+      setImportMsg({ type: 'ok', text: `Pegados ${np} pisos (X: ${result.datosX.length}, Y: ${result.datosY.length})` })
+      setPasteMode(false)
+      return
+    }
+
+    // Simple column paste: numbers separated by newlines
+    const lines = text.trim().split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    if (lines.length > 1 && lines.every(l => !isNaN(parseFloat(l)))) {
+      e.preventDefault()
+      // Find which input is focused to determine column
+      const active = document.activeElement
+      const arrayName = active?.dataset?.array
+      const field = active?.dataset?.field
+      const startIdx = parseInt(active?.dataset?.idx)
+      if (arrayName && field && !isNaN(startIdx)) {
+        for (let i = 0; i < lines.length && (startIdx + i) < nPisos; i++) {
+          dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: startIdx + i, field, value: parseNum(lines[i]) })
+        }
+        setImportMsg({ type: 'ok', text: `Pegados ${Math.min(lines.length, nPisos - startIdx)} valores en ${field}` })
+      }
+    }
+  }, [dispatch, nPisos])
+
+  // ── Paste from textarea ──
+  const handleTextareaPaste = useCallback((e) => {
+    setTimeout(() => {
+      const text = pasteRef.current?.value
+      if (!text?.trim()) return
+      const result = parseClipboardText(text)
+      if (result.error) { setImportMsg({ type: 'err', text: result.error }); return }
+      if (result.numPisos > 0 && result.numPisos <= 20) {
+        dispatch({ type: 'SET_FIELD', field: 'nPisos', value: result.numPisos })
+      }
+      const np = Math.min(result.numPisos, 20)
+      if (result.datosX.length > 0) applyETABSData(result.datosX, 'derivasX', dispatch, np)
+      if (result.datosY.length > 0) applyETABSData(result.datosY, 'derivasY', dispatch, np)
+      setImportMsg({ type: 'ok', text: `Pegados ${np} pisos (X: ${result.datosX.length}, Y: ${result.datosY.length})` })
+      setPasteMode(false)
+      if (pasteRef.current) pasteRef.current.value = ''
+    }, 50)
+  }, [dispatch])
 
   const resultsX = useMemo(() => {
     const pisos = state.derivasX.slice(0, nPisos).map(d => ({ hi: parseNum(d.hi), deltaElastico: parseNum(d.delta) }))
@@ -191,7 +286,7 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
   const resY = useMemo(() => E030.resumenDerivas(resultsY), [resultsY])
 
   const renderTable = (dir, results, arrayName) => (
-    <div style={{ marginBottom: 16 }}>
+    <div style={{ marginBottom: 16 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#2e7d32', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
       <div style={{ overflowX: 'auto' }}>
         <table className="e030-table">
@@ -212,11 +307,13 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
                 <td style={S.cell}>{r.piso}</td>
                 <td style={{ ...S.cell, ...S.inputCell }}>
                   <input type="number" style={S.tableInput}
+                    data-array={arrayName} data-field="hi" data-idx={i}
                     value={state[arrayName][i]?.hi ?? ''}
                     onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'hi', value: parseNum(e.target.value) })} />
                 </td>
                 <td style={{ ...S.cell, ...S.inputCell }}>
                   <input type="number" step="0.000001" style={S.tableInput}
+                    data-array={arrayName} data-field="delta" data-idx={i}
                     value={state[arrayName][i]?.delta ?? ''}
                     onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'delta', value: parseNum(e.target.value) })} />
                 </td>
@@ -234,6 +331,65 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
 
   return (
     <div>
+      {/* ── Import bar ── */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 12,
+        padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)',
+        borderRadius: 'var(--r2)',
+      }}>
+        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" style={{ display: 'none' }}
+          onChange={handleFileImport} />
+        <button style={{
+          padding: '6px 12px', fontSize: 10, fontFamily: 'var(--cond)', fontWeight: 600,
+          borderRadius: 'var(--r)', border: '1px solid rgba(68,114,196,0.4)',
+          background: 'rgba(68,114,196,0.15)', color: '#64b5f6', cursor: 'pointer',
+          letterSpacing: '.3px',
+        }} onClick={() => fileRef.current?.click()}>
+          Importar Excel ETABS
+        </button>
+        <button style={{
+          padding: '6px 12px', fontSize: 10, fontFamily: 'var(--cond)', fontWeight: 600,
+          borderRadius: 'var(--r)', border: '1px solid rgba(156,39,176,0.4)',
+          background: pasteMode ? 'rgba(156,39,176,0.25)' : 'rgba(156,39,176,0.12)',
+          color: '#ce93d8', cursor: 'pointer', letterSpacing: '.3px',
+        }} onClick={() => setPasteMode(!pasteMode)}>
+          {pasteMode ? 'Cerrar zona de pegado' : 'Pegar desde ETABS'}
+        </button>
+        <span style={{ fontSize: 8, color: 'var(--text3)', fontFamily: 'var(--cond)' }}>
+          Tambien: Ctrl+V directo en celdas de la tabla
+        </span>
+        {importMsg && (
+          <span style={{
+            fontSize: 9, fontFamily: 'var(--cond)', fontWeight: 600, marginLeft: 'auto',
+            padding: '3px 10px', borderRadius: 'var(--r)',
+            background: importMsg.type === 'ok' ? 'rgba(46,125,50,0.15)' : 'rgba(198,40,40,0.15)',
+            color: importMsg.type === 'ok' ? '#4caf50' : '#ef5350',
+            border: `1px solid ${importMsg.type === 'ok' ? 'rgba(46,125,50,0.3)' : 'rgba(198,40,40,0.3)'}`,
+          }}>
+            {importMsg.text}
+          </span>
+        )}
+      </div>
+
+      {/* ── Paste zone ── */}
+      {pasteMode && (
+        <div style={{
+          marginBottom: 12, padding: '10px 14px', background: 'var(--surface)',
+          border: '1px dashed rgba(156,39,176,0.4)', borderRadius: 'var(--r2)',
+        }}>
+          <div style={{ fontSize: 9, color: 'var(--text2)', marginBottom: 6, fontFamily: 'var(--cond)' }}>
+            Copie las filas de Story Drifts en ETABS (Ctrl+C) y pegue aqui (Ctrl+V). Se detecta automaticamente la direccion X/Y.
+          </div>
+          <textarea ref={pasteRef} onPaste={handleTextareaPaste}
+            placeholder="Pegue aqui los datos de ETABS (Ctrl+V)..."
+            style={{
+              width: '100%', minHeight: 80, maxHeight: 160, resize: 'vertical',
+              background: 'var(--surface3)', border: '1px solid var(--border)', borderRadius: 'var(--r)',
+              color: 'var(--text0)', fontFamily: 'var(--mono)', fontSize: 9, padding: 8, outline: 'none',
+            }} />
+        </div>
+      )}
+
       <Section title="VERIFICACION DIRECCION X-X" defaultOpen={true}>
         {renderTable('X-X', resultsX, 'derivasX')}
         <div className="e030-summary-row">
