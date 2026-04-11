@@ -1167,27 +1167,26 @@ const ZONAS = Object.keys(Espectro.ZONA_Z)
 const CATEGORIAS = Object.keys(Espectro.CATEGORIA_U)
 const SISTEMAS_ESP = Object.keys(Espectro.SISTEMA_RO)
 
-function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY }) {
+function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, sistemaXName, sistemaYName }) {
   const [zona, setZona] = useState('Zona 2')
   const [suelo, setSuelo] = useState('S1')
   const [categoria, setCategoria] = useState('C (Temporal)')
-  const [sistema, setSistema] = useState('Porticos C.A.')
-  const [iaMode, setIaMode] = useState('auto') // 'auto' | 'manual'
+  const [iaMode, setIaMode] = useState('auto')
   const [ipMode, setIpMode] = useState('auto')
   const [iaManIdx, setIaManIdx] = useState(0)
+  const [iaManIdxY, setIaManIdxY] = useState(0)
   const [ipManIdxX, setIpManIdxX] = useState(0)
   const [ipManIdxY, setIpManIdxY] = useState(0)
-  const [iaManIdxY, setIaManIdxY] = useState(0)
   const [modoSa, setModoSa] = useState('Sa')
-  const [tooltip, setTooltip] = useState(null)
+  const [tooltipX, setTooltipX] = useState(null)
+  const [tooltipY, setTooltipY] = useState(null)
   const [tablaDir, setTablaDir] = useState('X')
-  const svgRef = useRef(null)
+  const svgRefX = useRef(null)
+  const svgRefY = useRef(null)
 
-  // Has calculated values?
   const hasCalcIa = iaCalcX != null && iaCalcY != null
   const hasCalcIp = ipCalcX != null && ipCalcY != null
 
-  // Effective Ia/Ip values per direction
   const IaX = (iaMode === 'auto' && hasCalcIa) ? iaCalcX : Espectro.IA_OPTIONS[iaManIdx]?.value ?? 1
   const IaY = (iaMode === 'auto' && hasCalcIa) ? iaCalcY : Espectro.IA_OPTIONS[iaManIdxY]?.value ?? 1
   const IpX = (ipMode === 'auto' && hasCalcIp) ? ipCalcX : Espectro.IP_OPTIONS[ipManIdxX]?.value ?? 1
@@ -1197,16 +1196,17 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY }) {
   const sKey = suelo
   const sVal = Espectro.SUELO_S[zona]?.[sKey]
   const U = Espectro.CATEGORIA_U[categoria]
-  const Ro = Espectro.SISTEMA_RO[sistema]
+  // Ro viene de la barra superior (por direccion)
+  const RoX = RoXParam
+  const RoY = RoYParam
   const Tp = Espectro.SUELO_TP[sKey]
   const TL = Espectro.SUELO_TL[sKey]
-  const Rx = Ro * IaX * IpX
-  const Ry = Ro * IaY * IpY
+  const Rx = RoX * IaX * IpX
+  const Ry = RoY * IaY * IpY
   const esEMS = sVal == null
-  const identical = Math.abs(Rx - Ry) < 0.001
 
-  const espX = useMemo(() => esEMS ? [] : Espectro.generarEspectro(Z, U, sVal, Ro, IaX, IpX, Tp, TL), [Z, U, sVal, Ro, IaX, IpX, Tp, TL, esEMS])
-  const espY = useMemo(() => esEMS ? [] : Espectro.generarEspectro(Z, U, sVal, Ro, IaY, IpY, Tp, TL), [Z, U, sVal, Ro, IaY, IpY, Tp, TL, esEMS])
+  const espX = useMemo(() => esEMS ? [] : Espectro.generarEspectro(Z, U, sVal, RoX, IaX, IpX, Tp, TL), [Z, U, sVal, RoX, IaX, IpX, Tp, TL, esEMS])
+  const espY = useMemo(() => esEMS ? [] : Espectro.generarEspectro(Z, U, sVal, RoY, IaY, IpY, Tp, TL), [Z, U, sVal, RoY, IaY, IpY, Tp, TL, esEMS])
 
   const saMaxX = useMemo(() => espX.length > 0 ? Math.max(...espX.map(p => p.Sa)) : 0, [espX])
   const saMaxY = useMemo(() => espY.length > 0 ? Math.max(...espY.map(p => p.Sa)) : 0, [espY])
@@ -1226,54 +1226,55 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY }) {
     URL.revokeObjectURL(url)
   }, [espX, espY])
 
-  // SVG chart
-  const W = 660, H = 300
-  const pad = { top: 24, right: 24, bottom: 36, left: 50 }
+  // SVG chart helpers (shared scale for both charts)
+  const W = 560, H = 260
+  const pad = { top: 22, right: 20, bottom: 34, left: 48 }
   const cw = W - pad.left - pad.right
   const ch = H - pad.top - pad.bottom
 
-  const yMax = useMemo(() => {
+  const yMaxShared = useMemo(() => {
     const vals = modoSa === 'Sa' ? [saMaxX, saMaxY] : [sagMaxX, sagMaxY]
     const m = Math.max(...vals)
     return Math.ceil(m * 10) / 10 || 1
   }, [modoSa, saMaxX, saMaxY, sagMaxX, sagMaxY])
 
   const xScale = (t) => pad.left + (t / 4.0) * cw
-  const yScale = (v) => pad.top + ch - (v / yMax) * ch
+  const yScale = (v) => pad.top + ch - (v / yMaxShared) * ch
 
   const mkPath = (esp) => esp.map((p, i) => {
     const val = modoSa === 'Sa' ? p.Sa : p.SaG
     return `${i === 0 ? 'M' : 'L'}${xScale(p.T).toFixed(1)},${yScale(val).toFixed(1)}`
   }).join(' ')
 
-  const pathX = useMemo(() => espX.length > 0 ? mkPath(espX) : '', [espX, modoSa, yMax])
-  const pathY = useMemo(() => espY.length > 0 ? mkPath(espY) : '', [espY, modoSa, yMax])
+  const pathX = useMemo(() => espX.length > 0 ? mkPath(espX) : '', [espX, modoSa, yMaxShared])
+  const pathY = useMemo(() => espY.length > 0 ? mkPath(espY) : '', [espY, modoSa, yMaxShared])
 
-  const gridLinesX = [0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
-  const gridLinesY = useMemo(() => {
+  const gridLinesXAxis = [0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+  const gridLinesYAxis = useMemo(() => {
     const lines = []
-    const step = yMax <= 1 ? 0.1 : yMax <= 2 ? 0.2 : yMax <= 5 ? 0.5 : 1.0
-    for (let v = 0; v <= yMax + 0.001; v += step) lines.push(+(v.toFixed(2)))
+    const step = yMaxShared <= 1 ? 0.1 : yMaxShared <= 2 ? 0.2 : yMaxShared <= 5 ? 0.5 : 1.0
+    for (let v = 0; v <= yMaxShared + 0.001; v += step) lines.push(+(v.toFixed(2)))
     return lines
-  }, [yMax])
+  }, [yMaxShared])
 
-  const handleSvgMove = useCallback((e) => {
-    if (espX.length === 0 || !svgRef.current) return
-    const rect = svgRef.current.getBoundingClientRect()
+  const mkHandleSvgMove = (esp, setTT) => (e) => {
+    const ref = esp === espX ? svgRefX : svgRefY
+    if (esp.length === 0 || !ref.current) return
+    const rect = ref.current.getBoundingClientRect()
     const mx = (e.clientX - rect.left) * (W / rect.width)
     const my = (e.clientY - rect.top) * (H / rect.height)
     const t = ((mx - pad.left) / cw) * 4.0
-    if (t < 0 || t > 4) { setTooltip(null); return }
+    if (t < 0 || t > 4) { setTT(null); return }
     const idx = Math.min(Math.round(t / 0.02), 200)
-    const px = espX[idx], py = espY[idx]
-    if (!px) { setTooltip(null); return }
-    setTooltip({ x: mx, y: my, T: px.T, C: px.C, SaX: px.Sa, SaGX: px.SaG, SaY: py?.Sa, SaGY: py?.SaG })
-  }, [espX, espY, cw])
+    const pt = esp[idx]
+    if (!pt) { setTT(null); return }
+    setTT({ x: mx, y: my, ...pt })
+  }
 
   const selSt = {
     background: 'var(--surface3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 'var(--r)',
     padding: '4px 6px', color: 'var(--text0)', fontFamily: 'var(--mono)', fontSize: 10,
-    outline: 'none', minWidth: 120, cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none',
+    outline: 'none', minWidth: 100, cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none',
   }
 
   const toggleSt = (active) => ({
@@ -1283,73 +1284,116 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY }) {
     color: active ? '#4caf50' : 'var(--text3)', letterSpacing: '.4px', transition: 'all .15s',
   })
 
+  // Render a single chart SVG
+  const renderChart = (esp, path, color, fillColor, label, R, saMaxVal, sagMaxVal, svgR, tt, setTT) => (
+    <div className="esp-chart-wrap">
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+        <span style={{fontSize:10,fontFamily:'var(--cond)',fontWeight:700,color,letterSpacing:'.5px'}}>
+          {label} &nbsp;<span style={{fontWeight:400,color:'var(--text2)',fontSize:9}}>R={R.toFixed(2)} | Sa max={(modoSa==='Sa'?saMaxVal:sagMaxVal).toFixed(4)} {modoSa==='Sa'?'m/s2':''}</span>
+        </span>
+      </div>
+      <svg ref={svgR} width="100%" viewBox={`0 0 ${W} ${H}`} style={{cursor:'crosshair'}}
+        onMouseMove={mkHandleSvgMove(esp, setTT)} onMouseLeave={() => setTT(null)}>
+        {gridLinesYAxis.map(v => (
+          <g key={`gy-${v}`}>
+            <line x1={pad.left} y1={yScale(v)} x2={W-pad.right} y2={yScale(v)} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+            <text x={pad.left-4} y={yScale(v)+3} fill="var(--text3)" fontSize="7" fontFamily="var(--mono)" textAnchor="end">{v.toFixed(v<1?2:1)}</text>
+          </g>
+        ))}
+        {gridLinesXAxis.map(t => (
+          <g key={`gx-${t}`}>
+            <line x1={xScale(t)} y1={pad.top} x2={xScale(t)} y2={H-pad.bottom} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+            <text x={xScale(t)} y={H-pad.bottom+11} fill="var(--text3)" fontSize="7" fontFamily="var(--mono)" textAnchor="middle">{t.toFixed(1)}</text>
+          </g>
+        ))}
+        <text x={W/2} y={H-4} fill="var(--text2)" fontSize="8" fontFamily="var(--cond)" textAnchor="middle">T (s)</text>
+        <text x={10} y={H/2} fill="var(--text2)" fontSize="8" fontFamily="var(--cond)" textAnchor="middle" transform={`rotate(-90,10,${H/2})`}>
+          {modoSa==='Sa'?'Sa (m/s2)':'Sa/g'}
+        </text>
+        {/* Breakpoints */}
+        <line x1={xScale(0.2*Tp)} y1={pad.top} x2={xScale(0.2*Tp)} y2={H-pad.bottom} stroke="rgba(255,193,7,0.3)" strokeWidth="1" strokeDasharray="3,3" />
+        <text x={xScale(0.2*Tp)} y={pad.top-3} fill="#ffc107" fontSize="6" fontFamily="var(--mono)" textAnchor="middle">0.2Tp</text>
+        <line x1={xScale(Tp)} y1={pad.top} x2={xScale(Tp)} y2={H-pad.bottom} stroke="rgba(255,152,0,0.4)" strokeWidth="1" strokeDasharray="3,3" />
+        <text x={xScale(Tp)} y={pad.top-3} fill="#ff9800" fontSize="6" fontFamily="var(--mono)" textAnchor="middle">Tp={Tp}</text>
+        <line x1={xScale(TL)} y1={pad.top} x2={xScale(TL)} y2={H-pad.bottom} stroke="rgba(244,67,54,0.4)" strokeWidth="1" strokeDasharray="3,3" />
+        <text x={xScale(TL)} y={pad.top-3} fill="#f44336" fontSize="6" fontFamily="var(--mono)" textAnchor="middle">TL={TL}</text>
+        {/* Axes */}
+        <line x1={pad.left} y1={pad.top} x2={pad.left} y2={H-pad.bottom} stroke="var(--text3)" strokeWidth="1" />
+        <line x1={pad.left} y1={H-pad.bottom} x2={W-pad.right} y2={H-pad.bottom} stroke="var(--text3)" strokeWidth="1" />
+        {/* Curve */}
+        {path && <path d={path} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />}
+        {path && <path d={`${path} L${xScale(4).toFixed(1)},${yScale(0).toFixed(1)} L${xScale(0).toFixed(1)},${yScale(0).toFixed(1)} Z`} fill={fillColor} />}
+        {/* Tooltip crosshair */}
+        {tt && <>
+          <line x1={xScale(tt.T)} y1={pad.top} x2={xScale(tt.T)} y2={H-pad.bottom} stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+          <circle cx={xScale(tt.T)} cy={yScale(modoSa==='Sa'?tt.Sa:tt.SaG)} r="3" fill={color} />
+        </>}
+      </svg>
+      {tt && (
+        <div className="esp-tooltip" style={{left: Math.min(tt.x+12, W-140), top: Math.max(tt.y-50,10)}}>
+          T={tt.T.toFixed(2)}s &nbsp; C={tt.C.toFixed(4)}<br/>
+          Sa={tt.Sa.toFixed(4)} m/s2 &nbsp; Sa/g={tt.SaG.toFixed(5)}
+        </div>
+      )}
+    </div>
+  )
+
   const activeEsp = tablaDir === 'X' ? espX : espY
 
   return (
     <div>
       <style>{`
-        .esp-layout { display: flex; gap: 16px; margin-bottom: 16px; }
-        .esp-left { flex: 0 0 340px; min-width: 280px; display: flex; flex-direction: column; gap: 12px; }
-        .esp-right { flex: 1; min-width: 0; }
-        @media(max-width:768px) { .esp-layout { flex-direction: column; } .esp-left { flex: none; } }
+        .esp-top-row { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .esp-left-col { flex: 0 0 300px; min-width: 260px; display: flex; flex-direction: column; gap: 10px; }
+        .esp-right-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+        @media(max-width:768px) { .esp-top-row { flex-direction: column; } .esp-left-col { flex: none; } }
         .esp-params-grid {
           display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 10px 12px;
           background: var(--surface); border-radius: var(--r2); border: 1px solid var(--border);
         }
-        .esp-params-grid.full { grid-template-columns: 1fr; }
         .esp-param { display: flex; flex-direction: column; gap: 2px; }
         .esp-param label {
           font-size: 7px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px;
           font-weight: 500; font-family: var(--cond);
         }
         .esp-ia-block {
-          padding: 10px 12px; background: var(--surface); border-radius: var(--r2);
+          padding: 8px 10px; background: var(--surface); border-radius: var(--r2);
           border: 1px solid var(--border);
         }
-        .esp-ia-header {
-          display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
-        }
+        .esp-ia-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
         .esp-ia-title {
-          font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: .6px;
+          font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px;
           font-weight: 600; font-family: var(--cond);
         }
-        .esp-ia-vals {
-          display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-family: var(--mono); font-size: 10px;
-        }
+        .esp-ia-vals { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-family: var(--mono); font-size: 10px; }
         .esp-ia-val {
           padding: 3px 6px; border-radius: var(--r); text-align: center;
           background: rgba(46,125,50,0.12); border: 1px solid rgba(46,125,50,0.25); color: #4caf50;
         }
-        .esp-ia-val.manual { background: rgba(155,89,182,0.12); border-color: rgba(155,89,182,0.25); color: #bb86fc; }
         .esp-ia-dir { font-size: 7px; color: var(--text3); display: block; font-family: var(--cond); }
         .esp-calc-table {
           width: 100%; font-size: 9px; font-family: var(--mono); border-collapse: collapse;
           background: var(--surface); border-radius: var(--r2); border: 1px solid var(--border); overflow: hidden;
         }
         .esp-calc-table th {
-          padding: 5px 8px; background: #1f4e79; color: #fff; font-size: 8px; font-family: var(--cond);
+          padding: 4px 6px; background: #1f4e79; color: #fff; font-size: 8px; font-family: var(--cond);
           text-transform: uppercase; letter-spacing: .5px; font-weight: 600; text-align: center;
         }
-        .esp-calc-table td { padding: 4px 8px; border-top: 1px solid var(--border); text-align: center; }
+        .esp-calc-table td { padding: 3px 6px; border-top: 1px solid var(--border); text-align: center; }
         .esp-calc-table .lbl { text-align: left; color: var(--text2); font-family: var(--cond); font-size: 9px; }
         .esp-calc-table .vx { color: #64b5f6; font-weight: 600; }
         .esp-calc-table .vy { color: #ef9a9a; font-weight: 600; }
         .esp-chart-wrap {
           background: var(--surface); border: 1px solid var(--border); border-radius: var(--r2);
-          padding: 10px; position: relative;
+          padding: 8px 10px; position: relative;
         }
-        .esp-toggle-wrap { display: flex; gap: 4px; justify-content: flex-end; margin-bottom: 4px; }
+        .esp-toggle-wrap { display: flex; gap: 4px; justify-content: flex-end; margin-bottom: 8px; }
         .esp-toggle-btn {
           padding: 2px 8px; font-size: 8px; font-family: var(--mono); border-radius: var(--r);
           border: 1px solid var(--border); cursor: pointer; background: var(--surface3); color: var(--text2);
           font-weight: 500; transition: all .15s;
         }
         .esp-toggle-btn.active { background: #2e75b6; color: #fff; border-color: #2e75b6; }
-        .esp-legend {
-          display: flex; gap: 12px; justify-content: center; margin-top: 4px; font-size: 8px;
-          font-family: var(--cond); color: var(--text2);
-        }
-        .esp-legend-dot { display: inline-block; width: 14px; height: 2px; vertical-align: middle; margin-right: 4px; border-radius: 1px; }
         .esp-btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
         .esp-btn {
           padding: 5px 10px; font-size: 9px; font-family: var(--cond); font-weight: 600;
@@ -1372,8 +1416,8 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY }) {
         }
         .esp-tooltip {
           position: absolute; pointer-events: none; background: rgba(0,0,0,0.92); color: #fff;
-          padding: 6px 10px; border-radius: var(--r); font-size: 8px; font-family: var(--mono);
-          line-height: 1.6; white-space: nowrap; z-index: 10; border: 1px solid rgba(255,255,255,0.15);
+          padding: 5px 8px; border-radius: var(--r); font-size: 8px; font-family: var(--mono);
+          line-height: 1.5; white-space: nowrap; z-index: 10; border: 1px solid rgba(255,255,255,0.15);
         }
         .esp-dir-tabs { display: flex; gap: 4px; margin-bottom: 6px; }
         .esp-dir-tab {
@@ -1383,20 +1427,24 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY }) {
         }
         .esp-dir-tab.act-x { background: rgba(68,114,196,0.2); color: #64b5f6; border-color: rgba(68,114,196,0.4); }
         .esp-dir-tab.act-y { background: rgba(198,40,40,0.15); color: #ef9a9a; border-color: rgba(198,40,40,0.3); }
+        .esp-charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        @media(max-width:900px) { .esp-charts-grid { grid-template-columns: 1fr; } }
+        .esp-sys-badge {
+          font-size: 9px; font-family: var(--mono); padding: 3px 8px; border-radius: var(--r);
+          background: var(--surface3); border: 1px solid var(--border); color: var(--text1); text-align: center;
+        }
       `}</style>
 
-      {/* Warning EMS */}
       {esEMS && (
         <div className="esp-warning">
           Zona 4 + Suelo S4: Se requiere Estudio de Microzonificacion Sismica (EMS). No se puede generar espectro.
         </div>
       )}
 
-      {/* ── MAIN LAYOUT: Left params + Right chart ── */}
-      <div className="esp-layout">
-        {/* LEFT PANEL */}
-        <div className="esp-left">
-          {/* 4 Base dropdowns */}
+      {/* ── TOP ROW: params left + calc table right ── */}
+      <div className="esp-top-row">
+        <div className="esp-left-col">
+          {/* 3 dropdowns (zona, suelo, categoria) — Sistema viene de barra */}
           <div className="esp-params-grid">
             <div className="esp-param">
               <label>Zona Sismica</label>
@@ -1417,17 +1465,18 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY }) {
               </select>
             </div>
             <div className="esp-param">
-              <label>Sistema (Ro)</label>
-              <select style={selSt} value={sistema} onChange={e => setSistema(e.target.value)}>
-                {SISTEMAS_ESP.map(s => <option key={s} value={s}>{s} (Ro={Espectro.SISTEMA_RO[s]})</option>)}
-              </select>
+              <label>Sistema (Barra Sup.)</label>
+              <div style={{display:'flex',gap:4,flexDirection:'column'}}>
+                <div className="esp-sys-badge"><span style={{color:'#64b5f6'}}>X:</span> {sistemaXName} (Ro={RoX})</div>
+                <div className="esp-sys-badge"><span style={{color:'#ef9a9a'}}>Y:</span> {sistemaYName} (Ro={RoY})</div>
+              </div>
             </div>
           </div>
 
-          {/* Ia block: auto/manual */}
+          {/* Ia auto/manual */}
           <div className="esp-ia-block">
             <div className="esp-ia-header">
-              <span className="esp-ia-title">Ia (Irregularidad Altura)</span>
+              <span className="esp-ia-title">Ia (Altura)</span>
               <div style={{display:'flex',gap:4}}>
                 <button style={toggleSt(iaMode==='auto')} onClick={() => setIaMode('auto')} disabled={!hasCalcIa}>Auto</button>
                 <button style={toggleSt(iaMode==='manual')} onClick={() => setIaMode('manual')}>Manual</button>
@@ -1440,31 +1489,23 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY }) {
               </div>
             ) : (
               <div className="esp-ia-vals">
-                <div>
-                  <span className="esp-ia-dir">X-X</span>
-                  <select style={{...selSt, width:'100%', minWidth:0}} value={iaManIdx} onChange={e => setIaManIdx(+e.target.value)}>
-                    {Espectro.IA_OPTIONS.map((o,i) => <option key={i} value={i}>{o.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <span className="esp-ia-dir">Y-Y</span>
-                  <select style={{...selSt, width:'100%', minWidth:0}} value={iaManIdxY} onChange={e => setIaManIdxY(+e.target.value)}>
-                    {Espectro.IA_OPTIONS.map((o,i) => <option key={i} value={i}>{o.label}</option>)}
-                  </select>
-                </div>
+                <div><span className="esp-ia-dir">X-X</span>
+                  <select style={{...selSt,width:'100%',minWidth:0}} value={iaManIdx} onChange={e=>setIaManIdx(+e.target.value)}>
+                    {Espectro.IA_OPTIONS.map((o,i)=><option key={i} value={i}>{o.label}</option>)}
+                  </select></div>
+                <div><span className="esp-ia-dir">Y-Y</span>
+                  <select style={{...selSt,width:'100%',minWidth:0}} value={iaManIdxY} onChange={e=>setIaManIdxY(+e.target.value)}>
+                    {Espectro.IA_OPTIONS.map((o,i)=><option key={i} value={i}>{o.label}</option>)}
+                  </select></div>
               </div>
             )}
-            {iaMode === 'auto' && !hasCalcIa && (
-              <div style={{fontSize:8,color:'var(--amber)',marginTop:4,fontFamily:'var(--cond)'}}>
-                Sin datos de irregularidades. Completa la pestaña IRREG. ALTURA.
-              </div>
-            )}
+            {iaMode==='auto' && !hasCalcIa && <div style={{fontSize:8,color:'var(--amber)',marginTop:4,fontFamily:'var(--cond)'}}>Completa IRREG. ALTURA para usar Auto.</div>}
           </div>
 
-          {/* Ip block: auto/manual */}
+          {/* Ip auto/manual */}
           <div className="esp-ia-block">
             <div className="esp-ia-header">
-              <span className="esp-ia-title">Ip (Irregularidad Planta)</span>
+              <span className="esp-ia-title">Ip (Planta)</span>
               <div style={{display:'flex',gap:4}}>
                 <button style={toggleSt(ipMode==='auto')} onClick={() => setIpMode('auto')} disabled={!hasCalcIp}>Auto</button>
                 <button style={toggleSt(ipMode==='manual')} onClick={() => setIpMode('manual')}>Manual</button>
@@ -1477,123 +1518,63 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY }) {
               </div>
             ) : (
               <div className="esp-ia-vals">
-                <div>
-                  <span className="esp-ia-dir">X-X</span>
-                  <select style={{...selSt, width:'100%', minWidth:0}} value={ipManIdxX} onChange={e => setIpManIdxX(+e.target.value)}>
-                    {Espectro.IP_OPTIONS.map((o,i) => <option key={i} value={i}>{o.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <span className="esp-ia-dir">Y-Y</span>
-                  <select style={{...selSt, width:'100%', minWidth:0}} value={ipManIdxY} onChange={e => setIpManIdxY(+e.target.value)}>
-                    {Espectro.IP_OPTIONS.map((o,i) => <option key={i} value={i}>{o.label}</option>)}
-                  </select>
-                </div>
+                <div><span className="esp-ia-dir">X-X</span>
+                  <select style={{...selSt,width:'100%',minWidth:0}} value={ipManIdxX} onChange={e=>setIpManIdxX(+e.target.value)}>
+                    {Espectro.IP_OPTIONS.map((o,i)=><option key={i} value={i}>{o.label}</option>)}
+                  </select></div>
+                <div><span className="esp-ia-dir">Y-Y</span>
+                  <select style={{...selSt,width:'100%',minWidth:0}} value={ipManIdxY} onChange={e=>setIpManIdxY(+e.target.value)}>
+                    {Espectro.IP_OPTIONS.map((o,i)=><option key={i} value={i}>{o.label}</option>)}
+                  </select></div>
               </div>
             )}
-            {ipMode === 'auto' && !hasCalcIp && (
-              <div style={{fontSize:8,color:'var(--amber)',marginTop:4,fontFamily:'var(--cond)'}}>
-                Sin datos de irregularidades. Completa la pestaña IRREG. PLANTA.
-              </div>
-            )}
+            {ipMode==='auto' && !hasCalcIp && <div style={{fontSize:8,color:'var(--amber)',marginTop:4,fontFamily:'var(--cond)'}}>Completa IRREG. PLANTA para usar Auto.</div>}
           </div>
+        </div>
 
-          {/* Computed parameters table */}
+        {/* RIGHT COL: calc table + export */}
+        <div className="esp-right-col">
           {!esEMS && (
             <table className="esp-calc-table">
-              <thead>
-                <tr><th></th><th>Dir X-X</th><th>Dir Y-Y</th></tr>
-              </thead>
+              <thead><tr><th></th><th>Dir X-X</th><th>Dir Y-Y</th></tr></thead>
               <tbody>
+                <tr><td className="lbl">Sistema</td><td className="vx" style={{fontSize:8}}>{sistemaXName}</td><td className="vy" style={{fontSize:8}}>{sistemaYName}</td></tr>
+                <tr><td className="lbl">Ro</td><td className="vx">{RoX}</td><td className="vy">{RoY}</td></tr>
                 <tr><td className="lbl">Ia</td><td className="vx">{IaX.toFixed(2)}</td><td className="vy">{IaY.toFixed(2)}</td></tr>
                 <tr><td className="lbl">Ip</td><td className="vx">{IpX.toFixed(2)}</td><td className="vy">{IpY.toFixed(2)}</td></tr>
-                <tr><td className="lbl">R = Ro*Ia*Ip</td><td className="vx" style={{fontWeight:700}}>{Rx.toFixed(2)}</td><td className="vy" style={{fontWeight:700}}>{Ry.toFixed(2)}</td></tr>
+                <tr><td className="lbl" style={{fontWeight:700}}>R = Ro*Ia*Ip</td><td className="vx" style={{fontWeight:700,fontSize:11}}>{Rx.toFixed(2)}</td><td className="vy" style={{fontWeight:700,fontSize:11}}>{Ry.toFixed(2)}</td></tr>
                 <tr><td className="lbl">Sa max (m/s2)</td><td className="vx">{saMaxX.toFixed(4)}</td><td className="vy">{saMaxY.toFixed(4)}</td></tr>
                 <tr><td className="lbl">Sa/g max</td><td className="vx">{sagMaxX.toFixed(5)}</td><td className="vy">{sagMaxY.toFixed(5)}</td></tr>
-                <tr><td className="lbl" colSpan={3} style={{textAlign:'center',color:'var(--text3)',fontSize:8,paddingTop:6}}>
-                  Tp = {Tp}s &nbsp; TL = {TL}s &nbsp; Ro = {Ro} &nbsp; S = {sVal?.toFixed(2)} &nbsp; Z = {Z} &nbsp; U = {U}
+                <tr><td className="lbl" colSpan={3} style={{textAlign:'center',color:'var(--text3)',fontSize:8,paddingTop:4}}>
+                  Z={Z} &nbsp; S={sVal?.toFixed(2)} &nbsp; U={U} &nbsp; Tp={Tp}s &nbsp; TL={TL}s
                 </td></tr>
               </tbody>
             </table>
           )}
-
-          {/* Export buttons */}
           {!esEMS && (
             <div className="esp-btn-row">
-              <button className="esp-btn" onClick={() => descargar('X','completo')} disabled={espX.length===0}>Exportar X-X (.txt)</button>
-              <button className="esp-btn yy" onClick={() => descargar('Y','completo')} disabled={espY.length===0}>Exportar Y-Y (.txt)</button>
-              <button className="esp-btn" onClick={() => descargar('X','reducido')} disabled={espX.length===0} style={{fontSize:8,padding:'3px 8px'}}>X-X reducido</button>
-              <button className="esp-btn yy" onClick={() => descargar('Y','reducido')} disabled={espY.length===0} style={{fontSize:8,padding:'3px 8px'}}>Y-Y reducido</button>
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT PANEL: Chart */}
-        <div className="esp-right">
-          {!esEMS && espX.length > 0 && (
-            <div className="esp-chart-wrap">
-              <div className="esp-toggle-wrap">
-                <button className={`esp-toggle-btn ${modoSa==='Sa'?'active':''}`} onClick={() => setModoSa('Sa')}>Sa (m/s2)</button>
-                <button className={`esp-toggle-btn ${modoSa==='SaG'?'active':''}`} onClick={() => setModoSa('SaG')}>Sa/g</button>
-              </div>
-              <svg ref={svgRef} width="100%" viewBox={`0 0 ${W} ${H}`} style={{cursor:'crosshair',maxHeight:380}}
-                onMouseMove={handleSvgMove} onMouseLeave={() => setTooltip(null)}>
-                {gridLinesY.map(v => (
-                  <g key={`gy-${v}`}>
-                    <line x1={pad.left} y1={yScale(v)} x2={W-pad.right} y2={yScale(v)} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                    <text x={pad.left-4} y={yScale(v)+3} fill="var(--text3)" fontSize="7" fontFamily="var(--mono)" textAnchor="end">{v.toFixed(v < 1 ? 2 : 1)}</text>
-                  </g>
-                ))}
-                {gridLinesX.map(t => (
-                  <g key={`gx-${t}`}>
-                    <line x1={xScale(t)} y1={pad.top} x2={xScale(t)} y2={H-pad.bottom} stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
-                    <text x={xScale(t)} y={H-pad.bottom+12} fill="var(--text3)" fontSize="7" fontFamily="var(--mono)" textAnchor="middle">{t.toFixed(1)}</text>
-                  </g>
-                ))}
-                <text x={W/2} y={H-4} fill="var(--text2)" fontSize="8" fontFamily="var(--cond)" textAnchor="middle">T (s)</text>
-                <text x={10} y={H/2} fill="var(--text2)" fontSize="8" fontFamily="var(--cond)" textAnchor="middle" transform={`rotate(-90,10,${H/2})`}>
-                  {modoSa === 'Sa' ? 'Sa (m/s2)' : 'Sa/g'}
-                </text>
-                {/* Breakpoints */}
-                <line x1={xScale(0.2*Tp)} y1={pad.top} x2={xScale(0.2*Tp)} y2={H-pad.bottom} stroke="rgba(255,193,7,0.3)" strokeWidth="1" strokeDasharray="3,3" />
-                <text x={xScale(0.2*Tp)} y={pad.top-3} fill="#ffc107" fontSize="6" fontFamily="var(--mono)" textAnchor="middle">0.2Tp</text>
-                <line x1={xScale(Tp)} y1={pad.top} x2={xScale(Tp)} y2={H-pad.bottom} stroke="rgba(255,152,0,0.4)" strokeWidth="1" strokeDasharray="3,3" />
-                <text x={xScale(Tp)} y={pad.top-3} fill="#ff9800" fontSize="6" fontFamily="var(--mono)" textAnchor="middle">Tp={Tp}</text>
-                <line x1={xScale(TL)} y1={pad.top} x2={xScale(TL)} y2={H-pad.bottom} stroke="rgba(244,67,54,0.4)" strokeWidth="1" strokeDasharray="3,3" />
-                <text x={xScale(TL)} y={pad.top-3} fill="#f44336" fontSize="6" fontFamily="var(--mono)" textAnchor="middle">TL={TL}</text>
-                {/* Axes */}
-                <line x1={pad.left} y1={pad.top} x2={pad.left} y2={H-pad.bottom} stroke="var(--text3)" strokeWidth="1" />
-                <line x1={pad.left} y1={H-pad.bottom} x2={W-pad.right} y2={H-pad.bottom} stroke="var(--text3)" strokeWidth="1" />
-                {/* Curve X-X (blue) */}
-                {pathX && <path d={pathX} fill="none" stroke="#4fc3f7" strokeWidth="2" strokeLinejoin="round" />}
-                {pathX && <path d={`${pathX} L${xScale(4).toFixed(1)},${yScale(0).toFixed(1)} L${xScale(0).toFixed(1)},${yScale(0).toFixed(1)} Z`} fill="rgba(79,195,247,0.06)" />}
-                {/* Curve Y-Y (red) only if different */}
-                {!identical && pathY && <path d={pathY} fill="none" stroke="#ef9a9a" strokeWidth="1.5" strokeLinejoin="round" strokeDasharray="6,3" />}
-                {/* Tooltip crosshair */}
-                {tooltip && <>
-                  <line x1={xScale(tooltip.T)} y1={pad.top} x2={xScale(tooltip.T)} y2={H-pad.bottom} stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-                  <circle cx={xScale(tooltip.T)} cy={yScale(modoSa==='Sa'?tooltip.SaX:tooltip.SaGX)} r="3" fill="#4fc3f7" />
-                  {!identical && <circle cx={xScale(tooltip.T)} cy={yScale(modoSa==='Sa'?tooltip.SaY:tooltip.SaGY)} r="3" fill="#ef9a9a" />}
-                </>}
-              </svg>
-              {/* Legend */}
-              <div className="esp-legend">
-                <span><span className="esp-legend-dot" style={{background:'#4fc3f7'}} /> X-X (R={Rx.toFixed(2)})</span>
-                {!identical && <span><span className="esp-legend-dot" style={{background:'#ef9a9a',borderTop:'1px dashed #ef9a9a'}} /> Y-Y (R={Ry.toFixed(2)})</span>}
-                {identical && <span style={{color:'var(--text3)',fontStyle:'italic'}}>X-X = Y-Y (identicos)</span>}
-              </div>
-              {/* Tooltip */}
-              {tooltip && (
-                <div className="esp-tooltip" style={{left: Math.min(tooltip.x+12, W-160), top: Math.max(tooltip.y-70, 10)}}>
-                  T = {tooltip.T.toFixed(2)}s &nbsp; C = {tooltip.C.toFixed(4)}<br/>
-                  <span style={{color:'#4fc3f7'}}>X-X:</span> Sa={tooltip.SaX.toFixed(4)} &nbsp; Sa/g={tooltip.SaGX.toFixed(5)}<br/>
-                  {!identical && <><span style={{color:'#ef9a9a'}}>Y-Y:</span> Sa={tooltip.SaY?.toFixed(4)} &nbsp; Sa/g={tooltip.SaGY?.toFixed(5)}</>}
-                </div>
-              )}
+              <button className="esp-btn" onClick={() => descargar('X','completo')} disabled={espX.length===0}>Exportar X-X</button>
+              <button className="esp-btn yy" onClick={() => descargar('Y','completo')} disabled={espY.length===0}>Exportar Y-Y</button>
+              <button className="esp-btn" onClick={() => descargar('X','reducido')} disabled={espX.length===0} style={{fontSize:8,padding:'3px 8px'}}>X-X red.</button>
+              <button className="esp-btn yy" onClick={() => descargar('Y','reducido')} disabled={espY.length===0} style={{fontSize:8,padding:'3px 8px'}}>Y-Y red.</button>
             </div>
           )}
         </div>
       </div>
+
+      {/* ── TWO CHARTS side by side ── */}
+      {!esEMS && espX.length > 0 && (
+        <>
+          <div className="esp-toggle-wrap">
+            <button className={`esp-toggle-btn ${modoSa==='Sa'?'active':''}`} onClick={() => setModoSa('Sa')}>Sa (m/s2)</button>
+            <button className={`esp-toggle-btn ${modoSa==='SaG'?'active':''}`} onClick={() => setModoSa('SaG')}>Sa/g</button>
+          </div>
+          <div className="esp-charts-grid">
+            {renderChart(espX, pathX, '#4fc3f7', 'rgba(79,195,247,0.08)', 'ESPECTRO X-X', Rx, saMaxX, sagMaxX, svgRefX, tooltipX, setTooltipX)}
+            {renderChart(espY, pathY, '#ef9a9a', 'rgba(239,154,154,0.08)', 'ESPECTRO Y-Y', Ry, saMaxY, sagMaxY, svgRefY, tooltipY, setTooltipY)}
+          </div>
+        </>
+      )}
 
       {/* ── TABLE ── */}
       {!esEMS && espX.length > 0 && (
@@ -1604,21 +1585,15 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY }) {
           </div>
           <div className="esp-table-wrap">
             <table className="e030-table">
-              <thead>
-                <tr>
-                  <th style={S.headerCell}>T (s)</th>
-                  <th style={S.headerCell}>C</th>
-                  <th style={S.headerCell}>Sa (m/s2)</th>
-                  <th style={S.headerCell}>Sa/g</th>
-                </tr>
-              </thead>
+              <thead><tr>
+                <th style={S.headerCell}>T (s)</th><th style={S.headerCell}>C</th>
+                <th style={S.headerCell}>Sa (m/s2)</th><th style={S.headerCell}>Sa/g</th>
+              </tr></thead>
               <tbody>
                 {activeEsp.map((p, i) => (
                   <tr key={i}>
-                    <td style={S.cell}>{p.T.toFixed(2)}</td>
-                    <td style={S.cell}>{p.C.toFixed(4)}</td>
-                    <td style={S.cell}>{p.Sa.toFixed(4)}</td>
-                    <td style={S.cell}>{p.SaG.toFixed(5)}</td>
+                    <td style={S.cell}>{p.T.toFixed(2)}</td><td style={S.cell}>{p.C.toFixed(4)}</td>
+                    <td style={S.cell}>{p.Sa.toFixed(4)}</td><td style={S.cell}>{p.SaG.toFixed(5)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1920,7 +1895,8 @@ export default function IrregularidadesE030({ onBack }) {
             derivaResX={derivaResX} derivaResY={derivaResY} />
         )}
         {tab === 'ESPECTRO' && (
-          <TabEspectro iaCalcX={iaFinal.iaX} iaCalcY={iaFinal.iaY} ipCalcX={ipFinal.ipX} ipCalcY={ipFinal.ipY} />
+          <TabEspectro iaCalcX={iaFinal.iaX} iaCalcY={iaFinal.iaY} ipCalcX={ipFinal.ipX} ipCalcY={ipFinal.ipY}
+            RoXParam={RoX} RoYParam={RoY} sistemaXName={state.sistemaX} sistemaYName={state.sistemaY} />
         )}
       </div>
     </div>
