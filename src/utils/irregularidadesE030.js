@@ -178,10 +178,11 @@ export function calcularDiafragma(areaBruta, areaAberturas, dimLx, sumaHuecosX, 
 }
 
 // 4. Sistemas No Paralelos — verificacion por direccion X-X e Y-Y
-// elementos = [{nombre, dx, dy, vx, vy}]
-// dx/dy = proyecciones geometricas, vx/vy = cortantes por direccion
+// elementos = [{nombre, dx, dy, vx, vy, npX, npY}]
+// npX/npY = checkboxes: el ingeniero marca cuales son "no paralelos"
 export function calcularNoParalelos(activo, elementos) {
-  if (!activo) return { rows: [], ipX: 1, ipY: 1, irregularX: false, irregularY: false, vPisoX: 0, vPisoY: 0, vNoparX: 0, vNoparY: 0, pctX: 0, pctY: 0 }
+  const empty = { rows: [], ipX: 1, ipY: 1, irregularX: false, irregularY: false, vPisoX: 0, vPisoY: 0, vNoparX: 0, vNoparY: 0, pctX: 0, pctY: 0 }
+  if (!activo) return empty
 
   const rows = elementos
     .filter(el => el.nombre || (el.dx !== '' && el.dx != null) || (el.dy !== '' && el.dy != null))
@@ -191,29 +192,22 @@ export function calcularNoParalelos(activo, elementos) {
       const vx = typeof el.vx === 'number' ? el.vx : parseFloat(el.vx)
       const vy = typeof el.vy === 'number' ? el.vy : parseFloat(el.vy)
 
-      let theta = null, angVsX = null, angVsY = null
+      let theta = null
       if (!isNaN(dx) && !isNaN(dy) && (dx > 0 || dy > 0)) {
-        theta = Math.atan2(dy, dx) * 180 / Math.PI // 0-90
-        angVsX = theta
-        if (angVsX > 90) angVsX = 180 - angVsX
-        angVsY = Math.abs(90 - angVsX)
+        theta = Math.atan2(dy, dx) * 180 / Math.PI
       }
-
-      const paraleloX = angVsX == null || angVsX < 30
-      const paraleloY = angVsY == null || angVsY < 30
 
       return {
         nombre: el.nombre, dx: isNaN(dx) ? '' : dx, dy: isNaN(dy) ? '' : dy,
         vx: isNaN(vx) ? 0 : vx, vy: isNaN(vy) ? 0 : vy,
-        theta, angVsX, angVsY, paraleloX, paraleloY,
+        theta, npX: !!el.npX, npY: !!el.npY,
       }
     })
 
-  // Sumas de cortantes
   const vPisoX = rows.reduce((s, r) => s + (r.vx || 0), 0)
   const vPisoY = rows.reduce((s, r) => s + (r.vy || 0), 0)
-  const vNoparX = rows.filter(r => !r.paraleloX).reduce((s, r) => s + (r.vx || 0), 0)
-  const vNoparY = rows.filter(r => !r.paraleloY).reduce((s, r) => s + (r.vy || 0), 0)
+  const vNoparX = rows.filter(r => r.npX).reduce((s, r) => s + (r.vx || 0), 0)
+  const vNoparY = rows.filter(r => r.npY).reduce((s, r) => s + (r.vy || 0), 0)
   const pctX = vPisoX > 0 ? (vNoparX / vPisoX) * 100 : 0
   const pctY = vPisoY > 0 ? (vNoparY / vPisoY) * 100 : 0
   const irregularX = pctX >= 10

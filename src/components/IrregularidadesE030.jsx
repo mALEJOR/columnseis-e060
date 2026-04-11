@@ -95,7 +95,7 @@ function initState() {
     torsionY: emptyFloors(),
     esquinas: { aEntrante: 0, aTotal: 30, bEntrante: 0, bTotal: 15 },
     diafragma: { areaBruta: '', areaAberturas: '', dimLx: '', sumaHuecosX: '', dimLy: '', sumaHuecosY: '' },
-    noParalelos: { activo: false, elementos: Array.from({ length: 3 }, () => ({ nombre: '', dx: '', dy: '', vx: '', vy: '' })) },
+    noParalelos: { activo: false, elementos: Array.from({ length: 3 }, () => ({ nombre: '', dx: '', dy: '', vx: '', vy: '', npX: false, npY: false })) },
     rigidezX: emptyFloors(),
     rigidezY: emptyFloors(),
     resistenciaX: emptyFloors(),
@@ -123,7 +123,7 @@ function reducer(state, action) {
       return { ...state, noParalelos: { ...state.noParalelos, elementos: elems } }
     }
     case 'ADD_NO_PARALELOS_ELEM': {
-      return { ...state, noParalelos: { ...state.noParalelos, elementos: [...state.noParalelos.elementos, { nombre: '', dx: '', dy: '', vx: '', vy: '' }] } }
+      return { ...state, noParalelos: { ...state.noParalelos, elementos: [...state.noParalelos.elementos, { nombre: '', dx: '', dy: '', vx: '', vy: '', npX: false, npY: false }] } }
     }
     case 'DEL_NO_PARALELOS_ELEM': {
       const elems = state.noParalelos.elementos.filter((_, i) => i !== action.index)
@@ -545,7 +545,7 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
   // No Paralelos
   const npRes = useMemo(() => {
     const elems = state.noParalelos.elementos.map(e => ({
-      nombre: e.nombre, dx: parseNum(e.dx), dy: parseNum(e.dy), vx: parseNum(e.vx), vy: parseNum(e.vy),
+      nombre: e.nombre, dx: parseNum(e.dx), dy: parseNum(e.dy), vx: parseNum(e.vx), vy: parseNum(e.vy), npX: e.npX, npY: e.npY,
     }))
     return E030.calcularNoParalelos(state.noParalelos.activo, elems)
   }, [state.noParalelos])
@@ -760,7 +760,7 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
       </Section>
 
       <Section title="4. IRREGULARIDAD POR SISTEMAS NO PARALELOS (Ip = 0.90)" dark>
-        <p className="e030-hint">Ingresar TODOS los elementos resistentes. El angulo se calcula de dX/dY. V no paralelos = suma Vx/Vy de elementos con angulo &ge;30°. Si V_nopar/V_piso &ge;10% → IRREGULAR.</p>
+        <p className="e030-hint">Ingresar TODOS los elementos resistentes. Marcar con checkbox (NP) los que son "no paralelos" en cada direccion. V_piso = SUM todos. V_nopar = SUM marcados. Si V_nopar/V_piso &ge;10% → IRREGULAR.</p>
         <div className="e030-field-row" style={{ marginBottom: 12 }}>
           <label>Calcular Sistemas No Paralelos?</label>
           <select className="e030-field-input" style={{ width: 80 }}
@@ -771,31 +771,35 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
           </select>
         </div>
         {state.noParalelos.activo && (<>
-          {/* TABLA 1: DATOS DE ELEMENTOS */}
-          <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#2e75b6', marginBottom: 6, letterSpacing: .5 }}>TABLA 1: ELEMENTOS RESISTENTES — GEOMETRIA Y CORTANTES</h4>
-          <p className="e030-hint">dX/dY = proyecciones del elemento (m). Angulo = atan(dY/dX) auto. Vx/Vy = cortante del elemento en cada direccion (Tn).</p>
+          {/* TABLA 1: ELEMENTOS + CHECKBOXES */}
+          <p className="e030-hint">dX/dY = proyecciones (m). Angulo = atan(dY/dX). Vx/Vy = cortante (Tn). NP X/Y = marcar si el elemento es "no paralelo" en esa direccion.</p>
           <div style={{ overflowX: 'auto', marginBottom: 14 }}>
             <table className="e030-table">
               <thead>
                 <tr>
-                  <th style={{ ...S.headerCell, width: 24 }}>#</th>
+                  <th style={{ ...S.headerCell, width: 22 }}>#</th>
                   <th style={{ ...S.headerCell, ...S.inputCell }}>Elemento</th>
-                  <th style={{ ...S.headerCell, ...S.inputCell }}>dX (m)</th>
-                  <th style={{ ...S.headerCell, ...S.inputCell }}>dY (m)</th>
-                  <th style={{ ...S.headerCell, ...S.compCell }}>Angulo (°)</th>
-                  <th style={{ ...S.headerCell, ...S.inputCell }}>Vx (Tn)</th>
-                  <th style={{ ...S.headerCell, ...S.inputCell }}>Vy (Tn)</th>
-                  <th style={{ ...S.headerCell, width: 24 }}></th>
+                  <th style={{ ...S.headerCell, ...S.inputCell }}>dX</th>
+                  <th style={{ ...S.headerCell, ...S.inputCell }}>dY</th>
+                  <th style={{ ...S.headerCell, ...S.compCell }}>Ang.</th>
+                  <th style={{ ...S.headerCell, ...S.inputCell }}>Vx</th>
+                  <th style={{ ...S.headerCell, width: 32, background: '#1a3a5c', color: '#64b5f6' }}>NP X</th>
+                  <th style={{ ...S.headerCell, ...S.inputCell }}>Vy</th>
+                  <th style={{ ...S.headerCell, width: 32, background: '#3a1a1a', color: '#ef9a9a' }}>NP Y</th>
+                  <th style={{ ...S.headerCell, width: 22 }}></th>
                 </tr>
               </thead>
               <tbody>
                 {state.noParalelos.elementos.map((el, i) => {
                   const r = npRes.rows[i]
+                  const ang = r?.theta
+                  // Color guide: 0-29 green, 30-60 red, 61-90 green
+                  const angBg = ang == null ? '' : (ang >= 30 && ang <= 60) ? 'rgba(198,40,40,0.15)' : 'rgba(46,125,50,0.1)'
                   return (
                     <tr key={i}>
                       <td style={{ ...S.cell, color: 'var(--text3)', fontSize: 9 }}>{i + 1}</td>
                       <td style={{ ...S.cell, ...S.inputCell }}>
-                        <input type="text" style={{ ...S.tableInput, textAlign: 'left' }} placeholder="Nombre..."
+                        <input type="text" style={{ ...S.tableInput, textAlign: 'left' }} placeholder="..."
                           value={el.nombre} onChange={e => dispatch({ type: 'SET_NO_PARALELOS_ELEM', index: i, field: 'nombre', value: e.target.value })} />
                       </td>
                       <td style={{ ...S.cell, ...S.inputCell }}>
@@ -806,14 +810,24 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
                         <input type="number" min={0} step={0.1} style={S.tableInput}
                           value={el.dy} onChange={e => dispatch({ type: 'SET_NO_PARALELOS_ELEM', index: i, field: 'dy', value: parseNum(e.target.value) })} />
                       </td>
-                      <td style={{ ...S.cell, ...S.compCell, fontWeight: 600 }}>{r?.theta != null ? r.theta.toFixed(1) + '°' : '\u2014'}</td>
+                      <td style={{ ...S.cell, ...S.compCell, fontWeight: 600, background: angBg }}>{ang != null ? ang.toFixed(1) + '°' : '\u2014'}</td>
                       <td style={{ ...S.cell, ...S.inputCell }}>
                         <input type="number" step={0.1} style={S.tableInput}
                           value={el.vx} onChange={e => dispatch({ type: 'SET_NO_PARALELOS_ELEM', index: i, field: 'vx', value: parseNum(e.target.value) })} />
                       </td>
+                      <td style={{ ...S.cell, textAlign: 'center' }}>
+                        <input type="checkbox" checked={!!el.npX}
+                          onChange={e => dispatch({ type: 'SET_NO_PARALELOS_ELEM', index: i, field: 'npX', value: e.target.checked })}
+                          style={{ cursor: 'pointer', accentColor: '#64b5f6' }} />
+                      </td>
                       <td style={{ ...S.cell, ...S.inputCell }}>
                         <input type="number" step={0.1} style={S.tableInput}
                           value={el.vy} onChange={e => dispatch({ type: 'SET_NO_PARALELOS_ELEM', index: i, field: 'vy', value: parseNum(e.target.value) })} />
+                      </td>
+                      <td style={{ ...S.cell, textAlign: 'center' }}>
+                        <input type="checkbox" checked={!!el.npY}
+                          onChange={e => dispatch({ type: 'SET_NO_PARALELOS_ELEM', index: i, field: 'npY', value: e.target.checked })}
+                          style={{ cursor: 'pointer', accentColor: '#ef9a9a' }} />
                       </td>
                       <td style={{ ...S.cell, padding: 2 }}>
                         {state.noParalelos.elementos.length > 1 && (
@@ -835,89 +849,35 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
             </button>
           </div>
 
-          {/* TABLA 2: CLASIFICACION DE ANGULOS */}
-          {npRes.rows.length > 0 && (<>
-            <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#90caf9', marginBottom: 6, letterSpacing: .5 }}>TABLA 2: CLASIFICACION DE ANGULOS</h4>
-            <div style={{ overflowX: 'auto', marginBottom: 14 }}>
-              <table className="e030-table">
-                <thead>
-                  <tr>
-                    <th style={S.headerCell}>#</th>
-                    <th style={S.headerCell}>Elemento</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>Ang. vs X</th>
-                    <th style={S.headerCell}>Clasif. X</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>Ang. vs Y</th>
-                    <th style={S.headerCell}>Clasif. Y</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {npRes.rows.map((r, i) => (
-                    <tr key={i}>
-                      <td style={{ ...S.cell, color: 'var(--text3)', fontSize: 9 }}>{i + 1}</td>
-                      <td style={{ ...S.cell, textAlign: 'left', fontSize: 9 }}>{r.nombre || '\u2014'}</td>
-                      <td style={{ ...S.cell, ...S.compCell }}>{r.angVsX != null ? r.angVsX.toFixed(1) + '°' : '\u2014'}</td>
-                      <td style={{ ...S.cell, color: r.paraleloX ? '#4caf50' : '#ef5350', fontWeight: 600 }}>
-                        {r.angVsX != null ? (r.paraleloX ? '<30° PARALELO' : '\u226530° NO PAR.') : '\u2014'}
-                      </td>
-                      <td style={{ ...S.cell, ...S.compCell }}>{r.angVsY != null ? r.angVsY.toFixed(1) + '°' : '\u2014'}</td>
-                      <td style={{ ...S.cell, color: r.paraleloY ? '#4caf50' : '#ef5350', fontWeight: 600 }}>
-                        {r.angVsY != null ? (r.paraleloY ? '<30° PARALELO' : '\u226530° NO PAR.') : '\u2014'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* TABLA 3: VERIFICACION DE CORTANTES */}
-            <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#ffa726', marginBottom: 6, letterSpacing: .5 }}>TABLA 3: VERIFICACION DE CORTANTES</h4>
+          {/* VERIFICACION DE CORTANTES */}
+          {npRes.rows.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 10 }}>
-              {/* X-X */}
-              <div style={{ padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r2)' }}>
-                <div style={{ fontFamily: 'var(--cond)', fontSize: 10, color: '#64b5f6', fontWeight: 700, marginBottom: 8, letterSpacing: '.5px' }}>DIRECCION X-X</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: 'var(--mono)', fontSize: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text2)' }}>V piso X (SUM Vx todos)</span>
-                    <span style={{ color: 'var(--text0)', fontWeight: 600 }}>{npRes.vPisoX.toFixed(1)} Tn</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text2)' }}>V no paral. X (SUM Vx &ge;30°)</span>
-                    <span style={{ color: '#ef9a9a', fontWeight: 600 }}>{npRes.vNoparX.toFixed(1)} Tn</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 4 }}>
-                    <span style={{ color: 'var(--text2)' }}>% V no paral. / V piso</span>
-                    <span style={{ color: npRes.pctX >= 10 ? '#ef5350' : '#4caf50', fontWeight: 700 }}>{npRes.pctX.toFixed(1)}%</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text2)' }}>Supera 10%?</span>
-                    <span style={{ color: npRes.irregularX ? '#ef5350' : '#4caf50', fontWeight: 700 }}>{npRes.irregularX ? 'SI → IRREGULAR' : 'NO → REGULAR'}</span>
-                  </div>
-                </div>
-              </div>
-              {/* Y-Y */}
-              <div style={{ padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r2)' }}>
-                <div style={{ fontFamily: 'var(--cond)', fontSize: 10, color: '#ef9a9a', fontWeight: 700, marginBottom: 8, letterSpacing: '.5px' }}>DIRECCION Y-Y</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: 'var(--mono)', fontSize: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text2)' }}>V piso Y (SUM Vy todos)</span>
-                    <span style={{ color: 'var(--text0)', fontWeight: 600 }}>{npRes.vPisoY.toFixed(1)} Tn</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text2)' }}>V no paral. Y (SUM Vy &ge;30°)</span>
-                    <span style={{ color: '#ef9a9a', fontWeight: 600 }}>{npRes.vNoparY.toFixed(1)} Tn</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 4 }}>
-                    <span style={{ color: 'var(--text2)' }}>% V no paral. / V piso</span>
-                    <span style={{ color: npRes.pctY >= 10 ? '#ef5350' : '#4caf50', fontWeight: 700 }}>{npRes.pctY.toFixed(1)}%</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text2)' }}>Supera 10%?</span>
-                    <span style={{ color: npRes.irregularY ? '#ef5350' : '#4caf50', fontWeight: 700 }}>{npRes.irregularY ? 'SI → IRREGULAR' : 'NO → REGULAR'}</span>
+              {[{ dir: 'X-X', color: '#64b5f6', vP: npRes.vPisoX, vN: npRes.vNoparX, pct: npRes.pctX, irreg: npRes.irregularX },
+                { dir: 'Y-Y', color: '#ef9a9a', vP: npRes.vPisoY, vN: npRes.vNoparY, pct: npRes.pctY, irreg: npRes.irregularY }].map(d => (
+                <div key={d.dir} style={{ padding: '10px 12px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r2)' }}>
+                  <div style={{ fontFamily: 'var(--cond)', fontSize: 10, color: d.color, fontWeight: 700, marginBottom: 8, letterSpacing: '.5px' }}>DIRECCION {d.dir}</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontFamily: 'var(--mono)', fontSize: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text2)' }}>V piso (SUM V{d.dir[0].toLowerCase()} todos)</span>
+                      <span style={{ color: 'var(--text0)', fontWeight: 600 }}>{d.vP.toFixed(1)} Tn</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text2)' }}>V no paral. (SUM marcados)</span>
+                      <span style={{ color: d.color, fontWeight: 600 }}>{d.vN.toFixed(1)} Tn</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)', paddingTop: 4 }}>
+                      <span style={{ color: 'var(--text2)' }}>% V_nopar / V_piso</span>
+                      <span style={{ color: d.pct >= 10 ? '#ef5350' : '#4caf50', fontWeight: 700 }}>{d.pct.toFixed(1)}%</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text2)' }}>&ge;10%?</span>
+                      <span style={{ color: d.irreg ? '#ef5350' : '#4caf50', fontWeight: 700 }}>{d.irreg ? 'SI → IRREGULAR' : 'NO → REGULAR'}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
             </div>
-          </>)}
+          )}
         </>)}
         <div className="e030-summary-row" style={{ marginTop: 8 }}>
           <span>Ip No Paralelos X-X: <b style={{ color: '#ffc107', fontSize: 13 }}>{npRes.ipX}</b></span>
@@ -2251,7 +2211,7 @@ export default function IrregularidadesE030({ onBack }) {
 
   const npRes = useMemo(() => {
     const elems = state.noParalelos.elementos.map(e => ({
-      nombre: e.nombre, dx: parseNum(e.dx), dy: parseNum(e.dy), vx: parseNum(e.vx), vy: parseNum(e.vy),
+      nombre: e.nombre, dx: parseNum(e.dx), dy: parseNum(e.dy), vx: parseNum(e.vx), vy: parseNum(e.vy), npX: e.npX, npY: e.npY,
     }))
     return E030.calcularNoParalelos(state.noParalelos.activo, elems)
   }, [state.noParalelos])
