@@ -1,5 +1,6 @@
-import { useState, useReducer, useMemo, useCallback } from 'react'
+import { useState, useReducer, useMemo, useCallback, useRef } from 'react'
 import * as E030 from '../utils/irregularidadesE030'
+import * as Espectro from '../utils/espectroE030'
 
 const MAX_PISOS = 20
 
@@ -1160,6 +1161,346 @@ function TabResumen({ state, RoX, RoY, factor, Rx, Ry, iaX, iaY, ipX, ipY, iaDet
 }
 
 // ══════════════════════════════════════════════════════════════
+//  TAB 5: ESPECTRO DE PSEUDO-ACELERACIONES
+// ══════════════════════════════════════════════════════════════
+const ZONAS = Object.keys(Espectro.ZONA_Z)
+const CATEGORIAS = Object.keys(Espectro.CATEGORIA_U)
+const SISTEMAS_ESP = Object.keys(Espectro.SISTEMA_RO)
+
+function TabEspectro() {
+  const [zona, setZona] = useState('Zona 2')
+  const [suelo, setSuelo] = useState('S1')
+  const [categoria, setCategoria] = useState('C (Temporal)')
+  const [sistema, setSistema] = useState('Porticos C.A.')
+  const [iaIdx, setIaIdx] = useState(0)
+  const [ipIdx, setIpIdx] = useState(0)
+  const [modoSa, setModoSa] = useState('Sa') // 'Sa' or 'SaG'
+  const [tooltip, setTooltip] = useState(null)
+  const svgRef = useRef(null)
+
+  const Z = Espectro.ZONA_Z[zona]
+  const sKey = suelo
+  const sVal = Espectro.SUELO_S[zona]?.[sKey]
+  const U = Espectro.CATEGORIA_U[categoria]
+  const Ro = Espectro.SISTEMA_RO[sistema]
+  const Ia = Espectro.IA_OPTIONS[iaIdx].value
+  const Ip = Espectro.IP_OPTIONS[ipIdx].value
+  const Tp = Espectro.SUELO_TP[sKey]
+  const TL = Espectro.SUELO_TL[sKey]
+  const R = Ro * Ia * Ip
+  const esEMS = sVal == null
+
+  const espectro = useMemo(() => {
+    if (esEMS) return []
+    return Espectro.generarEspectro(Z, U, sVal, Ro, Ia, Ip, Tp, TL)
+  }, [Z, U, sVal, Ro, Ia, Ip, Tp, TL, esEMS])
+
+  const saMax = useMemo(() => espectro.length > 0 ? Math.max(...espectro.map(p => p.Sa)) : 0, [espectro])
+  const saGMax = useMemo(() => espectro.length > 0 ? Math.max(...espectro.map(p => p.SaG)) : 0, [espectro])
+
+  const descargar = useCallback((modo) => {
+    if (espectro.length === 0) return
+    const txt = Espectro.exportarETABS(espectro, modo)
+    const blob = new Blob([txt], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'Espectro_E030_2025.txt'
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [espectro])
+
+  // SVG chart dimensions
+  const W = 700, H = 340
+  const pad = { top: 20, right: 30, bottom: 40, left: 60 }
+  const cw = W - pad.left - pad.right
+  const ch = H - pad.top - pad.bottom
+
+  const yMax = useMemo(() => {
+    if (espectro.length === 0) return 1
+    const maxVal = modoSa === 'Sa' ? saMax : saGMax
+    return Math.ceil(maxVal * 10) / 10 || 1
+  }, [espectro, modoSa, saMax, saGMax])
+
+  const xScale = (t) => pad.left + (t / 4.0) * cw
+  const yScale = (v) => pad.top + ch - (v / yMax) * ch
+
+  const pathD = useMemo(() => {
+    if (espectro.length === 0) return ''
+    return espectro.map((p, i) => {
+      const val = modoSa === 'Sa' ? p.Sa : p.SaG
+      return `${i === 0 ? 'M' : 'L'}${xScale(p.T).toFixed(1)},${yScale(val).toFixed(1)}`
+    }).join(' ')
+  }, [espectro, modoSa, yMax])
+
+  const gridLinesX = [0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+  const gridLinesY = useMemo(() => {
+    const lines = []
+    const step = yMax <= 2 ? 0.2 : yMax <= 5 ? 0.5 : 1.0
+    for (let v = 0; v <= yMax + 0.001; v += step) lines.push(+(v.toFixed(2)))
+    return lines
+  }, [yMax])
+
+  const handleSvgMove = useCallback((e) => {
+    if (espectro.length === 0 || !svgRef.current) return
+    const rect = svgRef.current.getBoundingClientRect()
+    const mx = e.clientX - rect.left
+    const my = e.clientY - rect.top
+    const t = ((mx - pad.left) / cw) * 4.0
+    if (t < 0 || t > 4) { setTooltip(null); return }
+    const idx = Math.round(t / 0.02)
+    const pt = espectro[Math.min(idx, 200)]
+    if (!pt) { setTooltip(null); return }
+    setTooltip({ x: mx, y: my, ...pt })
+  }, [espectro, cw])
+
+  const selectStyle = {
+    background: 'var(--surface3)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 'var(--r)',
+    padding: '4px 6px', color: 'var(--text0)', fontFamily: 'var(--mono)', fontSize: 10,
+    outline: 'none', minWidth: 120, cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none',
+  }
+
+  return (
+    <div>
+      <style>{`
+        .esp-params-grid {
+          display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+          gap: 8px; margin-bottom: 12px; padding: 10px 14px;
+          background: var(--surface); border-radius: var(--r2); border: 1px solid var(--border);
+        }
+        .esp-param { display: flex; flex-direction: column; gap: 2px; }
+        .esp-param label {
+          font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: .6px;
+          font-weight: 500; font-family: var(--cond);
+        }
+        .esp-badges {
+          display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+        }
+        .esp-badge {
+          display: inline-flex; align-items: center; gap: 4px;
+          padding: 4px 10px; border-radius: var(--r); font-size: 10px;
+          font-family: var(--mono); font-weight: 600;
+          background: rgba(46,125,50,0.15); color: #4caf50; border: 1px solid rgba(46,125,50,0.3);
+        }
+        .esp-badge-label { font-size: 8px; color: var(--text3); font-family: var(--cond); text-transform: uppercase; }
+        .esp-chart-wrap {
+          background: var(--surface); border: 1px solid var(--border); border-radius: var(--r2);
+          padding: 12px; margin-bottom: 12px; position: relative;
+        }
+        .esp-toggle-wrap {
+          display: flex; gap: 4px; margin-bottom: 8px; justify-content: flex-end;
+        }
+        .esp-toggle-btn {
+          padding: 3px 10px; font-size: 9px; font-family: var(--mono); border-radius: var(--r);
+          border: 1px solid var(--border); cursor: pointer; background: var(--surface3); color: var(--text2);
+          font-weight: 500; transition: all .15s;
+        }
+        .esp-toggle-btn.active { background: #2e75b6; color: #fff; border-color: #2e75b6; }
+        .esp-btn-row {
+          display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;
+        }
+        .esp-btn {
+          padding: 6px 14px; font-size: 10px; font-family: var(--cond); font-weight: 600;
+          border-radius: var(--r); border: 1px solid rgba(46,125,50,0.4); cursor: pointer;
+          background: rgba(46,125,50,0.15); color: #4caf50; letter-spacing: .4px;
+          transition: all .15s;
+        }
+        .esp-btn:hover { background: rgba(46,125,50,0.3); }
+        .esp-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .esp-table-wrap {
+          max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--r2);
+        }
+        .esp-table-wrap::-webkit-scrollbar { width: 4px; }
+        .esp-table-wrap::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+        .esp-warning {
+          padding: 10px 14px; background: rgba(198,40,40,0.12); border: 1px solid rgba(198,40,40,0.3);
+          border-radius: var(--r2); color: #ef5350; font-size: 11px; font-weight: 600;
+          font-family: var(--cond); margin-bottom: 12px;
+        }
+        .esp-tooltip {
+          position: absolute; pointer-events: none; background: rgba(0,0,0,0.88); color: #fff;
+          padding: 6px 10px; border-radius: var(--r); font-size: 9px; font-family: var(--mono);
+          line-height: 1.5; white-space: nowrap; z-index: 10; border: 1px solid rgba(255,255,255,0.15);
+        }
+      `}</style>
+
+      {/* 6 Dropdowns */}
+      <div className="esp-params-grid">
+        <div className="esp-param">
+          <label>Zona Sismica</label>
+          <select style={selectStyle} value={zona} onChange={e => setZona(e.target.value)}>
+            {ZONAS.map(z => <option key={z} value={z}>{z} (Z={Espectro.ZONA_Z[z]})</option>)}
+          </select>
+        </div>
+        <div className="esp-param">
+          <label>Perfil de Suelo</label>
+          <select style={selectStyle} value={suelo} onChange={e => setSuelo(e.target.value)}>
+            {Espectro.PERFILES_SUELO.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div className="esp-param">
+          <label>Categoria (U)</label>
+          <select style={selectStyle} value={categoria} onChange={e => setCategoria(e.target.value)}>
+            {CATEGORIAS.map(c => <option key={c} value={c}>{c} (U={Espectro.CATEGORIA_U[c]})</option>)}
+          </select>
+        </div>
+        <div className="esp-param">
+          <label>Sistema Estructural</label>
+          <select style={selectStyle} value={sistema} onChange={e => setSistema(e.target.value)}>
+            {SISTEMAS_ESP.map(s => <option key={s} value={s}>{s} (Ro={Espectro.SISTEMA_RO[s]})</option>)}
+          </select>
+        </div>
+        <div className="esp-param">
+          <label>Ia (Altura)</label>
+          <select style={selectStyle} value={iaIdx} onChange={e => setIaIdx(+e.target.value)}>
+            {Espectro.IA_OPTIONS.map((o, i) => <option key={i} value={i}>{o.label}</option>)}
+          </select>
+        </div>
+        <div className="esp-param">
+          <label>Ip (Planta)</label>
+          <select style={selectStyle} value={ipIdx} onChange={e => setIpIdx(+e.target.value)}>
+            {Espectro.IP_OPTIONS.map((o, i) => <option key={i} value={i}>{o.label}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Warning EMS */}
+      {esEMS && (
+        <div className="esp-warning">
+          Zona 4 + Suelo S4: Se requiere Estudio de Microzonificacion Sismica (EMS). No se puede generar espectro con estos parametros.
+        </div>
+      )}
+
+      {/* Badges de parametros calculados */}
+      {!esEMS && (
+        <div className="esp-badges">
+          <div className="esp-badge"><span className="esp-badge-label">Tp</span> {Tp.toFixed(1)}s</div>
+          <div className="esp-badge"><span className="esp-badge-label">TL</span> {TL.toFixed(1)}s</div>
+          <div className="esp-badge"><span className="esp-badge-label">S</span> {sVal.toFixed(2)}</div>
+          <div className="esp-badge"><span className="esp-badge-label">R</span> {R.toFixed(2)}</div>
+          <div className="esp-badge"><span className="esp-badge-label">g</span> {Espectro.G} m/s2</div>
+          <div className="esp-badge"><span className="esp-badge-label">Sa max</span> {saMax.toFixed(4)} m/s2</div>
+          <div className="esp-badge"><span className="esp-badge-label">Sa/g max</span> {saGMax.toFixed(5)}</div>
+        </div>
+      )}
+
+      {/* Chart SVG */}
+      {!esEMS && espectro.length > 0 && (
+        <div className="esp-chart-wrap">
+          <div className="esp-toggle-wrap">
+            <button className={`esp-toggle-btn ${modoSa === 'Sa' ? 'active' : ''}`} onClick={() => setModoSa('Sa')}>Sa (m/s2)</button>
+            <button className={`esp-toggle-btn ${modoSa === 'SaG' ? 'active' : ''}`} onClick={() => setModoSa('SaG')}>Sa/g</button>
+          </div>
+          <svg ref={svgRef} width="100%" viewBox={`0 0 ${W} ${H}`} style={{ cursor: 'crosshair' }}
+            onMouseMove={handleSvgMove} onMouseLeave={() => setTooltip(null)}>
+            {/* Grid */}
+            {gridLinesY.map(v => (
+              <g key={`gy-${v}`}>
+                <line x1={pad.left} y1={yScale(v)} x2={W - pad.right} y2={yScale(v)}
+                  stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                <text x={pad.left - 6} y={yScale(v) + 3} fill="var(--text3)" fontSize="8"
+                  fontFamily="var(--mono)" textAnchor="end">{v.toFixed(1)}</text>
+              </g>
+            ))}
+            {gridLinesX.map(t => (
+              <g key={`gx-${t}`}>
+                <line x1={xScale(t)} y1={pad.top} x2={xScale(t)} y2={H - pad.bottom}
+                  stroke="rgba(255,255,255,0.06)" strokeWidth="1" />
+                <text x={xScale(t)} y={H - pad.bottom + 14} fill="var(--text3)" fontSize="8"
+                  fontFamily="var(--mono)" textAnchor="middle">{t.toFixed(1)}</text>
+              </g>
+            ))}
+            {/* Axis labels */}
+            <text x={W / 2} y={H - 4} fill="var(--text2)" fontSize="9" fontFamily="var(--cond)"
+              textAnchor="middle">T (s)</text>
+            <text x={14} y={H / 2} fill="var(--text2)" fontSize="9" fontFamily="var(--cond)"
+              textAnchor="middle" transform={`rotate(-90,14,${H / 2})`}>
+              {modoSa === 'Sa' ? 'Sa (m/s2)' : 'Sa/g'}
+            </text>
+            {/* Breakpoint lines */}
+            <line x1={xScale(0.2 * Tp)} y1={pad.top} x2={xScale(0.2 * Tp)} y2={H - pad.bottom}
+              stroke="rgba(255,193,7,0.35)" strokeWidth="1" strokeDasharray="4,3" />
+            <text x={xScale(0.2 * Tp)} y={pad.top - 4} fill="#ffc107" fontSize="7"
+              fontFamily="var(--mono)" textAnchor="middle">0.2Tp</text>
+            <line x1={xScale(Tp)} y1={pad.top} x2={xScale(Tp)} y2={H - pad.bottom}
+              stroke="rgba(255,152,0,0.45)" strokeWidth="1" strokeDasharray="4,3" />
+            <text x={xScale(Tp)} y={pad.top - 4} fill="#ff9800" fontSize="7"
+              fontFamily="var(--mono)" textAnchor="middle">Tp={Tp}</text>
+            <line x1={xScale(TL)} y1={pad.top} x2={xScale(TL)} y2={H - pad.bottom}
+              stroke="rgba(244,67,54,0.45)" strokeWidth="1" strokeDasharray="4,3" />
+            <text x={xScale(TL)} y={pad.top - 4} fill="#f44336" fontSize="7"
+              fontFamily="var(--mono)" textAnchor="middle">TL={TL}</text>
+            {/* Axes */}
+            <line x1={pad.left} y1={pad.top} x2={pad.left} y2={H - pad.bottom}
+              stroke="var(--text3)" strokeWidth="1" />
+            <line x1={pad.left} y1={H - pad.bottom} x2={W - pad.right} y2={H - pad.bottom}
+              stroke="var(--text3)" strokeWidth="1" />
+            {/* Curve */}
+            <path d={pathD} fill="none" stroke="#4fc3f7" strokeWidth="2" strokeLinejoin="round" />
+            {/* Fill under curve */}
+            {pathD && (
+              <path d={`${pathD} L${xScale(4).toFixed(1)},${yScale(0).toFixed(1)} L${xScale(0).toFixed(1)},${yScale(0).toFixed(1)} Z`}
+                fill="rgba(79,195,247,0.08)" />
+            )}
+          </svg>
+          {/* Tooltip */}
+          {tooltip && (
+            <div className="esp-tooltip" style={{
+              left: Math.min(tooltip.x + 12, W - 140), top: tooltip.y - 60,
+            }}>
+              T = {tooltip.T.toFixed(2)} s<br />
+              C = {tooltip.C.toFixed(4)}<br />
+              Sa = {tooltip.Sa.toFixed(4)} m/s2<br />
+              Sa/g = {tooltip.SaG.toFixed(5)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Export buttons */}
+      {!esEMS && (
+        <div className="esp-btn-row">
+          <button className="esp-btn" onClick={() => descargar('completo')} disabled={espectro.length === 0}>
+            Exportar ETABS (completo - 201 pts)
+          </button>
+          <button className="esp-btn" onClick={() => descargar('reducido')} disabled={espectro.length === 0}>
+            Exportar ETABS (reducido - 41 pts)
+          </button>
+        </div>
+      )}
+
+      {/* Table */}
+      {!esEMS && espectro.length > 0 && (
+        <Section title="TABLA DE ESPECTRO (201 puntos)" defaultOpen={false}>
+          <div className="esp-table-wrap">
+            <table className="e030-table">
+              <thead>
+                <tr>
+                  <th style={S.headerCell}>T (s)</th>
+                  <th style={S.headerCell}>C</th>
+                  <th style={S.headerCell}>Sa (m/s2)</th>
+                  <th style={S.headerCell}>Sa/g</th>
+                </tr>
+              </thead>
+              <tbody>
+                {espectro.map((p, i) => (
+                  <tr key={i}>
+                    <td style={S.cell}>{p.T.toFixed(2)}</td>
+                    <td style={S.cell}>{p.C.toFixed(4)}</td>
+                    <td style={S.cell}>{p.Sa.toFixed(4)}</td>
+                    <td style={S.cell}>{p.SaG.toFixed(5)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      )}
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
 //  MAIN COMPONENT
 // ══════════════════════════════════════════════════════════════
 export default function IrregularidadesE030({ onBack }) {
@@ -1418,7 +1759,7 @@ export default function IrregularidadesE030({ onBack }) {
           <span className="topbar-title">Column<span>Seis</span></span>
         </div>
         <div className="topbar-nav">
-          {['DERIVAS', 'IRREG. PLANTA', 'IRREG. ALTURA', 'RESUMEN'].map(t => (
+          {['DERIVAS', 'IRREG. PLANTA', 'IRREG. ALTURA', 'RESUMEN', 'ESPECTRO'].map(t => (
             <button key={t} className={`tab-btn ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>{t}</button>
           ))}
         </div>
@@ -1447,6 +1788,9 @@ export default function IrregularidadesE030({ onBack }) {
             iaX={iaFinal.iaX} iaY={iaFinal.iaY} ipX={ipFinal.ipX} ipY={ipFinal.ipY}
             iaDetails={iaDetails} ipDetails={ipDetails}
             derivaResX={derivaResX} derivaResY={derivaResY} />
+        )}
+        {tab === 'ESPECTRO' && (
+          <TabEspectro />
         )}
       </div>
     </div>

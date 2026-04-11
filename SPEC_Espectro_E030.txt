@@ -1,0 +1,669 @@
+# ESPECIFICACION COMPLETA: Espectro de Respuesta E.030-2025 Perú
+# Fuente: ESPECTRO_E030_2025_MACRO2.xlsm + NTE E.030-2025 (R.M. N° 279-2025-VIVIENDA)
+# Propósito: Documento para que Claude Code INTEGRE esta funcionalidad en la app web
+#            existente de irregularidades sísmicas, SIN ROMPER NADA de lo existente.
+#
+# ============================================================================
+# INSTRUCCIÓN CRÍTICA PARA CLAUDE CODE:
+# ============================================================================
+# 1. La app web YA tiene implementada la verificación de irregularidades sísmicas
+#    basada en SPEC_Irregularidades_E030.txt. TODO ESO DEBE PERMANECER INTACTO.
+# 2. Este módulo de ESPECTRO DE RESPUESTA debe agregarse como una NUEVA SECCIÓN
+#    o PESTAÑA/TAB en la misma aplicación web.
+# 3. NO modifiques, elimines ni reorganices las funcionalidades existentes.
+# 4. El módulo de espectro es INDEPENDIENTE de las irregularidades en cuanto a
+#    datos de entrada, PERO comparte los mismos parámetros normativos (Z, S, U, Ro,
+#    Ia, Ip) que ya están definidos en las tablas de la norma.
+# 5. Si la app ya tiene selección de Zona, Suelo, Categoría, Sistema, Ia, Ip →
+#    REUTILIZA esos valores para el espectro (no duplicar inputs).
+#    Si la app NO tiene esos selectores globales, CREA los inputs en el módulo
+#    de espectro con las mismas tablas normativas.
+# ============================================================================
+
+================================================================================
+MÓDULO: GENERADOR DE ESPECTRO DE PSEUDO-ACELERACIONES
+Norma: NTE E.030-2025 (Artículos 12-18, Tablas N°1,4,5,6,7,10)
+================================================================================
+
+################################################################################
+# SECCIÓN 1: PARÁMETROS DE ENTRADA (Dropdowns / Selectores)
+################################################################################
+
+El usuario selecciona 6 parámetros mediante dropdowns. Cada selección determina
+un valor numérico según las tablas normativas.
+
+--- PARÁMETRO 1: ZONA SÍSMICA ---
+Dropdown: ["Zona 1", "Zona 2", "Zona 3", "Zona 4"]
+Mapeo a Factor Z (Tabla N°1 - Art. 12):
+  Zona 4 → Z = 0.45
+  Zona 3 → Z = 0.35
+  Zona 2 → Z = 0.25
+  Zona 1 → Z = 0.10
+Fórmula Excel original:
+  =IF(B6="Zona 4",0.45,IF(B6="Zona 3",0.35,IF(B6="Zona 2",0.25,IF(B6="Zona 1",0.1,0.45))))
+
+--- PARÁMETRO 2: PERFIL DE SUELO ---
+Dropdown: ["S0 - Roca", "S1 - Muy rígidos", "S2 - Rígidos", "S3 - Intermedios", "S4 - Blandos"]
+Mapeo a Factor S (Tabla N°4 - Art. 14):
+La S depende de la combinación Zona × Suelo:
+
+  TABLA COMPLETA S(zona, suelo):
+  ┌──────┬──────┬──────┬──────┬──────┬──────┐
+  │ Zona │  S0  │  S1  │  S2  │  S3  │  S4  │
+  ├──────┼──────┼──────┼──────┼──────┼──────┤
+  │  Z4  │ 0.80 │ 1.00 │ 1.10 │ 1.20 │ EMS* │
+  │  Z3  │ 0.80 │ 1.00 │ 1.15 │ 1.20 │ 1.50 │
+  │  Z2  │ 0.80 │ 1.00 │ 1.30 │ 1.40 │ 2.00 │
+  │  Z1  │ 0.80 │ 1.00 │ 1.30 │ 1.50 │ 2.00 │
+  └──────┴──────┴──────┴──────┴──────┴──────┘
+  * EMS = Estudio de Mecánica de Suelos requerido (S4 en Zona 4).
+    En la app web: mostrar advertencia "Se requiere Estudio de Mecánica de Suelos (EMS)"
+    y NO permitir generar espectro con esa combinación (o usar un valor por defecto con aviso).
+
+Fórmula Excel original:
+  =IF(LEFT(B7,2)="S0",0.8,IF(LEFT(B7,2)="S1",1,IF(LEFT(B7,2)="S2",
+    IF(LEFT(B6,6)="Zona 4",1.1,IF(LEFT(B6,6)="Zona 3",1.15,1.3)),
+    IF(LEFT(B7,2)="S3",IF(LEFT(B6,6)="Zona 4",1.2,IF(LEFT(B6,6)="Zona 3",1.2,1.4)),
+    IF(LEFT(B7,2)="S4",IF(OR(LEFT(B6,6)="Zona 4",LEFT(B6,6)="Zona 3"),1.5,2),1)))))
+
+NOTA IMPORTANTE SOBRE S4:
+  - La norma E.030-2025 (Tabla N°4) indica que S4 en Zona 4 requiere EMS.
+  - El Excel original usa un valor de 1.5 para Z3+S4 y Z4+S4 (simplificación).
+  - Según el PDF oficial: Z4+S4 = EMS (no hay valor fijo), Z3+S4 = 1.50, Z2+S4 = 2.00, Z1+S4 = 2.00.
+  - NOTA: Algunos valores en el Excel difieren ligeramente del PDF oficial:
+    PDF dice Z1+S3=1.50 pero Excel usa 1.40 (S3 Z1/Z2 comparten 1.4 en el Excel).
+    El implementador debe decidir si usa los valores exactos del PDF o del Excel.
+    RECOMENDACIÓN: Usar los valores del PDF oficial (Tabla N°4).
+
+--- PARÁMETRO 3: CATEGORÍA DE EDIFICACIÓN ---
+Dropdown: ["A1 - Hospitales", "A2 - Esenciales", "B - Importantes", "C - Comunes", "D - Temporales"]
+Mapeo a Factor U (Tabla N°7 - Art. 15):
+  A1 → U = 1.50  (Establecimientos de Salud - Hospitales)
+  A2 → U = 1.50  (Esenciales: bomberos, FFAA, comunicaciones)
+  B  → U = 1.30  (Importantes: cines, estadios, centros comerciales)
+  C  → U = 1.00  (Comunes: viviendas, oficinas)
+  D  → U = 1.00  (Temporales: depósitos, instalaciones provisionales)
+  NOTA: D en la norma no tiene valor explícito; la práctica usa U=1.0.
+Fórmula Excel original:
+  =IF(LEFT(B8,2)="A1",1.5,IF(LEFT(B8,2)="A2",1.5,IF(LEFT(B8,1)="B",1.3,1)))
+
+--- PARÁMETRO 4: SISTEMA ESTRUCTURAL ---
+Dropdown: ["Pórticos C.A.", "Dual C.A.", "Muros C.A.", "EMDL", "Albañilería", "Acero SMF", "Acero SCBF"]
+Mapeo a Coeficiente Ro (Tabla N°10 - Art. 16):
+  Pórticos C.A.  → Ro = 8
+  Dual C.A.      → Ro = 7
+  Muros C.A.     → Ro = 6
+  EMDL           → Ro = 3.5  (Estructura de Muros de Ductilidad Limitada)
+  Albañilería    → Ro = 3
+  Acero SMF      → Ro = 8    (Special Moment Frame)
+  Acero SCBF     → Ro = 7    (Special Concentrically Braced Frame)
+  NOTA: La norma tiene más sistemas (ver Tabla N°10 completa). Estos son los principales.
+Fórmula Excel original:
+  =IF(B9="Pórticos C.A.",8,IF(B9="Dual C.A.",7,IF(B9="Muros C.A.",6,
+    IF(B9="EMDL",3.5,IF(B9="Albañilería",3,IF(B9="Acero SMF",8,IF(B9="Acero SCBF",7,6)))))))
+
+--- PARÁMETRO 5: IRREGULARIDAD EN ALTURA (Ia) ---
+Dropdown: ["Regular (1.00)", "Irreg. (0.90)", "Piso blando (0.75)", "Masa (0.75)",
+           "Geométrica (0.90)", "Discontinuidad (0.80)", "Extrema (0.50)"]
+Mapeo:
+  Regular (1.00)         → Ia = 1.00
+  Irreg. (0.90)          → Ia = 0.90
+  Piso blando (0.75)     → Ia = 0.75
+  Masa (0.75)            → Ia = 0.75
+  Geométrica (0.90)      → Ia = 0.90
+  Discontinuidad (0.80)  → Ia = 0.80
+  Extrema (0.50)         → Ia = 0.50
+NOTA: Si la app ya calcula Ia desde el módulo de irregularidades → USAR ESE VALOR directamente.
+Fórmula Excel original:
+  =IF(B10="Regular (1.00)",1,IF(B10="Irreg. (0.90)",0.9,IF(B10="Piso blando (0.75)",0.75,
+    IF(B10="Masa (0.75)",0.75,IF(B10="Geométrica (0.90)",0.9,IF(B10="Discontinuidad (0.80)",0.8,
+    IF(B10="Extrema (0.50)",0.5,1)))))))
+
+--- PARÁMETRO 6: IRREGULARIDAD EN PLANTA (Ip) ---
+Dropdown: ["Regular (1.00)", "Torsional (0.75)", "Esquinas (0.90)",
+           "Diafragma (0.85)", "No paralelos (0.90)", "Torsión ext. (0.60)"]
+Mapeo:
+  Regular (1.00)      → Ip = 1.00
+  Torsional (0.75)    → Ip = 0.75
+  Esquinas (0.90)     → Ip = 0.90
+  Diafragma (0.85)    → Ip = 0.85
+  No paralelos (0.90) → Ip = 0.90
+  Torsión ext. (0.60) → Ip = 0.60
+NOTA: Si la app ya calcula Ip desde el módulo de irregularidades → USAR ESE VALOR directamente.
+Fórmula Excel original:
+  =IF(B11="Regular (1.00)",1,IF(B11="Torsional (0.75)",0.75,IF(B11="Esquinas (0.90)",0.9,
+    IF(B11="Diafragma (0.85)",0.85,IF(B11="No paralelos (0.90)",0.9,
+    IF(B11="Torsión ext. (0.60)",0.6,1))))))
+
+
+################################################################################
+# SECCIÓN 2: PARÁMETROS CALCULADOS AUTOMÁTICAMENTE
+################################################################################
+
+A partir de la selección de Suelo, se determinan los períodos TP y TL.
+
+--- PERÍODO TP (Tabla N°5 - Art. 14) ---
+Depende SOLO del tipo de suelo:
+  S0 → Tp = 0.3 s
+  S1 → Tp = 0.4 s
+  S2 → Tp = 0.6 s
+  S3 → Tp = 0.9 s
+  S4 → Tp = 1.0 s
+Fórmula Excel:
+  =IF(LEFT(B7,2)="S0",0.3,IF(LEFT(B7,2)="S1",0.4,IF(LEFT(B7,2)="S2",0.6,
+    IF(LEFT(B7,2)="S3",0.9,IF(LEFT(B7,2)="S4",1,0.6)))))
+
+--- PERÍODO TL (Tabla N°5 - Art. 14) ---
+Depende SOLO del tipo de suelo:
+  S0 → TL = 3.0 s
+  S1 → TL = 3.0 s
+  S2 → TL = 3.0 s
+  S3 → TL = 2.5 s
+  S4 → TL = 2.0 s
+Fórmula Excel:
+  =IF(LEFT(B7,2)="S0",3,IF(LEFT(B7,2)="S1",3,IF(LEFT(B7,2)="S2",3,
+    IF(LEFT(B7,2)="S3",2.5,IF(LEFT(B7,2)="S4",2,3)))))
+
+--- COEFICIENTE DE REDUCCIÓN R ---
+  R = Ro × Ia × Ip
+Fórmula Excel:
+  =C9*C10*C11  (donde C9=Ro, C10=Ia, C11=Ip)
+
+--- GRAVEDAD ---
+  g = 9.81 m/s²  (constante)
+
+--- SA MÁXIMO ---
+  Sa_max = (Z × U × 2.5 × S / R) × g
+  (Corresponde al plateau del espectro donde C=2.5)
+Fórmula Excel:
+  =(C6*C8*2.5*C7/B16)*B17
+
+--- SA/g MÁXIMO ---
+  Sa_g_max = Sa_max / g = Z × U × 2.5 × S / R
+Fórmula Excel:
+  =B20/B17
+
+
+################################################################################
+# SECCIÓN 3: FÓRMULA DEL FACTOR DE AMPLIFICACIÓN SÍSMICA C(T)
+# Art. 18, Tabla N°6 de la NTE E.030-2025
+################################################################################
+
+El factor C depende del período T de la estructura y de los períodos TP y TL del suelo.
+
+CUATRO CONDICIONES (Art. 18):
+
+  Condición 1: T < 0.2×Tp
+    C(T) = 1 + 7.5 × (T / Tp)
+    [Rama ascendente lineal desde C=1.0 hasta C=2.5]
+
+  Condición 2: 0.2×Tp ≤ T ≤ Tp
+    C(T) = 2.5
+    [Plateau - aceleración constante máxima]
+
+  Condición 3: Tp < T < TL
+    C(T) = 2.5 × (Tp / T)
+    [Rama descendente hiperbólica - zona de velocidades]
+
+  Condición 4: T ≥ TL
+    C(T) = 2.5 × (Tp × TL / T²)
+    [Rama descendente parabólica - zona de desplazamientos]
+
+Fórmula Excel (celda B8 en adelante de hoja ESPECTRO):
+  =IF(A8<0.2*$E$4, 1+7.5*(A8/$E$4),
+    IF(A8<=$E$4, 2.5,
+      IF(A8<$F$4, 2.5*($E$4/A8),
+        2.5*($E$4*$F$4/(A8^2)))))
+
+Donde:
+  A8     = T (período en segundos)
+  $E$4   = Tp (referencia a celda con valor de ENTRADA)
+  $F$4   = TL (referencia a celda con valor de ENTRADA)
+
+CASO ESPECIAL T=0:
+  En T=0, la fórmula C(T)=1+7.5*(0/Tp)=1, lo cual es correcto.
+  El Excel usa =1 directamente en la primera fila (B7).
+  Sa(T=0) = Z×U×1×S/R × g
+
+
+################################################################################
+# SECCIÓN 4: ESPECTRO DE PSEUDO-ACELERACIONES Sa(T)
+################################################################################
+
+La aceleración espectral se calcula como:
+
+  Sa(T) = (Z × U × C(T) × S / R) × g    [en m/s²]
+  Sa/g(T) = Z × U × C(T) × S / R         [adimensional, para ETABS]
+
+Fórmula Excel (columna C de hoja ESPECTRO):
+  =($A$4*$B$4*B8*$C$4/$D$4)*$G$4
+
+Donde:
+  $A$4 = Z (factor de zona)
+  $B$4 = U (factor de uso)
+  B8   = C(T) (factor de amplificación para ese período)
+  $C$4 = S (factor de suelo)
+  $D$4 = R (coeficiente de reducción)
+  $G$4 = g = 9.81 m/s²
+
+Sa/g (columna D):
+  =C8/$G$4
+
+
+################################################################################
+# SECCIÓN 5: SERIE DE PERÍODOS T
+################################################################################
+
+El espectro se genera para 201 puntos desde T=0 hasta T=4.0s con paso constante de 0.02s:
+
+  T = [0.00, 0.02, 0.04, 0.06, ..., 3.96, 3.98, 4.00]
+
+  Filas Excel: 7 a 207 (fila 7 = T=0, fila 207 = T=4.0)
+  Total: 201 puntos
+
+En la app web, generar este array programáticamente:
+  T_values = [i * 0.02 for i in range(201)]  // 0.00 a 4.00
+
+Para cada valor de T, calcular C(T) y luego Sa(T).
+
+
+################################################################################
+# SECCIÓN 6: EXPORTACIÓN PARA ETABS
+################################################################################
+
+El espectro se puede exportar en formato texto compatible con ETABS:
+
+Formato: "T[TAB]Sa/g" (un par por línea)
+  Ejemplo:
+    0.00	0.01094
+    0.02	0.01258
+    0.04	0.01422
+    ...
+    4.00	0.00385
+
+Fórmula Excel para formato de exportación (columna E de ESPECTRO):
+  =TEXT(A7,"0.00")&CHAR(9)&TEXT(D7,"0.00000")
+
+En la app web, implementar un botón "Exportar para ETABS" que:
+1. Genere un archivo .txt con formato: T (2 decimales) [TAB] Sa/g (5 decimales)
+2. Permita descargarlo como "Espectro_E030_2025.txt"
+3. Opcionalmente, permitir elegir el paso de exportación:
+   - Completo: cada 0.02s (201 puntos)
+   - Reducido: cada 0.10s (~41 puntos, como el Step 5 del VBA)
+
+Hoja EXPORTAR_ETABS del Excel original:
+  Toma puntos cada 5 filas (cada 0.10s) de la hoja ESPECTRO
+  Fórmula: =ESPECTRO!A7&CHAR(9)&TEXT(ESPECTRO!D7,"0.00000")
+  (Selecciona filas 7, 12, 17, 22, ... de ESPECTRO)
+
+
+################################################################################
+# SECCIÓN 7: MACRO VBA (para referencia, NO implementar VBA en la web)
+################################################################################
+
+El Excel tiene dos macros VBA documentadas en hoja MACRO_VBA:
+
+1. Sub ExportarEspectroETABS()
+   - Exporta cada 0.10s (Step 5) al archivo .txt
+   - Formato: Format(T, "0.00") & vbTab & Format(SaG, "0.00000")
+   - Muestra diálogo para elegir ubicación
+   - Muestra resumen de parámetros al finalizar
+
+2. Sub ExportarEspectroCompleto()
+   - Exporta TODOS los 201 puntos (cada 0.02s)
+   - Mismo formato
+
+EN LA APP WEB: Reemplazar estas macros con funcionalidad JavaScript/TypeScript
+equivalente (botón de exportar + descarga de archivo .txt).
+
+
+################################################################################
+# SECCIÓN 8: TABLAS NORMATIVAS (Hoja TABLAS del Excel)
+################################################################################
+
+Estas tablas están en la hoja TABLAS como referencia visual.
+En la app web, implementar como datos estáticos o constantes.
+
+--- TABLA N°1: FACTOR DE ZONA Z (Art. 12) ---
+Zona | Z
+  4  | 0.45
+  3  | 0.35
+  2  | 0.25
+  1  | 0.10
+
+--- TABLA N°4: FACTOR DE SUELO S (Art. 14) ---
+Zona |  S0  |  S1  |  S2  |  S3  |  S4
+  4  | 0.80 | 1.00 | 1.10 | 1.20 | EMS
+  3  | 0.80 | 1.00 | 1.15 | 1.20 | 1.50
+  2  | 0.80 | 1.00 | 1.30 | 1.40 | 2.00
+  1  | 0.80 | 1.00 | 1.30 | 1.50 | 2.00
+
+NOTA: Según el PDF oficial, los valores exactos de la norma son:
+  Z1+S3 = 1.50 (el Excel usa 1.40 para Z1 y Z2)
+  Z4+S4 = EMS (requiere estudio, no hay valor numérico fijo)
+RECOMENDACIÓN: Usar los valores del PDF oficial para máxima precisión.
+
+--- TABLA N°5: PERÍODOS TP Y TL (Art. 14) ---
+Perfil |  S0  |  S1  |  S2  |  S3  |  S4
+  TP   | 0.30 | 0.40 | 0.60 | 0.90 | 1.00
+  TL   | 3.00 | 3.00 | 3.00 | 2.50 | 2.00
+
+--- TABLA N°6: FACTOR DE AMPLIFICACIÓN SÍSMICA C (Art. 18) ---
+(Ver SECCIÓN 3 para las 4 condiciones completas)
+
+--- TABLA N°7: FACTOR DE USO U (Art. 15) ---
+Categoría | U
+  A1      | 1.50
+  A2      | 1.50
+  B       | 1.30
+  C       | 1.00
+  D       | 1.00
+
+--- TABLA N°10: COEFICIENTE BÁSICO DE REDUCCIÓN Ro (Art. 16) ---
+Sistema Estructural   | Ro
+Pórticos C.A.         | 8
+Dual C.A.             | 7
+Muros C.A.            | 6
+EMDL                  | 3.5
+Albañilería           | 3
+Acero SMF             | 8
+Acero SCBF            | 7
+
+NOTA: La norma E.030 tiene más sistemas en la Tabla N°10 completa.
+Los 7 listados aquí son los del Excel original.
+
+
+################################################################################
+# SECCIÓN 9: FORMATO Y ESTILO (UI/UX de la app web)
+################################################################################
+
+El Excel original usa los siguientes estilos que deben traducirse a la app:
+
+COLORES:
+  - Título principal: Fondo #1F4E79 (azul oscuro), texto blanco, bold, 14pt
+  - Subtítulos de sección: Color #1F4E79, bold, 12pt
+  - Headers de tabla: Fondo #D6DCE5 (gris claro), bold, 11pt
+  - Celdas de entrada (dropdowns): Fondo #BDD7EE (azul claro) → inputs del usuario
+  - Valores calculados: Fondo #C6EFCE (verde claro) → resultados automáticos
+  - Gravedad (constante): Fondo #FFFF99 (amarillo claro) → dato fijo
+  - Resultado principal (Sa max): Fondo #92D050 (verde brillante), bold, 14pt
+  - Texto general: 11pt, color oscuro
+
+LAYOUT DEL EXCEL (para replicar en la web):
+  Fila 1-2: Título "GENERADOR DE ESPECTRO E.030-2025" + Subtítulo norma
+  Fila 4: Sección "PARÁMETROS DE ENTRADA"
+  Fila 5: Headers [PARÁMETRO | SELECCIÓN | VALOR | DESCRIPCIÓN]
+  Filas 6-11: Los 6 parámetros con dropdown + valor calculado + descripción
+  Fila 13: Sección "PARÁMETROS CALCULADOS"
+  Filas 14-17: Tp, TL, R, g
+  Fila 19: Sección "RESULTADOS"
+  Filas 20-21: Sa máximo (m/s²) y Sa/g máximo
+
+
+################################################################################
+# SECCIÓN 10: GRÁFICO DEL ESPECTRO
+################################################################################
+
+La app web DEBE incluir un gráfico interactivo del espectro:
+
+Tipo: Gráfico de línea (line chart)
+Eje X: Período T (s) → rango [0, 4.0]
+Eje Y: Sa (m/s²) o Sa/g (adimensional) → toggle entre ambas unidades
+
+Puntos clave a marcar en el gráfico:
+  - T = 0.2×Tp: inicio del plateau
+  - T = Tp: fin del plateau, inicio de decaimiento 1/T
+  - T = TL: cambio a decaimiento 1/T²
+  - Sa máximo: valor del plateau
+
+Características del gráfico:
+  - Línea continua del espectro
+  - Grid de fondo
+  - Etiquetas en los puntos de quiebre (Tp, TL)
+  - Tooltip interactivo que muestre T, C, Sa, Sa/g al pasar el mouse
+  - Color sugerido de la línea: azul (#4472C4 o similar)
+
+Opcional pero recomendado:
+  - Permitir superponer múltiples espectros (cambiar parámetros y "agregar" curva)
+  - Mostrar las 4 zonas del espectro con colores de fondo diferentes:
+    * T < 0.2Tp: zona de amplificación (naranja claro)
+    * 0.2Tp ≤ T ≤ Tp: plateau (rojo claro)
+    * Tp < T < TL: zona de velocidades (azul claro)
+    * T ≥ TL: zona de desplazamientos (verde claro)
+
+
+################################################################################
+# SECCIÓN 11: TABLA DE RESULTADOS DEL ESPECTRO
+################################################################################
+
+Debajo del gráfico, mostrar una tabla con los resultados calculados:
+
+Columnas: [T (s) | C | Sa (m/s²) | Sa/g]
+Filas: 201 filas (T = 0.00 a 4.00, paso 0.02)
+
+Fórmulas por fila (para T dado):
+  C = función_C(T, Tp, TL)     // Ver SECCIÓN 3
+  Sa = (Z × U × C × S / R) × g
+  Sa_g = Sa / g = Z × U × C × S / R
+
+La tabla debe ser scrollable (no mostrar las 201 filas de golpe).
+Permitir filtrar/buscar por rango de T.
+
+
+################################################################################
+# SECCIÓN 12: FUNCIONALIDAD DE EXPORTAR
+################################################################################
+
+Botón "Exportar para ETABS":
+  1. Genera archivo de texto con formato:
+     T[TAB]Sa/g
+     (T con 2 decimales, Sa/g con 5 decimales)
+  2. Opciones de resolución:
+     - "Completo (201 puntos, Δt=0.02s)" → default
+     - "Reducido (41 puntos, Δt=0.10s)"
+  3. Descarga como "Espectro_E030_2025.txt"
+
+Botón "Exportar Resumen":
+  Genera un resumen de los parámetros usados:
+  ════════════════════════════════════
+  ESPECTRO E.030-2025
+  ════════════════════════════════════
+  Zona: [selección] → Z = [valor]
+  Suelo: [selección] → S = [valor]
+  Categoría: [selección] → U = [valor]
+  Sistema: [selección] → Ro = [valor]
+  Ia = [valor]
+  Ip = [valor]
+  R = Ro×Ia×Ip = [valor]
+  Tp = [valor] s
+  TL = [valor] s
+  Sa máx = [valor] m/s²
+  Sa/g máx = [valor]
+  ════════════════════════════════════
+
+
+################################################################################
+# SECCIÓN 13: INTEGRACIÓN CON MÓDULO DE IRREGULARIDADES
+################################################################################
+
+FLUJO DE DATOS ENTRE MÓDULOS:
+
+Si la app de irregularidades ya calcula los factores Ia e Ip finales:
+  1. El usuario completa la verificación de irregularidades → obtiene Ia, Ip
+  2. Al ir al módulo de espectro, los campos Ia e Ip se PRE-LLENAN
+     con los valores calculados por el módulo de irregularidades.
+  3. El usuario puede SOBRESCRIBIR manualmente si lo desea.
+  4. R se recalcula automáticamente: R = Ro × Ia × Ip
+  5. El espectro se actualiza en tiempo real.
+
+Si los módulos son independientes:
+  1. El espectro tiene sus propios dropdowns de Ia e Ip.
+  2. No hay vinculación automática.
+
+RECOMENDACIÓN: Implementar la vinculación (opción 1) para coherencia.
+Agregar un toggle o indicador: "Ia/Ip calculados desde irregularidades" vs "Ia/Ip manuales".
+
+
+################################################################################
+# SECCIÓN 14: VALIDACIONES Y RESTRICCIONES
+################################################################################
+
+1. Zona 4 + Suelo S4: NO PERMITIDO sin EMS.
+   Mostrar: "⚠ Zona 4 + Suelo S4 requiere Estudio de Mecánica de Suelos (Art. 14)"
+   Deshabilitar el botón de generar espectro o mostrar advertencia clara.
+
+2. R mínimo: R debe ser > 0 siempre (por definición, nunca será 0 ni negativo
+   si los factores son válidos).
+
+3. C mínimo: La norma no establece C mínimo explícito, pero C siempre ≥ 0.
+   Para T → ∞, C → 0.
+
+4. Categoría A1/A2 (Esenciales) con Zona 4 y Zona 3:
+   - Se deben aislar sísmicamente o usar otros criterios especiales.
+   - No es una restricción del espectro, pero se puede agregar como nota informativa.
+
+5. Restricciones de Categoría × Sistema (Tabla N°9 de la norma):
+   - Categoría A1/A2 en Zona 4/3: NO se permiten EMDL ni Albañilería.
+   - Categoría A1/A2 en Zona 2: NO se permite EMDL.
+   - Categoría D: NO se permiten ciertas combinaciones.
+   - Implementar estas restricciones como advertencias o bloqueos.
+
+
+################################################################################
+# SECCIÓN 15: PSEUDOCÓDIGO PARA LA IMPLEMENTACIÓN
+################################################################################
+
+// === Datos de tablas normativas (constantes) ===
+
+const ZONA_Z = { "Zona 1": 0.10, "Zona 2": 0.25, "Zona 3": 0.35, "Zona 4": 0.45 };
+
+const SUELO_S = {
+  "Zona 4": { S0: 0.80, S1: 1.00, S2: 1.10, S3: 1.20, S4: null },  // S4=null → EMS
+  "Zona 3": { S0: 0.80, S1: 1.00, S2: 1.15, S3: 1.20, S4: 1.50 },
+  "Zona 2": { S0: 0.80, S1: 1.00, S2: 1.30, S3: 1.40, S4: 2.00 },
+  "Zona 1": { S0: 0.80, S1: 1.00, S2: 1.30, S3: 1.50, S4: 2.00 },
+};
+
+const SUELO_TP = { S0: 0.3, S1: 0.4, S2: 0.6, S3: 0.9, S4: 1.0 };
+const SUELO_TL = { S0: 3.0, S1: 3.0, S2: 3.0, S3: 2.5, S4: 2.0 };
+
+const CATEGORIA_U = { A1: 1.50, A2: 1.50, B: 1.30, C: 1.00, D: 1.00 };
+
+const SISTEMA_RO = {
+  "Pórticos C.A.": 8, "Dual C.A.": 7, "Muros C.A.": 6,
+  "EMDL": 3.5, "Albañilería": 3, "Acero SMF": 8, "Acero SCBF": 7,
+};
+
+const g = 9.81;  // m/s²
+
+// === Función C(T) - Tabla N°6 ===
+
+function calcularC(T, Tp, TL) {
+  if (T < 0.2 * Tp) {
+    return 1 + 7.5 * (T / Tp);           // Rama ascendente
+  } else if (T <= Tp) {
+    return 2.5;                            // Plateau
+  } else if (T < TL) {
+    return 2.5 * (Tp / T);                // Decaimiento 1/T
+  } else {
+    return 2.5 * (Tp * TL / (T * T));     // Decaimiento 1/T²
+  }
+}
+
+// === Generar espectro completo ===
+
+function generarEspectro(Z, U, S, Ro, Ia, Ip, Tp, TL) {
+  const R = Ro * Ia * Ip;
+  const espectro = [];
+
+  for (let i = 0; i <= 200; i++) {
+    const T = i * 0.02;                    // 0.00 a 4.00, paso 0.02
+    const C = calcularC(T, Tp, TL);
+    const Sa = (Z * U * C * S / R) * g;    // m/s²
+    const SaG = Sa / g;                     // adimensional
+
+    espectro.push({ T, C, Sa, SaG });
+  }
+
+  return espectro;
+}
+
+// === Exportar para ETABS ===
+
+function exportarETABS(espectro, paso = 1) {
+  // paso=1 → cada punto (0.02s), paso=5 → cada 0.10s
+  let texto = "";
+  for (let i = 0; i < espectro.length; i += paso) {
+    const { T, SaG } = espectro[i];
+    texto += T.toFixed(2) + "\t" + SaG.toFixed(5) + "\n";
+  }
+  return texto;
+}
+
+
+################################################################################
+# SECCIÓN 16: EJEMPLO DE VERIFICACIÓN
+################################################################################
+
+Con los valores por defecto del Excel:
+  Zona 2 → Z = 0.25
+  S3 Intermedios → S = 1.40
+  C Comunes → U = 1.00
+  Pórticos C.A. → Ro = 8
+  Ia = 1.00
+  Ip = 1.00
+  R = 8 × 1.00 × 1.00 = 8.00
+  Tp = 0.9 s
+  TL = 2.5 s
+  Sa_max = (0.25 × 1.00 × 2.5 × 1.40 / 8.00) × 9.81 = 1.0730 m/s²
+  Sa/g_max = 0.1094
+
+Verificación de puntos clave:
+  T=0.00: C=1.00,          Sa = (0.25×1×1.00×1.40/8)×9.81 = 0.4292 m/s²
+  T=0.18: C=1+7.5×(0.18/0.9)=2.50 (justo en 0.2×Tp), Sa = 1.0730 m/s²
+  T=0.90: C=2.50 (plateau), Sa = 1.0730 m/s²
+  T=1.80: C=2.5×(0.9/1.8)=1.25, Sa = 0.5365 m/s²
+  T=2.50: C=2.5×(0.9/2.5)=0.90, Sa = 0.3862 m/s²
+  T=3.00: C=2.5×(0.9×2.5/9)=0.625, Sa = 0.2682 m/s²
+  T=4.00: C=2.5×(0.9×2.5/16)=0.3516, Sa = 0.1509 m/s²
+
+
+################################################################################
+# SECCIÓN 17: ESTRUCTURA DE NAVEGACIÓN EN LA APP
+################################################################################
+
+La app web debe tener al menos estas secciones/pestañas:
+
+PESTAÑA 1: IRREGULARIDADES (YA EXISTENTE - NO TOCAR)
+  - Todas las hojas del workbook de irregularidades
+  - GUÍA, DERIVAS, IRREG. PLANTA, IRREG. ALTURA, RESUMEN
+  - Cálculo de Ia, Ip, R
+
+PESTAÑA 2: ESPECTRO DE RESPUESTA (NUEVA - AGREGAR)
+  - Panel de parámetros de entrada (6 dropdowns)
+  - Panel de parámetros calculados (Tp, TL, R, Sa_max)
+  - Gráfico interactivo del espectro
+  - Tabla de resultados (scrollable)
+  - Botones de exportar (ETABS txt, resumen)
+
+POSIBLE PESTAÑA 3: TABLAS NORMATIVAS (OPCIONAL)
+  - Visualización de todas las tablas de la E.030
+  - Referencia rápida para el ingeniero
+
+NOTA: Mantener consistencia visual entre pestañas (mismos colores, fonts, layout).
+
+
+################################################################################
+# FIN DE LA ESPECIFICACIÓN
+################################################################################
+# Resumen:
+# - 6 parámetros de entrada con dropdowns
+# - 6 valores calculados automáticamente (Tp, TL, R, g, Sa_max, Sa/g_max)
+# - Fórmula C(T) con 4 condiciones (Art. 18, Tabla N°6)
+# - Espectro: 201 puntos, T = 0 a 4s, paso 0.02s
+# - Exportación formato ETABS (T[TAB]Sa/g)
+# - Gráfico interactivo línea
+# - Integración con módulo de irregularidades (Ia, Ip vinculados)
+# - Tablas normativas: Z, S, Tp/TL, C, U, Ro
+# - Validaciones: Z4+S4=EMS, restricciones Categoría×Sistema
+################################################################################
