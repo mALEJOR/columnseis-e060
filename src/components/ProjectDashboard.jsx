@@ -152,7 +152,7 @@ function ModalNuevaColumna({ open, onClose, onAdd, columnas, tiposColumna }) {
 // ══════════════════════════════════════════════════════════════════
 //  DASHBOARD PRINCIPAL
 // ══════════════════════════════════════════════════════════════════
-export default function ProjectDashboard() {
+export default function ProjectDashboard({ onBackToSelector }) {
   const { nombre, ingeniero, fecha, columnas, tiposColumna, dispatch } = useProyecto()
   const [modalOpen, setModalOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
@@ -244,6 +244,11 @@ export default function ProjectDashboard() {
       <header className="dash-header">
         <div className="dash-header-left">
           <div className="dash-logo">
+            {onBackToSelector && (
+              <button className="btn-back" onClick={onBackToSelector} title="Volver al inicio" style={{marginRight:6}}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
+              </button>
+            )}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
               <polygon points="12,2 22,8 22,16 12,22 2,16 2,8" />
               <line x1="12" y1="2" x2="12" y2="22" /><line x1="2" y1="8" x2="22" y2="16" />

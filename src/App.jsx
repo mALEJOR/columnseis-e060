@@ -6,6 +6,7 @@ import SidebarInputs from './components/SidebarInputs'
 import ThreeSurfaceViewer from './three_scene/ThreeSurfaceViewer'
 import InteractionChart from './charts/InteractionDiagramMx'
 import StirrupDesign from './components/StirrupDesign'
+import IrregularidadesE030 from './components/IrregularidadesE030'
 import { generarSuperficie } from './utils/engine'
 import { generarPDF } from './components/PDFReport'
 import './App.css'
@@ -232,11 +233,74 @@ function ColumnEditor() {
 }
 
 // ══════════════════════════════════════════════════════════════════
+//  SELECTOR DE MÓDULO (Landing)
+// ══════════════════════════════════════════════════════════════════
+function ModuleSelector({ onSelect }) {
+  return (
+    <div className="module-selector">
+      <div className="module-selector-inner">
+        <div className="module-selector-header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" width="36" height="36">
+            <polygon points="12,2 22,8 22,16 12,22 2,16 2,8"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="8" x2="22" y2="16"/><line x1="2" y1="16" x2="22" y2="8"/>
+          </svg>
+          <div>
+            <span className="topbar-title" style={{fontSize:24}}>Column<span>Seis</span></span>
+            <div style={{fontSize:10,color:'var(--text3)',marginTop:2,letterSpacing:'.5px',fontFamily:'var(--cond)'}}>HERRAMIENTAS DE INGENIERIA SISMORRESISTENTE</div>
+          </div>
+        </div>
+        <div className="module-cards">
+          <button className="module-card" onClick={() => onSelect('e060')}>
+            <div className="module-card-icon" style={{background:'linear-gradient(135deg,#1547c8,#3b82f6)'}}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" width="32" height="32">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="21"/>
+              </svg>
+            </div>
+            <div className="module-card-body">
+              <div className="module-card-title">Columnas E.060</div>
+              <div className="module-card-desc">Diagramas de interaccion, estribos y verificacion sismorresistente segun NTP E.060 / ACI 318</div>
+              <div className="module-card-badges">
+                <span className="badge norm">NTP E.060</span>
+                <span className="badge norm">ACI 318</span>
+              </div>
+            </div>
+          </button>
+          <button className="module-card" onClick={() => onSelect('e030')}>
+            <div className="module-card-icon" style={{background:'linear-gradient(135deg,#2e7d32,#4caf50)'}}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" width="32" height="32">
+                <path d="M3 21h18M3 21V7l4-4h10l4 4v14M9 21v-6h6v6"/><line x1="7" y1="10" x2="7" y2="14"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="17" y1="10" x2="17" y2="14"/>
+              </svg>
+            </div>
+            <div className="module-card-body">
+              <div className="module-card-title">Derivas e Irregularidades E.030</div>
+              <div className="module-card-desc">Verificacion de derivas maximas, irregularidades en planta y altura, calculo de R segun NTE E.030-2025</div>
+              <div className="module-card-badges">
+                <span className="badge norm" style={{borderColor:'#2e7d32',color:'#4caf50'}}>NTE E.030</span>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════════
 //  APP ROOT
 // ══════════════════════════════════════════════════════════════════
 export default function App() {
   const { vista } = useProyecto()
-  if (vista === 'editor') return <ColumnEditor />
-  if (vista === 'biblioteca') return <BibliotecaTipos />
-  return <ProjectDashboard />
+  const [modulo, setModulo] = useState(null) // null = selector, 'e060', 'e030'
+
+  // E.030 module
+  if (modulo === 'e030') return <IrregularidadesE030 onBack={() => setModulo(null)} />
+
+  // E.060 module (existing views)
+  if (modulo === 'e060' || vista === 'editor' || vista === 'biblioteca') {
+    if (vista === 'editor') return <ColumnEditor />
+    if (vista === 'biblioteca') return <BibliotecaTipos />
+    return <ProjectDashboard onBackToSelector={() => setModulo(null)} />
+  }
+
+  // Module selector (landing)
+  return <ModuleSelector onSelect={setModulo} />
 }
