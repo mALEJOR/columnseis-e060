@@ -13,25 +13,35 @@ const fmtPctRaw = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v
 const pisoLabel = (idx, nPisos) => idx === nPisos - 1 ? 'Azotea' : (nPisos - idx)
 
 /**
- * Descarga texto como .txt — metodo universal base64 data URI.
- * Funciona en Chrome, Brave, Edge, Firefox, Safari.
+ * Descarga texto como .txt — multiples metodos con fallback.
  */
 function descargarTxt(contenido, nombre) {
   const fileName = nombre.endsWith('.txt') ? nombre : nombre + '.txt'
+
+  // Metodo 1: Blob + createObjectURL + <a download> en el DOM
   try {
-    // base64 data URI — el metodo mas compatible con todos los navegadores
-    const b64 = btoa(unescape(encodeURIComponent(contenido)))
+    const blob = new Blob([contenido], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = 'data:application/octet-stream;base64,' + b64
+    a.href = url
     a.download = fileName
-    a.style.display = 'none'
+    a.style.cssText = 'position:fixed;top:-100px;left:-100px'
     document.body.appendChild(a)
     a.click()
-    setTimeout(() => document.body.removeChild(a), 300)
-  } catch (e) {
-    // Fallback: abrir en nueva ventana para guardar manualmente
-    const w = window.open('', '_blank')
-    if (w) { w.document.write('<pre>' + contenido.replace(/</g, '&lt;') + '</pre>'); w.document.title = fileName }
+    // No remover inmediatamente — dar tiempo a Chrome
+    window.setTimeout(function() {
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    }, 1000)
+    return
+  } catch(e) { /* fallback */ }
+
+  // Metodo 2: Abrir en ventana nueva para Ctrl+S
+  const w = window.open('', '_blank')
+  if (w) {
+    w.document.write('<html><head><title>' + fileName + '</title></head><body><pre>' +
+      contenido.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</pre></body></html>')
+    w.document.close()
   }
 }
 
@@ -1990,6 +2000,20 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
                   Descargar .txt
                 </button>
               )}
+              <button onClick={() => {
+                  const txt = expDir === 'ambos' ? (dlContentX + '\r\n\r\n' + dlContentY) : (expDir === 'X' ? dlContentX : dlContentY)
+                  const name = expDir === 'X' ? dlNameX : (expDir === 'Y' ? dlNameY : 'Espectro_E030.txt')
+                  const w = window.open('', '_blank')
+                  if (w) {
+                    w.document.write('<html><head><title>' + name + '</title></head><body style="margin:0;padding:16px;background:#1a1d26;color:#e0e0e0;font-family:monospace;font-size:12px;white-space:pre">' +
+                      txt.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</body></html>')
+                    w.document.close()
+                  }
+                }}
+                style={{padding:'6px 14px',fontSize:10,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
+                  border:'1px solid rgba(217,119,6,0.5)',background:'rgba(217,119,6,0.12)',color:'#ffa726',letterSpacing:'.3px'}}>
+                Abrir como texto (Ctrl+S)
+              </button>
             </div>
           </div>
         </div>
