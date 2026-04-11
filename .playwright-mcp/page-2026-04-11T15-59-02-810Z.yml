@@ -1,0 +1,21 @@
+- generic [ref=e4]:
+  - generic [ref=e5]:
+    - img [ref=e6]
+    - generic [ref=e10]:
+      - generic [ref=e11]: ColumnSeis
+      - generic [ref=e12]: HERRAMIENTAS DE INGENIERIA SISMORRESISTENTE
+  - generic [ref=e13]:
+    - button "Columnas E.060 Diagramas de interaccion, estribos y verificacion sismorresistente segun NTP E.060 / ACI 318 NTP E.060 ACI 318" [ref=e14] [cursor=pointer]:
+      - img [ref=e16]
+      - generic [ref=e18]:
+        - generic [ref=e19]: Columnas E.060
+        - generic [ref=e20]: Diagramas de interaccion, estribos y verificacion sismorresistente segun NTP E.060 / ACI 318
+        - generic [ref=e21]:
+          - generic [ref=e22]: NTP E.060
+          - generic [ref=e23]: ACI 318
+    - button "Derivas e Irregularidades E.030 Verificacion de derivas maximas, irregularidades en planta y altura, calculo de R segun NTE E.030-2025 NTE E.030" [ref=e24] [cursor=pointer]:
+      - img [ref=e26]
+      - generic [ref=e28]:
+        - generic [ref=e29]: Derivas e Irregularidades E.030
+        - generic [ref=e30]: Verificacion de derivas maximas, irregularidades en planta y altura, calculo de R segun NTE E.030-2025
+        - generic [ref=e32]: NTE E.030

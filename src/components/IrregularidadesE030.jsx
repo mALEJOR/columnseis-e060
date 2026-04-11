@@ -12,9 +12,45 @@ const fmtPct = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : (Number(v) 
 const fmtPctRaw = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v).toFixed(1) + '%'
 const pisoLabel = (idx, nPisos) => idx === nPisos - 1 ? 'Azotea' : (nPisos - idx)
 
-/** Genera una URL de descarga para un contenido de texto */
-function crearUrlDescarga(contenido) {
-  return URL.createObjectURL(new Blob([contenido], { type: 'application/octet-stream' }))
+/**
+ * Componente <a> que genera el blob URL al hover/focus y descarga al click.
+ * Compatible con Chrome, Brave, Edge, Firefox, Safari.
+ */
+function DownloadLink({ contenido, fileName, children, style }) {
+  const ref = useRef(null)
+  const blobUrl = useRef(null)
+
+  const prepareUrl = useCallback(() => {
+    // Revocar URL anterior si existe
+    if (blobUrl.current) URL.revokeObjectURL(blobUrl.current)
+    // Crear nuevo blob URL justo antes del click
+    const blob = new Blob([contenido], { type: 'application/octet-stream' })
+    blobUrl.current = URL.createObjectURL(blob)
+    if (ref.current) {
+      ref.current.href = blobUrl.current
+      ref.current.download = fileName.endsWith('.txt') ? fileName : fileName + '.txt'
+    }
+  }, [contenido, fileName])
+
+  // Cleanup on unmount
+  const cleanup = useCallback(() => {
+    if (blobUrl.current) { URL.revokeObjectURL(blobUrl.current); blobUrl.current = null }
+  }, [])
+
+  return (
+    <a ref={ref} href="#" download={fileName.endsWith('.txt') ? fileName : fileName + '.txt'}
+      onMouseEnter={prepareUrl} onFocus={prepareUrl}
+      onMouseDown={prepareUrl}
+      onClick={(e) => {
+        // Asegurar que la URL esta lista justo en el click
+        prepareUrl()
+        // Limpiar despues de un delay
+        setTimeout(cleanup, 1000)
+      }}
+      style={{ ...style, textDecoration: 'none', display: 'inline-block' }}>
+      {children}
+    </a>
+  )
 }
 
 const SISTEMAS = E030.SISTEMAS_ESTRUCTURALES.map(s => s.nombre)
@@ -1412,19 +1448,19 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
     setShowExport(true)
   }
 
-  // Pre-generate download URLs for the modal's <a> tags
-  const dlUrlX = useMemo(() => {
-    if (esEMS || espX.length === 0) return null
-    return crearUrlDescarga(Espectro.exportarETABS(espX, mkParams('X'), 'X-X', expDeltaT))
+  // Content and filenames for downloads (computed, not blob URLs)
+  const dlContentX = useMemo(() => {
+    if (esEMS || espX.length === 0) return ''
+    return Espectro.exportarETABS(espX, mkParams('X'), 'X-X', expDeltaT)
   }, [espX, esEMS, expDeltaT, zona, sKey, sVal, categoria, U, Rx, IaX, IpX])
 
-  const dlUrlY = useMemo(() => {
-    if (esEMS || espY.length === 0) return null
-    return crearUrlDescarga(Espectro.exportarETABS(espY, mkParams('Y'), 'Y-Y', expDeltaT))
+  const dlContentY = useMemo(() => {
+    if (esEMS || espY.length === 0) return ''
+    return Espectro.exportarETABS(espY, mkParams('Y'), 'Y-Y', expDeltaT)
   }, [espY, esEMS, expDeltaT, zona, sKey, sVal, categoria, U, Ry, IaY, IpY])
 
-  const dlNameX = useMemo(() => expName || Espectro.generarNombreArchivo('X-X', mkParams('X')), [expName, zona, sKey, Rx])
-  const dlNameY = useMemo(() => Espectro.generarNombreArchivo('Y-Y', mkParams('Y')), [zona, sKey, Ry])
+  const dlNameX = expName || Espectro.generarNombreArchivo('X-X', mkParams('X'))
+  const dlNameY = Espectro.generarNombreArchivo('Y-Y', mkParams('Y'))
 
   const handleCopy = () => {
     if (expDir === 'ambos') {
@@ -1960,24 +1996,23 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
                 {copied ? 'Copiado!' : 'Copiar al portapapeles'}
               </button>
               {expDir === 'ambos' ? (<>
-                <a href={dlUrlX || '#'} download={dlNameX} onClick={() => setTimeout(() => setShowExport(false), 200)}
+                <DownloadLink contenido={dlContentX} fileName={dlNameX}
                   style={{padding:'6px 14px',fontSize:10,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
-                    border:'1px solid rgba(68,114,196,0.5)',background:'rgba(68,114,196,0.2)',color:'#64b5f6',letterSpacing:'.3px',textDecoration:'none',display:'inline-block'}}>
+                    border:'1px solid rgba(68,114,196,0.5)',background:'rgba(68,114,196,0.2)',color:'#64b5f6',letterSpacing:'.3px'}}>
                   Descargar X-X .txt
-                </a>
-                <a href={dlUrlY || '#'} download={dlNameY} onClick={() => setTimeout(() => setShowExport(false), 200)}
+                </DownloadLink>
+                <DownloadLink contenido={dlContentY} fileName={dlNameY}
                   style={{padding:'6px 14px',fontSize:10,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
-                    border:'1px solid rgba(198,40,40,0.5)',background:'rgba(198,40,40,0.2)',color:'#ef9a9a',letterSpacing:'.3px',textDecoration:'none',display:'inline-block'}}>
+                    border:'1px solid rgba(198,40,40,0.5)',background:'rgba(198,40,40,0.2)',color:'#ef9a9a',letterSpacing:'.3px'}}>
                   Descargar Y-Y .txt
-                </a>
+                </DownloadLink>
               </>) : (
-                <a href={expDir === 'X' ? dlUrlX : dlUrlY || '#'}
-                  download={expDir === 'X' ? (expName || dlNameX) : dlNameY}
-                  onClick={() => setTimeout(() => setShowExport(false), 200)}
+                <DownloadLink contenido={expDir === 'X' ? dlContentX : dlContentY}
+                  fileName={expDir === 'X' ? dlNameX : dlNameY}
                   style={{padding:'6px 14px',fontSize:10,fontFamily:'var(--cond)',fontWeight:600,borderRadius:'var(--r)',cursor:'pointer',
-                    border:'1px solid rgba(46,125,50,0.5)',background:'rgba(46,125,50,0.2)',color:'#4caf50',letterSpacing:'.3px',textDecoration:'none',display:'inline-block'}}>
+                    border:'1px solid rgba(46,125,50,0.5)',background:'rgba(46,125,50,0.2)',color:'#4caf50',letterSpacing:'.3px'}}>
                   Descargar .txt
-                </a>
+                </DownloadLink>
               )}
             </div>
           </div>
