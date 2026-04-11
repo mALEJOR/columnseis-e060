@@ -13,36 +13,45 @@ const fmtPctRaw = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v
 const pisoLabel = (idx, nPisos) => idx === nPisos - 1 ? 'Azotea' : (nPisos - idx)
 
 /**
- * Descarga texto como .txt — multiples metodos con fallback.
+ * Descarga texto como .txt — compatible con Brave, Chrome, Edge, Firefox, Safari.
+ * Usa iframe oculto con blob URL para evitar que Brave Shields bloquee la descarga.
  */
 function descargarTxt(contenido, nombre) {
   const fileName = nombre.endsWith('.txt') ? nombre : nombre + '.txt'
+  const blob = new Blob([contenido], { type: 'application/octet-stream' })
+  const url = URL.createObjectURL(blob)
 
-  // Metodo 1: Blob + createObjectURL + <a download> en el DOM
+  // Crear iframe oculto que ejecuta la descarga
+  const iframe = document.createElement('iframe')
+  iframe.style.display = 'none'
+  document.body.appendChild(iframe)
+
   try {
-    const blob = new Blob([contenido], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
+    const iframeDoc = iframe.contentWindow.document
+    iframeDoc.open()
+    iframeDoc.write('<html><head></head><body></body></html>')
+    iframeDoc.close()
+
+    const a = iframeDoc.createElement('a')
+    a.href = url
+    a.download = fileName
+    iframeDoc.body.appendChild(a)
+    a.click()
+  } catch (e) {
+    // Fallback: descarga directa desde el documento principal
     const a = document.createElement('a')
     a.href = url
     a.download = fileName
-    a.style.cssText = 'position:fixed;top:-100px;left:-100px'
+    a.style.display = 'none'
     document.body.appendChild(a)
     a.click()
-    // No remover inmediatamente — dar tiempo a Chrome
-    window.setTimeout(function() {
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
-    }, 1000)
-    return
-  } catch(e) { /* fallback */ }
-
-  // Metodo 2: Abrir en ventana nueva para Ctrl+S
-  const w = window.open('', '_blank')
-  if (w) {
-    w.document.write('<html><head><title>' + fileName + '</title></head><body><pre>' +
-      contenido.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</pre></body></html>')
-    w.document.close()
+    setTimeout(() => document.body.removeChild(a), 500)
   }
+
+  setTimeout(() => {
+    document.body.removeChild(iframe)
+    URL.revokeObjectURL(url)
+  }, 2000)
 }
 
 const SISTEMAS = E030.SISTEMAS_ESTRUCTURALES.map(s => s.nombre)
