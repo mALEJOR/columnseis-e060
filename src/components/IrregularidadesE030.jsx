@@ -1413,11 +1413,17 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
     const txt = Espectro.exportarETABS(esp, mkParams(dir), dir + '-' + dir, expDeltaT)
     const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
+    const nombre = expDir === dir ? expName : Espectro.generarNombreArchivo(dir + '-' + dir, mkParams(dir))
     const a = document.createElement('a')
+    a.style.display = 'none'
     a.href = url
-    a.download = expDir === dir ? expName : Espectro.generarNombreArchivo(dir + '-' + dir, mkParams(dir))
+    a.download = nombre.endsWith('.txt') ? nombre : nombre + '.txt'
+    document.body.appendChild(a)
     a.click()
-    URL.revokeObjectURL(url)
+    setTimeout(() => {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }, 150)
   }
 
   const handleExportDownload = () => {
