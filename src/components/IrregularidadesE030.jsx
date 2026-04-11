@@ -12,6 +12,20 @@ const fmtPct = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : (Number(v) 
 const fmtPctRaw = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v).toFixed(1) + '%'
 const pisoLabel = (idx, nPisos) => idx === nPisos - 1 ? 'Azotea' : (nPisos - idx)
 
+/** Descarga texto como archivo .txt — compatible con todos los navegadores */
+function descargarTxt(contenido, nombre) {
+  const fileName = nombre.endsWith('.txt') ? nombre : nombre + '.txt'
+  const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.style.display = 'none'
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 200)
+}
+
 const SISTEMAS = E030.SISTEMAS_ESTRUCTURALES.map(s => s.nombre)
 const MATERIALES = E030.MATERIALES
 
@@ -1411,19 +1425,8 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
     const esp = dir === 'X' ? espX : espY
     if (esp.length === 0) return
     const txt = Espectro.exportarETABS(esp, mkParams(dir), dir + '-' + dir, expDeltaT)
-    const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const nombre = expDir === dir ? expName : Espectro.generarNombreArchivo(dir + '-' + dir, mkParams(dir))
-    const a = document.createElement('a')
-    a.style.display = 'none'
-    a.href = url
-    a.download = nombre.endsWith('.txt') ? nombre : nombre + '.txt'
-    document.body.appendChild(a)
-    a.click()
-    setTimeout(() => {
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    }, 150)
+    const nombre = (expDir === dir && expName) ? expName : Espectro.generarNombreArchivo(dir + '-' + dir, mkParams(dir))
+    descargarTxt(txt, nombre)
   }
 
   const handleExportDownload = () => {
