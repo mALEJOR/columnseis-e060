@@ -178,46 +178,38 @@ export function calcularDiafragma(areaBruta, areaAberturas, dimLx, sumaHuecosX, 
 }
 
 // 4. Sistemas No Paralelos — verificacion por direccion X-X e Y-Y
-// elementos = [{nombre, dx, dy, vx, vy, npX, npY}]
-// npX/npY = checkboxes: el ingeniero marca cuales son "no paralelos"
+// elementos = [{nombre, vx, vy, npX, npY}]
 export function calcularNoParalelos(activo, elementos) {
   const empty = { rows: [], ipX: 1, ipY: 1, irregularX: false, irregularY: false, vPisoX: 0, vPisoY: 0, vNoparX: 0, vNoparY: 0, pctX: 0, pctY: 0 }
   if (!activo) return empty
 
   const rows = elementos
-    .filter(el => el.nombre || (el.dx !== '' && el.dx != null) || (el.dy !== '' && el.dy != null))
+    .filter(el => el.nombre || el.vx || el.vy)
     .map(el => {
-      const dx = typeof el.dx === 'number' ? el.dx : parseFloat(el.dx)
-      const dy = typeof el.dy === 'number' ? el.dy : parseFloat(el.dy)
-      const vx = typeof el.vx === 'number' ? el.vx : parseFloat(el.vx)
-      const vy = typeof el.vy === 'number' ? el.vy : parseFloat(el.vy)
-
-      let theta = null
-      if (!isNaN(dx) && !isNaN(dy) && (dx > 0 || dy > 0)) {
-        theta = Math.atan2(dy, dx) * 180 / Math.PI
-      }
-
-      return {
-        nombre: el.nombre, dx: isNaN(dx) ? '' : dx, dy: isNaN(dy) ? '' : dy,
-        vx: isNaN(vx) ? 0 : vx, vy: isNaN(vy) ? 0 : vy,
-        theta, npX: !!el.npX, npY: !!el.npY,
-      }
+      const vx = typeof el.vx === 'number' ? el.vx : (parseFloat(el.vx) || 0)
+      const vy = typeof el.vy === 'number' ? el.vy : (parseFloat(el.vy) || 0)
+      return { nombre: el.nombre, vx, vy, npX: !!el.npX, npY: !!el.npY }
     })
 
-  const vPisoX = rows.reduce((s, r) => s + (r.vx || 0), 0)
-  const vPisoY = rows.reduce((s, r) => s + (r.vy || 0), 0)
-  const vNoparX = rows.filter(r => r.npX).reduce((s, r) => s + (r.vx || 0), 0)
-  const vNoparY = rows.filter(r => r.npY).reduce((s, r) => s + (r.vy || 0), 0)
+  const vPisoX = rows.reduce((s, r) => s + r.vx, 0)
+  const vPisoY = rows.reduce((s, r) => s + r.vy, 0)
+  const vNoparX = rows.filter(r => r.npX).reduce((s, r) => s + r.vx, 0)
+  const vNoparY = rows.filter(r => r.npY).reduce((s, r) => s + r.vy, 0)
   const pctX = vPisoX > 0 ? (vNoparX / vPisoX) * 100 : 0
   const pctY = vPisoY > 0 ? (vNoparY / vPisoY) * 100 : 0
-  const irregularX = pctX >= 10
-  const irregularY = pctY >= 10
 
   return {
     rows, vPisoX, vPisoY, vNoparX, vNoparY, pctX, pctY,
-    irregularX, irregularY,
-    ipX: irregularX ? 0.9 : 1, ipY: irregularY ? 0.9 : 1,
+    irregularX: pctX >= 10, irregularY: pctY >= 10,
+    ipX: pctX >= 10 ? 0.9 : 1, ipY: pctY >= 10 ? 0.9 : 1,
   }
+}
+
+// Angulo global del sistema no paralelo
+export function calcularAnguloGlobal(dx, dy) {
+  if ((!dx && !dy) || (dx === 0 && dy === 0)) return { theta: null, cos: null, sin: null }
+  const rad = Math.atan2(dy, dx)
+  return { theta: rad * 180 / Math.PI, cos: Math.cos(rad), sin: Math.sin(rad) }
 }
 
 // Summary Ip
