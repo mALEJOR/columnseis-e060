@@ -1,6 +1,12 @@
 import { useState, useRef, useCallback } from 'react'
-import * as XLSX from 'xlsx'
 import { useProyecto } from '../context/ProyectoContext'
+
+// xlsx se carga dinámicamente para reducir bundle inicial
+let _XLSX = null
+async function loadXLSX() {
+  if (!_XLSX) _XLSX = await import('xlsx')
+  return _XLSX
+}
 
 // ══════════════════════════════════════════════════════════════════
 //  Detección automática de formato ETABS
@@ -71,7 +77,8 @@ function convertValue(val, fromUnit, toUnit) {
 }
 
 // ── Generar plantilla Excel de ejemplo ──
-function descargarPlantilla() {
+async function descargarPlantilla() {
+  const XLSX = await loadXLSX()
   const wb = XLSX.utils.book_new()
   const data = [
     ['Nombre', 'Eje', 'Nivel', 'Combinacion', 'Pu (ton)', 'Mux (ton-m)', 'Muy (ton-m)'],
@@ -133,8 +140,9 @@ export default function ImportadorETABS({ onClose }) {
   const processFile = useCallback((file) => {
     setFileName(file.name)
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
+        const XLSX = await loadXLSX()
         const data = new Uint8Array(e.target.result)
         const wb = XLSX.read(data, { type: 'array' })
 

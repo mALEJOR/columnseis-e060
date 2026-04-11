@@ -1,15 +1,30 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, lazy, Suspense } from 'react'
 import { useProyecto } from './context/ProyectoContext'
 import ProjectDashboard from './components/ProjectDashboard'
-import BibliotecaTipos from './components/BibliotecaTipos'
 import SidebarInputs from './components/SidebarInputs'
-import ThreeSurfaceViewer from './three_scene/ThreeSurfaceViewer'
-import InteractionChart from './charts/InteractionDiagramMx'
-import StirrupDesign from './components/StirrupDesign'
-import IrregularidadesE030 from './components/IrregularidadesE030'
 import { generarSuperficie } from './utils/engine'
-import { generarPDF } from './components/PDFReport'
 import './App.css'
+
+// ── Lazy-loaded heavy modules ──
+const ThreeSurfaceViewer = lazy(() => import('./three_scene/ThreeSurfaceViewer'))
+const InteractionChart = lazy(() => import('./charts/InteractionDiagramMx'))
+const StirrupDesign = lazy(() => import('./components/StirrupDesign'))
+const BibliotecaTipos = lazy(() => import('./components/BibliotecaTipos'))
+const IrregularidadesE030 = lazy(() => import('./components/IrregularidadesE030'))
+
+// jsPDF se carga dinámicamente solo al exportar PDF
+const generarPDF = async (args) => {
+  const { generarPDF: gen } = await import('./components/PDFReport')
+  gen(args)
+}
+
+function LazyFallback() {
+  return (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh',background:'var(--bg)',color:'var(--text2)',fontFamily:'var(--cond)',fontSize:13,letterSpacing:'.5px'}}>
+      Cargando modulo...
+    </div>
+  )
+}
 
 const fmt = (v, d=1) => (isNaN(v)||v===undefined) ? '—' : Number(v).toFixed(d)
 
@@ -214,6 +229,7 @@ function ColumnEditor() {
         </aside>
         <main className="main-content">
           {error && <div className="err-bar">⚠ {error}</div>}
+          <Suspense fallback={<div style={{padding:40,textAlign:'center',color:'var(--text3)',fontFamily:'var(--cond)'}}>Cargando...</div>}>
           {activeTab === 'interaccion' && (<>
             <div className="viewer-wrapper">
               <ThreeSurfaceViewer surfaceData={surfaceData} demandPoint={demandPoint} loading={loading} progress={progress} ptSize={ptSize} viewType={viewType} />
@@ -226,6 +242,7 @@ function ColumnEditor() {
             </div>
           </>)}
           {activeTab === 'estribos' && <StirrupDesign columnData={columnData} onEstribosCalc={handleEstribosCalc} />}
+          </Suspense>
         </main>
       </div>
     </div>
@@ -292,12 +309,12 @@ export default function App() {
   const [modulo, setModulo] = useState(null) // null = selector, 'e060', 'e030'
 
   // E.030 module
-  if (modulo === 'e030') return <IrregularidadesE030 onBack={() => setModulo(null)} />
+  if (modulo === 'e030') return <Suspense fallback={<LazyFallback />}><IrregularidadesE030 onBack={() => setModulo(null)} /></Suspense>
 
   // E.060 module (existing views)
   if (modulo === 'e060' || vista === 'editor' || vista === 'biblioteca') {
-    if (vista === 'editor') return <ColumnEditor />
-    if (vista === 'biblioteca') return <BibliotecaTipos />
+    if (vista === 'editor') return <Suspense fallback={<LazyFallback />}><ColumnEditor /></Suspense>
+    if (vista === 'biblioteca') return <Suspense fallback={<LazyFallback />}><BibliotecaTipos /></Suspense>
     return <ProjectDashboard onBackToSelector={() => setModulo(null)} />
   }
 

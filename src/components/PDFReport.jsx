@@ -1,5 +1,3 @@
-import jsPDF from 'jspdf'
-
 function drawTable(doc, x, y, headers, rows, colWidths) {
   const rowH = 6
   const totalW = colWidths.reduce((a,b)=>a+b,0)
@@ -39,7 +37,8 @@ function drawTable(doc, x, y, headers, rows, colWidths) {
   return y + tableH + 4
 }
 
-export function generarPDF({ proyecto, columnData, surfaceData, estribosData }) {
+export async function generarPDF({ proyecto, columnData, surfaceData, estribosData }) {
+  const { default: jsPDF } = await import('jspdf')
   const doc = new jsPDF('p', 'mm', 'a4')
   const W = 210, margin = 15
   const contentW = W - 2 * margin

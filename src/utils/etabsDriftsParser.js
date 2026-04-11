@@ -2,7 +2,12 @@
 // Parser de Story Drifts exportados desde ETABS
 // Soporta: archivos Excel (.xlsx/.xls) y texto pegado (clipboard)
 // ═══════════════════════════════════════════════════════════════
-import * as XLSX from 'xlsx'
+// xlsx se carga dinámicamente para reducir bundle inicial
+let _XLSX = null
+async function getXLSX() {
+  if (!_XLSX) _XLSX = await import('xlsx')
+  return _XLSX
+}
 
 const HEADER_KEYWORDS = ['story', 'drift', 'direction', 'output case']
 
@@ -104,7 +109,8 @@ function sortAndComputeHi(datos) {
  * @param {ArrayBuffer} buffer
  * @returns {{ datosX: Array, datosY: Array, numPisos: number, error?: string }}
  */
-export function parseExcelFile(buffer) {
+export async function parseExcelFile(buffer) {
+  const XLSX = await getXLSX()
   const wb = XLSX.read(buffer, { type: 'array' })
 
   for (const sheetName of wb.SheetNames) {
