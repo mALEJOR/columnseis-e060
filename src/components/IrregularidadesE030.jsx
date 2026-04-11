@@ -12,18 +12,18 @@ const fmtPct = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : (Number(v) 
 const fmtPctRaw = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v).toFixed(1) + '%'
 const pisoLabel = (idx, nPisos) => idx === nPisos - 1 ? 'Azotea' : (nPisos - idx)
 
-/** Descarga texto como archivo .txt — compatible con todos los navegadores */
+/** Descarga texto como archivo .txt — usa data URI para maxima compatibilidad */
 function descargarTxt(contenido, nombre) {
   const fileName = nombre.endsWith('.txt') ? nombre : nombre + '.txt'
-  const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
+  // Data URI en vez de Blob URL — mas compatible con Edge/Chrome/Vercel
+  const dataUri = 'data:text/plain;charset=utf-8,' + encodeURIComponent(contenido)
   const a = document.createElement('a')
   a.style.display = 'none'
-  a.href = url
+  a.href = dataUri
   a.download = fileName
   document.body.appendChild(a)
   a.click()
-  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url) }, 200)
+  setTimeout(() => { document.body.removeChild(a) }, 200)
 }
 
 const SISTEMAS = E030.SISTEMAS_ESTRUCTURALES.map(s => s.nombre)
