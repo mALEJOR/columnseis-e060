@@ -490,10 +490,66 @@ export function calcularGeometria(pisos, nPisos) {
   return { rows, ia }
 }
 
+// Discontinuidad en los Sistemas Resistentes (Ia = 0.80 / 0.60)
+// elementos = [{ nombre, vx, vy, cambioOrientacion, desplEje, dimElem }]
+export function calcularDiscontinuidad(activo, elementos, vTotalX, vTotalY) {
+  const empty = {
+    rows: [], vDiscontX: 0, vDiscontY: 0, pctDiscontX: 0, pctDiscontY: 0,
+    nDiscontX: 0, nDiscontY: 0, resultadoX: 'REG', resultadoY: 'REG', iaX: 1, iaY: 1,
+  }
+  if (!activo) return empty
+
+  const vX = Number(vTotalX) || 0
+  const vY = Number(vTotalY) || 0
+
+  const rows = elementos
+    .filter(el => el.nombre || el.vx || el.vy || el.cambioOrientacion || el.desplEje || el.dimElem)
+    .map(el => {
+      const vx = typeof el.vx === 'number' ? el.vx : (parseFloat(el.vx) || 0)
+      const vy = typeof el.vy === 'number' ? el.vy : (parseFloat(el.vy) || 0)
+      const desplEje = typeof el.desplEje === 'number' ? el.desplEje : (parseFloat(el.desplEje) || 0)
+      const dimElem = typeof el.dimElem === 'number' ? el.dimElem : (parseFloat(el.dimElem) || 0)
+      const cambioOrientacion = !!el.cambioOrientacion
+
+      const pctVx = vX > 0 ? (vx / vX) * 100 : 0
+      const pctVy = vY > 0 ? (vy / vY) * 100 : 0
+      const pctDespl = dimElem > 0 ? (desplEje / dimElem) * 100 : 0
+
+      const tieneDesalineamiento = cambioOrientacion || pctDespl > 25
+      const discontinuoX = pctVx > 10 && tieneDesalineamiento
+      const discontinuoY = pctVy > 10 && tieneDesalineamiento
+
+      return {
+        nombre: el.nombre || '', vx, vy, cambioOrientacion, desplEje, dimElem,
+        pctVx, pctVy, pctDespl, tieneDesalineamiento, discontinuoX, discontinuoY,
+      }
+    })
+
+  const vDiscontX = rows.filter(r => r.discontinuoX).reduce((s, r) => s + r.vx, 0)
+  const vDiscontY = rows.filter(r => r.discontinuoY).reduce((s, r) => s + r.vy, 0)
+  const pctDiscontX = vX > 0 ? (vDiscontX / vX) * 100 : 0
+  const pctDiscontY = vY > 0 ? (vDiscontY / vY) * 100 : 0
+  const nDiscontX = rows.filter(r => r.discontinuoX).length
+  const nDiscontY = rows.filter(r => r.discontinuoY).length
+
+  const classify = (pctDiscont, nDiscont) => {
+    if (pctDiscont > 25) return { resultado: 'IRREG EXTREMA', ia: 0.60 }
+    if (nDiscont > 0) return { resultado: 'IRREG', ia: 0.80 }
+    return { resultado: 'REG', ia: 1.00 }
+  }
+  const resX = classify(pctDiscontX, nDiscontX)
+  const resY = classify(pctDiscontY, nDiscontY)
+
+  return {
+    rows, vDiscontX, vDiscontY, pctDiscontX, pctDiscontY, nDiscontX, nDiscontY,
+    resultadoX: resX.resultado, resultadoY: resY.resultado, iaX: resX.ia, iaY: resY.ia,
+  }
+}
+
 // Summary Ia
-export function calcularIaFinal(iaRigX, iaRigY, iaRigExtX, iaRigExtY, iaResX, iaResY, iaResExtX, iaResExtY, iaMasa, iaGeomX, iaGeomY) {
-  const iaX = Math.min(iaRigX, iaRigExtX, iaResX, iaResExtX, iaMasa, iaGeomX)
-  const iaY = Math.min(iaRigY, iaRigExtY, iaResY, iaResExtY, iaMasa, iaGeomY)
+export function calcularIaFinal(iaRigX, iaRigY, iaRigExtX, iaRigExtY, iaResX, iaResY, iaResExtX, iaResExtY, iaMasa, iaGeomX, iaGeomY, iaDiscontX = 1, iaDiscontY = 1) {
+  const iaX = Math.min(iaRigX, iaRigExtX, iaResX, iaResExtX, iaMasa, iaGeomX, iaDiscontX)
+  const iaY = Math.min(iaRigY, iaRigExtY, iaResY, iaResExtY, iaMasa, iaGeomY, iaDiscontY)
   return { iaX, iaY }
 }
 

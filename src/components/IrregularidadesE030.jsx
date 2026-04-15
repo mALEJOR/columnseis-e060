@@ -72,7 +72,7 @@ const S = {
 const condColor = cond => {
   if (cond === 'CUMPLE' || cond === 'OK' || cond === 'REG' || cond === 'REGULAR') return '#2e7d32'
   if (cond === 'NO CUMPLE' || cond === 'IRREG' || cond === 'IRREGULAR') return '#c62828'
-  if (cond === 'EXTR') return '#c62828'
+  if (cond === 'EXTR' || cond === 'IRREG EXTREMA') return '#8b0000'
   if (cond === 'TORS') return '#d97706'
   return 'var(--text2)'
 }
@@ -103,6 +103,13 @@ function initState() {
     masas: emptyFloors(),
     geometriaX: emptyFloors(),
     geometriaY: emptyFloors(),
+    discontinuidad: {
+      activo: true,
+      vTotalX: '', vTotalY: '',
+      elementos: Array.from({ length: 3 }, () => ({
+        nombre: '', vx: '', vy: '', cambioOrientacion: false, desplEje: '', dimElem: '',
+      })),
+    },
   }
 }
 
@@ -129,6 +136,20 @@ function reducer(state, action) {
     case 'DEL_NO_PARALELOS_ELEM': {
       const elems = state.noParalelos.elementos.filter((_, i) => i !== action.index)
       return { ...state, noParalelos: { ...state.noParalelos, elementos: elems.length > 0 ? elems : [{ nombre: '', angulo: '', vElem: '', vPiso: '' }] } }
+    }
+    case 'SET_DISCONT_ACTIVO': return { ...state, discontinuidad: { ...state.discontinuidad, activo: action.value } }
+    case 'SET_DISCONT_GLOBAL': return { ...state, discontinuidad: { ...state.discontinuidad, [action.field]: action.value } }
+    case 'SET_DISCONT_ELEM': {
+      const elems = [...state.discontinuidad.elementos]
+      elems[action.index] = { ...elems[action.index], [action.field]: action.value }
+      return { ...state, discontinuidad: { ...state.discontinuidad, elementos: elems } }
+    }
+    case 'ADD_DISCONT_ELEM': {
+      return { ...state, discontinuidad: { ...state.discontinuidad, elementos: [...state.discontinuidad.elementos, { nombre: '', vx: '', vy: '', cambioOrientacion: false, desplEje: '', dimElem: '' }] } }
+    }
+    case 'DEL_DISCONT_ELEM': {
+      const elems = state.discontinuidad.elementos.filter((_, i) => i !== action.index)
+      return { ...state, discontinuidad: { ...state.discontinuidad, elementos: elems.length > 0 ? elems : [{ nombre: '', vx: '', vy: '', cambioOrientacion: false, desplEje: '', dimElem: '' }] } }
     }
     case 'RESET': return initState()
     default: return state
@@ -1081,9 +1102,15 @@ function TabAltura({ state, dispatch }) {
     return E030.calcularGeometria(pisos, nPisos)
   }, [state.geometriaY, nPisos])
 
+  // Discontinuidad de sistemas resistentes
+  const discontRes = useMemo(() => {
+    const d = state.discontinuidad
+    return E030.calcularDiscontinuidad(d.activo, d.elementos, parseNum(d.vTotalX), parseNum(d.vTotalY))
+  }, [state.discontinuidad])
+
   const iaFinal = useMemo(() => {
-    return E030.calcularIaFinal(rigXRes.ia, rigYRes.ia, rigExtXRes.ia, rigExtYRes.ia, resXRes.ia, resYRes.ia, resExtXRes.ia, resExtYRes.ia, masaRes.ia, geomXRes.ia, geomYRes.ia)
-  }, [rigXRes, rigYRes, rigExtXRes, rigExtYRes, resXRes, resYRes, resExtXRes, resExtYRes, masaRes, geomXRes, geomYRes])
+    return E030.calcularIaFinal(rigXRes.ia, rigYRes.ia, rigExtXRes.ia, rigExtYRes.ia, resXRes.ia, resYRes.ia, resExtXRes.ia, resExtYRes.ia, masaRes.ia, geomXRes.ia, geomYRes.ia, discontRes.iaX, discontRes.iaY)
+  }, [rigXRes, rigYRes, rigExtXRes, rigExtYRes, resXRes, resYRes, resExtXRes, resExtYRes, masaRes, geomXRes, geomYRes, discontRes])
 
   const fmtK = (v) => (v === '' || v == null || v === '---' || isNaN(v)) ? (v === '---' ? '---' : '\u2014') : Number(v).toFixed(1)
 
@@ -1374,6 +1401,211 @@ function TabAltura({ state, dispatch }) {
         </div>
       </Section>
 
+      <Section title="7. DISCONTINUIDAD EN LOS SISTEMAS RESISTENTES (Ia = 0.80 / 0.60)">
+        <p className="e030-hint">
+          Criterio: elemento con %V&gt;10% y (cambio de orientacion o despl.eje/dim&gt;25%) = DISCONTINUO |
+          V_discont/V_total&gt;25% = EXTREMA (0.60) | ≥1 discontinuo = IRREG (0.80)
+        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <label style={{ fontSize: 11, color: 'var(--text2)' }}>Calcular Discontinuidad?</label>
+          <select
+            value={state.discontinuidad.activo ? 'SI' : 'NO'}
+            onChange={e => dispatch({ type: 'SET_DISCONT_ACTIVO', value: e.target.value === 'SI' })}
+            className="e030-field-input" style={{ width: 70 }}
+          >
+            <option value="SI">SI</option>
+            <option value="NO">NO</option>
+          </select>
+        </div>
+
+        {state.discontinuidad.activo && (
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 500, marginBottom: 12 }}>
+              <div className="e030-field-row">
+                <label>V total X (Tn):</label>
+                <input type="number" className="e030-field-input"
+                  value={state.discontinuidad.vTotalX}
+                  onChange={e => dispatch({ type: 'SET_DISCONT_GLOBAL', field: 'vTotalX', value: e.target.value })} />
+              </div>
+              <div className="e030-field-row">
+                <label>V total Y (Tn):</label>
+                <input type="number" className="e030-field-input"
+                  value={state.discontinuidad.vTotalY}
+                  onChange={e => dispatch({ type: 'SET_DISCONT_GLOBAL', field: 'vTotalY', value: e.target.value })} />
+              </div>
+            </div>
+
+            <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>
+              ELEMENTOS CON DESALINEAMIENTO VERTICAL
+            </h4>
+            <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+              <table className="e030-table">
+                <thead>
+                  <tr>
+                    <th style={S.headerCell}>#</th>
+                    <th style={S.headerCell}>Elemento</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>Vx (Tn)</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>Vy (Tn)</th>
+                    <th style={S.headerCell}>Cambio Orient.</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>Despl.eje (m)</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>Dim.elem (m)</th>
+                    <th style={{ ...S.headerCell, ...S.compCell }}>% Despl</th>
+                    <th style={S.headerCell}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {state.discontinuidad.elementos.map((el, i) => {
+                    const dim = parseFloat(el.dimElem) || 0
+                    const desp = parseFloat(el.desplEje) || 0
+                    const pctDespl = dim > 0 ? (desp / dim) * 100 : 0
+                    const pctColor = pctDespl > 25 ? '#c00' : '#2e7d32'
+                    return (
+                      <tr key={i}>
+                        <td style={S.cell}>{i + 1}</td>
+                        <td style={{ ...S.cell, ...S.inputCell }}>
+                          <input type="text" style={S.tableInput}
+                            value={el.nombre}
+                            onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'nombre', value: e.target.value })} />
+                        </td>
+                        <td style={{ ...S.cell, ...S.inputCell }}>
+                          <input type="number" style={S.tableInput}
+                            value={el.vx}
+                            onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'vx', value: e.target.value })} />
+                        </td>
+                        <td style={{ ...S.cell, ...S.inputCell }}>
+                          <input type="number" style={S.tableInput}
+                            value={el.vy}
+                            onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'vy', value: e.target.value })} />
+                        </td>
+                        <td style={S.cell}>
+                          <input type="checkbox"
+                            checked={!!el.cambioOrientacion}
+                            onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'cambioOrientacion', value: e.target.checked })} />
+                        </td>
+                        <td style={{ ...S.cell, ...S.inputCell }}>
+                          <input type="number" step="0.01" style={S.tableInput}
+                            value={el.desplEje}
+                            onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'desplEje', value: e.target.value })} />
+                        </td>
+                        <td style={{ ...S.cell, ...S.inputCell }}>
+                          <input type="number" step="0.01" style={S.tableInput}
+                            value={el.dimElem}
+                            onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'dimElem', value: e.target.value })} />
+                        </td>
+                        <td style={{ ...S.cell, ...S.compCell, color: pctColor, fontWeight: 700 }}>
+                          {dim > 0 ? `${pctDespl.toFixed(1)}%` : '\u2014'}
+                        </td>
+                        <td style={S.cell}>
+                          <button type="button"
+                            onClick={() => dispatch({ type: 'DEL_DISCONT_ELEM', index: i })}
+                            style={{ background: 'transparent', border: '1px solid var(--border)', color: '#c00', padding: '2px 6px', borderRadius: 3, cursor: 'pointer' }}>✕</button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <button type="button"
+              onClick={() => dispatch({ type: 'ADD_DISCONT_ELEM' })}
+              style={{ background: 'var(--surface3)', border: '1px solid var(--border)', color: 'var(--text1)', padding: '4px 10px', borderRadius: 3, fontSize: 11, cursor: 'pointer', marginBottom: 12 }}>
+              + Agregar elemento
+            </button>
+
+            <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>
+              CLASIFICACION AUTOMATICA
+            </h4>
+            <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+              <table className="e030-table">
+                <thead>
+                  <tr>
+                    <th style={S.headerCell}>#</th>
+                    <th style={S.headerCell}>Elemento</th>
+                    <th style={{ ...S.headerCell, ...S.compCell }}>%Vx</th>
+                    <th style={{ ...S.headerCell, ...S.compCell }}>%Vy</th>
+                    <th style={S.headerCell}>Discont. X</th>
+                    <th style={S.headerCell}>Discont. Y</th>
+                    <th style={S.headerCell}>Criterio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {discontRes.rows.map((r, i) => {
+                    const criterio = r.cambioOrientacion ? 'Cambio orient.'
+                      : r.pctDespl > 25 ? `%Despl>25% (${r.pctDespl.toFixed(1)}%)`
+                      : 'Alineado'
+                    return (
+                      <tr key={i}>
+                        <td style={S.cell}>{i + 1}</td>
+                        <td style={{ ...S.cell, textAlign: 'left' }}>{r.nombre || '\u2014'}</td>
+                        <td style={{ ...S.cell, ...S.compCell }}>{r.pctVx.toFixed(1)}%</td>
+                        <td style={{ ...S.cell, ...S.compCell }}>{r.pctVy.toFixed(1)}%</td>
+                        <td style={{ ...S.cell, color: r.discontinuoX ? '#c00' : '#2e7d32', fontWeight: 700 }}>
+                          {r.discontinuoX ? 'SI' : 'NO'}
+                        </td>
+                        <td style={{ ...S.cell, color: r.discontinuoY ? '#c00' : '#2e7d32', fontWeight: 700 }}>
+                          {r.discontinuoY ? 'SI' : 'NO'}
+                        </td>
+                        <td style={{ ...S.cell, fontSize: 10 }}>{criterio}</td>
+                      </tr>
+                    )
+                  })}
+                  {discontRes.rows.length === 0 && (
+                    <tr><td colSpan={7} style={{ ...S.cell, color: 'var(--text3)' }}>Sin elementos ingresados</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>
+              VERIFICACION POR DIRECCION
+            </h4>
+            <div style={{ overflowX: 'auto' }}>
+              <table className="e030-table" style={{ maxWidth: 600 }}>
+                <thead>
+                  <tr>
+                    <th style={S.headerCell}></th>
+                    <th style={S.headerCell}>DIR. X-X</th>
+                    <th style={S.headerCell}>DIR. Y-Y</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ ...S.cell, textAlign: 'left' }}>V total</td>
+                    <td style={S.cell}>{fmt(parseNum(state.discontinuidad.vTotalX))} Tn</td>
+                    <td style={S.cell}>{fmt(parseNum(state.discontinuidad.vTotalY))} Tn</td>
+                  </tr>
+                  <tr>
+                    <td style={{ ...S.cell, textAlign: 'left' }}>N° elementos discontinuos</td>
+                    <td style={S.cell}>{discontRes.nDiscontX}</td>
+                    <td style={S.cell}>{discontRes.nDiscontY}</td>
+                  </tr>
+                  <tr>
+                    <td style={{ ...S.cell, textAlign: 'left' }}>V discontinuos (Σ)</td>
+                    <td style={S.cell}>{discontRes.vDiscontX.toFixed(2)} Tn</td>
+                    <td style={S.cell}>{discontRes.vDiscontY.toFixed(2)} Tn</td>
+                  </tr>
+                  <tr>
+                    <td style={{ ...S.cell, textAlign: 'left' }}>% V_discont / V_total</td>
+                    <td style={{ ...S.cell, color: discontRes.pctDiscontX > 25 ? '#c00' : 'inherit', fontWeight: 700 }}>{discontRes.pctDiscontX.toFixed(1)}%</td>
+                    <td style={{ ...S.cell, color: discontRes.pctDiscontY > 25 ? '#c00' : 'inherit', fontWeight: 700 }}>{discontRes.pctDiscontY.toFixed(1)}%</td>
+                  </tr>
+                  <tr>
+                    <td style={{ ...S.cell, textAlign: 'left', fontWeight: 700 }}>Verificacion</td>
+                    <td style={{ ...S.cell, fontWeight: 700, color: condColor(discontRes.resultadoX) }}>{discontRes.resultadoX}</td>
+                    <td style={{ ...S.cell, fontWeight: 700, color: condColor(discontRes.resultadoY) }}>{discontRes.resultadoY}</td>
+                  </tr>
+                  <tr style={{ background: 'rgba(255,193,7,0.15)' }}>
+                    <td style={{ ...S.cell, textAlign: 'left', fontWeight: 700 }}>Ia</td>
+                    <td style={{ ...S.cell, fontWeight: 700, color: '#ffc107' }}>{discontRes.iaX}</td>
+                    <td style={{ ...S.cell, fontWeight: 700, color: '#ffc107' }}>{discontRes.iaY}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </Section>
+
       <Section title="RESUMEN - FACTOR Ia FINAL">
         <table className="e030-table" style={{ maxWidth: 500 }}>
           <thead>
@@ -1390,6 +1622,7 @@ function TabAltura({ state, dispatch }) {
             <tr><td style={S.cell}>4. Resist. Extrema (0.50)</td><td style={S.cell}>{resExtXRes.ia}</td><td style={S.cell}>{resExtYRes.ia}</td></tr>
             <tr><td style={S.cell}>5. Masa (0.90)</td><td style={S.cell}>{masaRes.ia}</td><td style={S.cell}>{masaRes.ia}</td></tr>
             <tr><td style={S.cell}>6. Geometria (0.90)</td><td style={S.cell}>{geomXRes.ia}</td><td style={S.cell}>{geomYRes.ia}</td></tr>
+            <tr><td style={S.cell}>7. Discontinuidad Sist. Resist. (0.80/0.60)</td><td style={S.cell}>{discontRes.iaX}</td><td style={S.cell}>{discontRes.iaY}</td></tr>
             <tr style={{ background: 'rgba(255,193,7,0.15)' }}>
               <td style={{ ...S.cell, fontWeight: 700, fontSize: 12 }}>Ia FINAL</td>
               <td style={{ ...S.cell, fontWeight: 700, fontSize: 13, color: '#c00' }}>{iaFinal.iaX}</td>
@@ -2259,9 +2492,14 @@ export default function IrregularidadesE030({ onBack }) {
     return E030.calcularGeometria(pisos, nPisos)
   }, [state.geometriaY, nPisos])
 
+  const discontRes = useMemo(() => {
+    const d = state.discontinuidad
+    return E030.calcularDiscontinuidad(d.activo, d.elementos, parseNum(d.vTotalX), parseNum(d.vTotalY))
+  }, [state.discontinuidad])
+
   const iaFinal = useMemo(() => {
-    return E030.calcularIaFinal(rigXRes.ia, rigYRes.ia, rigExtXRes.ia, rigExtYRes.ia, resXRes.ia, resYRes.ia, resExtXRes.ia, resExtYRes.ia, masaRes.ia, geomXRes.ia, geomYRes.ia)
-  }, [rigXRes, rigYRes, rigExtXRes, rigExtYRes, resXRes, resYRes, resExtXRes, resExtYRes, masaRes, geomXRes, geomYRes])
+    return E030.calcularIaFinal(rigXRes.ia, rigYRes.ia, rigExtXRes.ia, rigExtYRes.ia, resXRes.ia, resYRes.ia, resExtXRes.ia, resExtYRes.ia, masaRes.ia, geomXRes.ia, geomYRes.ia, discontRes.iaX, discontRes.iaY)
+  }, [rigXRes, rigYRes, rigExtXRes, rigExtYRes, resXRes, resYRes, resExtXRes, resExtYRes, masaRes, geomXRes, geomYRes, discontRes])
 
   // ── Compute all Ip factors ──
   const derivasInelX = useMemo(() => {
@@ -2351,7 +2589,8 @@ export default function IrregularidadesE030({ onBack }) {
     { nombre: '4. Resistencia Extrema (0.50)', x: resExtXRes.ia, y: resExtYRes.ia },
     { nombre: '5. Masa o Peso (0.90)', x: masaRes.ia, y: masaRes.ia },
     { nombre: '6. Geometria Vertical (0.90)', x: geomXRes.ia, y: geomYRes.ia },
-  ], [rigXRes, rigYRes, rigExtXRes, rigExtYRes, resXRes, resYRes, resExtXRes, resExtYRes, masaRes, geomXRes, geomYRes])
+    { nombre: '7. Discontinuidad Sist. Resist. (0.80/0.60)', x: discontRes.iaX, y: discontRes.iaY },
+  ], [rigXRes, rigYRes, rigExtXRes, rigExtYRes, resXRes, resYRes, resExtXRes, resExtYRes, masaRes, geomXRes, geomYRes, discontRes])
 
   const ipDetails = useMemo(() => [
     { nombre: '1. Torsion (0.75/0.60)', x: torsionXRes.ipTorsion, y: torsionYRes.ipTorsion },
