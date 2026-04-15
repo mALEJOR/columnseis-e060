@@ -1009,6 +1009,24 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
 function TabAltura({ state, dispatch }) {
   const { nPisos } = state
 
+  const handlePaste = useCallback((e) => {
+    const text = (e.clipboardData || window.clipboardData)?.getData('text/plain')
+    if (!text || !text.trim()) return
+    const lines = text.trim().split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    if (lines.length > 1 && lines.every(l => !isNaN(parseFloat(l)))) {
+      e.preventDefault()
+      const active = document.activeElement
+      const arrayName = active?.dataset?.array
+      const field = active?.dataset?.field
+      const startIdx = parseInt(active?.dataset?.idx)
+      if (arrayName && field && !isNaN(startIdx)) {
+        for (let i = 0; i < lines.length && (startIdx + i) < nPisos; i++) {
+          dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: startIdx + i, field, value: parseNum(lines[i]) })
+        }
+      }
+    }
+  }, [dispatch, nPisos])
+
   // Rigidez X and Y
   const rigXRes = useMemo(() => {
     const pisos = state.rigidezX.slice(0, nPisos).map(r => ({ Vi: parseNum(r.Vi), CMi: parseNum(r.CMi) }))
