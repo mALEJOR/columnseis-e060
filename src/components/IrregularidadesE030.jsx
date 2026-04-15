@@ -556,8 +556,26 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
     return E030.calcularIpFinal(torsionXRes.ipTorsion, torsionYRes.ipTorsion, esquinasRes.ipX, esquinasRes.ipY, diafRes.ipX, diafRes.ipY, npRes.ipX, npRes.ipY)
   }, [torsionXRes, torsionYRes, esquinasRes, diafRes, npRes])
 
+  const handlePaste = useCallback((e) => {
+    const text = (e.clipboardData || window.clipboardData)?.getData('text/plain')
+    if (!text || !text.trim()) return
+    const lines = text.trim().split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    if (lines.length > 1 && lines.every(l => !isNaN(parseFloat(l)))) {
+      e.preventDefault()
+      const active = document.activeElement
+      const arrayName = active?.dataset?.array
+      const field = active?.dataset?.field
+      const startIdx = parseInt(active?.dataset?.idx)
+      if (arrayName && field && !isNaN(startIdx)) {
+        for (let i = 0; i < lines.length && (startIdx + i) < nPisos; i++) {
+          dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: startIdx + i, field, value: parseNum(lines[i]) })
+        }
+      }
+    }
+  }, [dispatch, nPisos])
+
   const renderTorsionTable = (dir, res, arrayName) => (
-    <div style={{ marginBottom: 12 }}>
+    <div style={{ marginBottom: 12 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
       <div style={{ overflowX: 'auto' }}>
         <table className="e030-table">
@@ -579,11 +597,13 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
                 <td style={S.cell}>{r.piso}</td>
                 <td style={{ ...S.cell, ...S.inputCell }}>
                   <input type="number" step="0.000001" style={S.tableInput}
+                    data-array={arrayName} data-field="deltaMax" data-idx={i}
                     value={state[arrayName][i]?.deltaMax ?? ''}
                     onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'deltaMax', value: parseNum(e.target.value) })} />
                 </td>
                 <td style={{ ...S.cell, ...S.inputCell }}>
                   <input type="number" step="0.000001" style={S.tableInput}
+                    data-array={arrayName} data-field="deltaProm" data-idx={i}
                     value={state[arrayName][i]?.deltaProm ?? ''}
                     onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'deltaProm', value: parseNum(e.target.value) })} />
                 </td>
@@ -1051,7 +1071,7 @@ function TabAltura({ state, dispatch }) {
 
   // ── Rigidez Table ──
   const renderRigidezTable = (dir, res, arrayName) => (
-    <div style={{ marginBottom: 12 }}>
+    <div style={{ marginBottom: 12 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
       <div style={{ overflowX: 'auto' }}>
         <table className="e030-table">
@@ -1072,11 +1092,13 @@ function TabAltura({ state, dispatch }) {
                 <td style={S.cell}>{r.piso}</td>
                 <td style={{ ...S.cell, ...S.inputCell }}>
                   <input type="number" style={S.tableInput}
+                    data-array={arrayName} data-field="Vi" data-idx={i}
                     value={state[arrayName][i]?.Vi ?? ''}
                     onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'Vi', value: parseNum(e.target.value) })} />
                 </td>
                 <td style={{ ...S.cell, ...S.inputCell }}>
                   <input type="number" step="0.0001" style={S.tableInput}
+                    data-array={arrayName} data-field="CMi" data-idx={i}
                     value={state[arrayName][i]?.CMi ?? ''}
                     onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'CMi', value: parseNum(e.target.value) })} />
                 </td>
@@ -1125,7 +1147,7 @@ function TabAltura({ state, dispatch }) {
 
   // ── Resistencia Table ──
   const renderResistenciaTable = (dir, res, arrayName, factorLabel, limitKey) => (
-    <div style={{ marginBottom: 12 }}>
+    <div style={{ marginBottom: 12 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
       <div style={{ overflowX: 'auto' }}>
         <table className="e030-table">
@@ -1143,6 +1165,7 @@ function TabAltura({ state, dispatch }) {
                 <td style={S.cell}>{r.piso}</td>
                 <td style={{ ...S.cell, ...S.inputCell }}>
                   <input type="number" style={S.tableInput}
+                    data-array={arrayName} data-field="Vi" data-idx={i}
                     value={state[arrayName][i]?.Vi ?? ''}
                     onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'Vi', value: parseNum(e.target.value) })} />
                 </td>
@@ -1229,7 +1252,7 @@ function TabAltura({ state, dispatch }) {
 
       <Section title="5. IRREGULARIDAD DE MASA O PESO (Ia = 0.90)">
         <p className="e030-hint">Criterio: mi &gt; 1.50*m(i+1) o mi &gt; 1.50*m(i-1)</p>
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
           <table className="e030-table" style={{ maxWidth: 500 }}>
             <thead>
               <tr>
@@ -1246,6 +1269,7 @@ function TabAltura({ state, dispatch }) {
                   <td style={S.cell}>{r.piso}</td>
                   <td style={{ ...S.cell, ...S.inputCell }}>
                     <input type="number" style={S.tableInput}
+                      data-array="masas" data-field="masa" data-idx={i}
                       value={state.masas[i]?.masa ?? ''}
                       onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'masas', index: i, field: 'masa', value: parseNum(e.target.value) })} />
                   </td>
@@ -1265,7 +1289,7 @@ function TabAltura({ state, dispatch }) {
       <Section title="6. IRREGULARIDAD DE GEOMETRIA VERTICAL (Ia = 0.90)">
         <p className="e030-hint">Criterio: a &gt; 1.30*a(i+1) | a = dimension en planta del elemento resistente</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div>
+          <div onPaste={handlePaste}>
             <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. X-X</h4>
             <div style={{ overflowX: 'auto' }}>
               <table className="e030-table">
@@ -1283,6 +1307,7 @@ function TabAltura({ state, dispatch }) {
                       <td style={S.cell}>{r.piso}</td>
                       <td style={{ ...S.cell, ...S.inputCell }}>
                         <input type="number" step="0.1" style={S.tableInput}
+                          data-array="geometriaX" data-field="dim" data-idx={i}
                           value={state.geometriaX[i]?.dim ?? ''}
                           onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'geometriaX', index: i, field: 'dim', value: parseNum(e.target.value) })} />
                       </td>
@@ -1294,7 +1319,7 @@ function TabAltura({ state, dispatch }) {
               </table>
             </div>
           </div>
-          <div>
+          <div onPaste={handlePaste}>
             <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. Y-Y</h4>
             <div style={{ overflowX: 'auto' }}>
               <table className="e030-table">
@@ -1312,6 +1337,7 @@ function TabAltura({ state, dispatch }) {
                       <td style={S.cell}>{r.piso}</td>
                       <td style={{ ...S.cell, ...S.inputCell }}>
                         <input type="number" step="0.1" style={S.tableInput}
+                          data-array="geometriaY" data-field="dim" data-idx={i}
                           value={state.geometriaY[i]?.dim ?? ''}
                           onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'geometriaY', index: i, field: 'dim', value: parseNum(e.target.value) })} />
                       </td>
