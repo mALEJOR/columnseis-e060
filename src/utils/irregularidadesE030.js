@@ -428,23 +428,45 @@ export function calcularResistenciaExtrema(pisos, nPisos) {
 
 // 5. Masa o Peso (Ia = 0.90)
 // mi > 1.50*m(i+1) OR mi > 1.50*m(i-1)
+// Azoteas y sótanos se excluyen; solo compara entre pisos NORMAL adyacentes.
+// Array convention: index 0 = top floor, index (nPisos-1) = bottom floor.
 export function calcularMasa(pisos, nPisos) {
-  // pisos[i] = {masa} — from top (i=0) to bottom
   const rows = []
   for (let i = 0; i < nPisos; i++) {
-    const floorNum = i + 1
-    const mi = pisos[i]?.masa
+    const p = pisos[i] || {}
+    const mi = p.masa
+    const tipo = p.tipo || 'NORMAL'
+    const nombre = p.nombre || ''
 
-    // 1.50*m(i+1) = floor above = i-1
-    let limit_above = '---'
-    if (floorNum > 1 && pisos[i - 1]?.masa != null && pisos[i - 1].masa !== '') {
-      limit_above = 1.5 * pisos[i - 1].masa
+    if (tipo !== 'NORMAL') {
+      rows.push({
+        piso: i === nPisos - 1 ? 'Azotea' : (nPisos - i),
+        nombre, tipo, masa: mi ?? '',
+        limit_above: '---', limit_below: '---', cond: 'EXCLUIDO',
+      })
+      continue
     }
 
-    // 1.50*m(i-1) = floor below = i+1
+    // Find nearest NORMAL neighbor above (lower index = higher floor)
+    let limit_above = '---'
+    for (let j = i - 1; j >= 0; j--) {
+      const t = (pisos[j]?.tipo || 'NORMAL')
+      if (t === 'NORMAL') {
+        const mj = pisos[j]?.masa
+        if (mj != null && mj !== '') limit_above = 1.5 * mj
+        break
+      }
+    }
+
+    // Find nearest NORMAL neighbor below (higher index = lower floor)
     let limit_below = '---'
-    if (floorNum < nPisos && pisos[i + 1]?.masa != null && pisos[i + 1].masa !== '') {
-      limit_below = 1.5 * pisos[i + 1].masa
+    for (let j = i + 1; j < nPisos; j++) {
+      const t = (pisos[j]?.tipo || 'NORMAL')
+      if (t === 'NORMAL') {
+        const mj = pisos[j]?.masa
+        if (mj != null && mj !== '') limit_below = 1.5 * mj
+        break
+      }
     }
 
     let cond = ''
@@ -460,10 +482,8 @@ export function calcularMasa(pisos, nPisos) {
 
     rows.push({
       piso: i === nPisos - 1 ? 'Azotea' : (nPisos - i),
-      masa: mi ?? '',
-      limit_above,
-      limit_below,
-      cond,
+      nombre, tipo, masa: mi ?? '',
+      limit_above, limit_below, cond,
     })
   }
 

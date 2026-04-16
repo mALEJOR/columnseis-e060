@@ -100,7 +100,7 @@ function initState() {
     rigidezY: emptyFloors(),
     resistenciaX: emptyFloors(),
     resistenciaY: emptyFloors(),
-    masas: emptyFloors(),
+    masas: Array.from({ length: MAX_PISOS }, () => ({ masa: '', tipo: 'NORMAL', nombre: '' })),
     geometriaX: emptyFloors(),
     geometriaY: emptyFloors(),
     discontinuidad: {
@@ -1087,7 +1087,7 @@ function TabAltura({ state, dispatch }) {
 
   // Masa
   const masaRes = useMemo(() => {
-    const pisos = state.masas.slice(0, nPisos).map(m => ({ masa: parseNum(m.masa) }))
+    const pisos = state.masas.slice(0, nPisos).map(m => ({ masa: parseNum(m.masa), tipo: m.tipo || 'NORMAL', nombre: m.nombre || '' }))
     return E030.calcularMasa(pisos, nPisos)
   }, [state.masas, nPisos])
 
@@ -1303,12 +1303,14 @@ function TabAltura({ state, dispatch }) {
       </Section>
 
       <Section title="5. IRREGULARIDAD DE MASA O PESO (Ia = 0.90)">
-        <p className="e030-hint">Criterio: mi &gt; 1.50*m(i+1) o mi &gt; 1.50*m(i-1)</p>
+        <p className="e030-hint">Criterio: mi &gt; 1.50*m(i+1) o mi &gt; 1.50*m(i-1) | Azoteas y sotanos se excluyen del chequeo</p>
         <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
-          <table className="e030-table" style={{ maxWidth: 500 }}>
+          <table className="e030-table">
             <thead>
               <tr>
                 <th style={S.headerCell}>Piso</th>
+                <th style={{ ...S.headerCell, ...S.inputCell }}>Nombre</th>
+                <th style={S.headerCell}>Tipo</th>
                 <th style={{ ...S.headerCell, ...S.inputCell }}>Masa (Tn)</th>
                 <th style={{ ...S.headerCell, ...S.compCell }}>1.50*m+1</th>
                 <th style={{ ...S.headerCell, ...S.compCell }}>1.50*m-1</th>
@@ -1316,20 +1318,38 @@ function TabAltura({ state, dispatch }) {
               </tr>
             </thead>
             <tbody>
-              {masaRes.rows.map((r, i) => (
-                <tr key={i}>
-                  <td style={S.cell}>{r.piso}</td>
-                  <td style={{ ...S.cell, ...S.inputCell }}>
-                    <input type="number" style={S.tableInput}
-                      data-array="masas" data-field="masa" data-idx={i}
-                      value={state.masas[i]?.masa ?? ''}
-                      onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'masas', index: i, field: 'masa', value: parseNum(e.target.value) })} />
-                  </td>
-                  <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.limit_above)}</td>
-                  <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.limit_below)}</td>
-                  <td style={{ ...S.cell, color: condColor(r.cond), fontWeight: 700 }}>{r.cond || '\u2014'}</td>
-                </tr>
-              ))}
+              {masaRes.rows.map((r, i) => {
+                const excluido = r.cond === 'EXCLUIDO'
+                const rowStyle = excluido ? { opacity: 0.5, background: 'rgba(0,0,0,0.15)' } : {}
+                return (
+                  <tr key={i} style={rowStyle}>
+                    <td style={S.cell}>{r.piso}</td>
+                    <td style={{ ...S.cell, ...S.inputCell }}>
+                      <input type="text" style={{ ...S.tableInput, width: 80 }}
+                        value={state.masas[i]?.nombre ?? ''}
+                        onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'masas', index: i, field: 'nombre', value: e.target.value })} />
+                    </td>
+                    <td style={S.cell}>
+                      <select style={{ ...S.tableInput, width: 85, cursor: 'pointer' }}
+                        value={state.masas[i]?.tipo || 'NORMAL'}
+                        onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'masas', index: i, field: 'tipo', value: e.target.value })}>
+                        <option value="NORMAL">NORMAL</option>
+                        <option value="AZOTEA">AZOTEA</option>
+                        <option value="SÓTANO">SOTANO</option>
+                      </select>
+                    </td>
+                    <td style={{ ...S.cell, ...S.inputCell }}>
+                      <input type="number" style={S.tableInput}
+                        data-array="masas" data-field="masa" data-idx={i}
+                        value={state.masas[i]?.masa ?? ''}
+                        onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'masas', index: i, field: 'masa', value: parseNum(e.target.value) })} />
+                    </td>
+                    <td style={{ ...S.cell, ...S.compCell }}>{excluido ? '\u2014' : fmtK(r.limit_above)}</td>
+                    <td style={{ ...S.cell, ...S.compCell }}>{excluido ? '\u2014' : fmtK(r.limit_below)}</td>
+                    <td style={{ ...S.cell, color: excluido ? 'var(--text3)' : condColor(r.cond), fontWeight: 700 }}>{r.cond || '\u2014'}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -2485,7 +2505,7 @@ export default function IrregularidadesE030({ onBack }) {
   }, [state.resistenciaY, nPisos])
 
   const masaRes = useMemo(() => {
-    const pisos = state.masas.slice(0, nPisos).map(m => ({ masa: parseNum(m.masa) }))
+    const pisos = state.masas.slice(0, nPisos).map(m => ({ masa: parseNum(m.masa), tipo: m.tipo || 'NORMAL', nombre: m.nombre || '' }))
     return E030.calcularMasa(pisos, nPisos)
   }, [state.masas, nPisos])
 
