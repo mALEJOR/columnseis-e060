@@ -80,10 +80,21 @@ const condColor = cond => {
 // ══════════════════════════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════════════════════════
+function defaultPisoNombre(i, nPisos) {
+  if (i === 0) return 'Azotea'
+  return `Piso ${nPisos - i}`
+}
+
+function esAzoteaOSotano(nombre) {
+  const n = (nombre || '').trim().toLowerCase()
+  return n.includes('azotea') || n.includes('sotano') || n.includes('sótano') || n.includes('basement') || n.includes('roof')
+}
+
 function initState() {
   const emptyFloors = () => Array.from({ length: MAX_PISOS }, () => ({}))
   return {
     nPisos: 6,
+    pisoNombres: Array.from({ length: MAX_PISOS }, () => ''),
     esIrregular: true,
     sistemaX: 'Muros C.A.',
     sistemaY: 'Muros C.A.',
@@ -100,7 +111,7 @@ function initState() {
     rigidezY: emptyFloors(),
     resistenciaX: emptyFloors(),
     resistenciaY: emptyFloors(),
-    masas: Array.from({ length: MAX_PISOS }, () => ({ masa: '', tipo: 'NORMAL', nombre: '' })),
+    masas: emptyFloors(),
     geometriaX: emptyFloors(),
     geometriaY: emptyFloors(),
     discontinuidad: {
@@ -116,6 +127,11 @@ function initState() {
 function reducer(state, action) {
   switch (action.type) {
     case 'SET_FIELD': return { ...state, [action.field]: action.value }
+    case 'SET_PISO_NOMBRE': {
+      const nombres = [...state.pisoNombres]
+      nombres[action.index] = action.value
+      return { ...state, pisoNombres: nombres }
+    }
     case 'SET_FLOOR_DATA': {
       const arr = [...state[action.arrayName]]
       arr[action.index] = { ...arr[action.index], [action.field]: action.value }
@@ -375,7 +391,12 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
           <tbody>
             {results.map((r, i) => (
               <tr key={i}>
-                <td style={S.cell}>{r.piso}</td>
+                <td style={{ ...S.cell, ...S.inputCell }}>
+                  <input type="text" style={{ ...S.tableInput, width: 80 }}
+                    placeholder={defaultPisoNombre(i, nPisos)}
+                    value={state.pisoNombres[i] || ''}
+                    onChange={e => dispatch({ type: 'SET_PISO_NOMBRE', index: i, value: e.target.value })} />
+                </td>
                 <td style={{ ...S.cell, ...S.inputCell }}>
                   <input type="number" style={S.tableInput}
                     data-array={arrayName} data-field="hi" data-idx={i}
@@ -615,7 +636,7 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
           <tbody>
             {res.rows.map((r, i) => (
               <tr key={i}>
-                <td style={S.cell}>{r.piso}</td>
+                <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
                 <td style={{ ...S.cell, ...S.inputCell }}>
                   <input type="number" step="0.000001" style={S.tableInput}
                     data-array={arrayName} data-field="deltaMax" data-idx={i}
@@ -1087,9 +1108,13 @@ function TabAltura({ state, dispatch }) {
 
   // Masa
   const masaRes = useMemo(() => {
-    const pisos = state.masas.slice(0, nPisos).map(m => ({ masa: parseNum(m.masa), tipo: m.tipo || 'NORMAL', nombre: m.nombre || '' }))
+    const pisos = state.masas.slice(0, nPisos).map((m, i) => {
+      const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
+      const tipo = esAzoteaOSotano(nombre) ? 'AZOTEA' : 'NORMAL'
+      return { masa: parseNum(m.masa), tipo, nombre }
+    })
     return E030.calcularMasa(pisos, nPisos)
-  }, [state.masas, nPisos])
+  }, [state.masas, state.pisoNombres, nPisos])
 
   // Geometria X and Y
   const geomXRes = useMemo(() => {
@@ -1137,7 +1162,7 @@ function TabAltura({ state, dispatch }) {
               const deltaRelInvalid = r.deltaRel != null && r.deltaRel <= 0
               return (
                 <tr key={i}>
-                  <td style={S.cell}>{r.piso}</td>
+                  <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
                   <td style={{ ...S.cell, ...S.inputCell }}>
                     <input type="number" style={S.tableInput}
                       data-array={arrayName} data-field="Vi" data-idx={i}
@@ -1184,7 +1209,7 @@ function TabAltura({ state, dispatch }) {
           <tbody>
             {res.rows.map((r, i) => (
               <tr key={i}>
-                <td style={S.cell}>{r.piso}</td>
+                <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
                 <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.Ki)}</td>
                 <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.limit60)}</td>
                 <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.limit70avg)}</td>
@@ -1214,7 +1239,7 @@ function TabAltura({ state, dispatch }) {
           <tbody>
             {res.rows.map((r, i) => (
               <tr key={i}>
-                <td style={S.cell}>{r.piso}</td>
+                <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
                 <td style={{ ...S.cell, ...S.inputCell }}>
                   <input type="number" style={S.tableInput}
                     data-array={arrayName} data-field="Vi" data-idx={i}
@@ -1248,7 +1273,7 @@ function TabAltura({ state, dispatch }) {
           <tbody>
             {res.rows.map((r, i) => (
               <tr key={i}>
-                <td style={S.cell}>{r.piso}</td>
+                <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
                 <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.Vi)}</td>
                 <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.limit65)}</td>
                 <td style={{ ...S.cell, color: condColor(r.cond), fontWeight: 700 }}>{r.cond || '\u2014'}</td>
@@ -1303,14 +1328,12 @@ function TabAltura({ state, dispatch }) {
       </Section>
 
       <Section title="5. IRREGULARIDAD DE MASA O PESO (Ia = 0.90)">
-        <p className="e030-hint">Criterio: mi &gt; 1.50*m(i+1) o mi &gt; 1.50*m(i-1) | Azoteas y sotanos se excluyen del chequeo</p>
+        <p className="e030-hint">Criterio: mi &gt; 1.50*m(i+1) o mi &gt; 1.50*m(i-1) | Pisos con nombre "azotea" o "sotano" se excluyen automaticamente</p>
         <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
-          <table className="e030-table">
+          <table className="e030-table" style={{ maxWidth: 550 }}>
             <thead>
               <tr>
                 <th style={S.headerCell}>Piso</th>
-                <th style={{ ...S.headerCell, ...S.inputCell }}>Nombre</th>
-                <th style={S.headerCell}>Tipo</th>
                 <th style={{ ...S.headerCell, ...S.inputCell }}>Masa (Tn)</th>
                 <th style={{ ...S.headerCell, ...S.compCell }}>1.50*m+1</th>
                 <th style={{ ...S.headerCell, ...S.compCell }}>1.50*m-1</th>
@@ -1323,21 +1346,7 @@ function TabAltura({ state, dispatch }) {
                 const rowStyle = excluido ? { opacity: 0.5, background: 'rgba(0,0,0,0.15)' } : {}
                 return (
                   <tr key={i} style={rowStyle}>
-                    <td style={S.cell}>{r.piso}</td>
-                    <td style={{ ...S.cell, ...S.inputCell }}>
-                      <input type="text" style={{ ...S.tableInput, width: 80 }}
-                        value={state.masas[i]?.nombre ?? ''}
-                        onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'masas', index: i, field: 'nombre', value: e.target.value })} />
-                    </td>
-                    <td style={S.cell}>
-                      <select style={{ ...S.tableInput, width: 85, cursor: 'pointer' }}
-                        value={state.masas[i]?.tipo || 'NORMAL'}
-                        onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'masas', index: i, field: 'tipo', value: e.target.value })}>
-                        <option value="NORMAL">NORMAL</option>
-                        <option value="AZOTEA">AZOTEA</option>
-                        <option value="SÓTANO">SOTANO</option>
-                      </select>
-                    </td>
+                    <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
                     <td style={{ ...S.cell, ...S.inputCell }}>
                       <input type="number" style={S.tableInput}
                         data-array="masas" data-field="masa" data-idx={i}
@@ -1376,7 +1385,7 @@ function TabAltura({ state, dispatch }) {
                 <tbody>
                   {geomXRes.rows.map((r, i) => (
                     <tr key={i}>
-                      <td style={S.cell}>{r.piso}</td>
+                      <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
                       <td style={{ ...S.cell, ...S.inputCell }}>
                         <input type="number" step="0.1" style={S.tableInput}
                           data-array="geometriaX" data-field="dim" data-idx={i}
@@ -1406,7 +1415,7 @@ function TabAltura({ state, dispatch }) {
                 <tbody>
                   {geomYRes.rows.map((r, i) => (
                     <tr key={i}>
-                      <td style={S.cell}>{r.piso}</td>
+                      <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
                       <td style={{ ...S.cell, ...S.inputCell }}>
                         <input type="number" step="0.1" style={S.tableInput}
                           data-array="geometriaY" data-field="dim" data-idx={i}
@@ -2505,9 +2514,13 @@ export default function IrregularidadesE030({ onBack }) {
   }, [state.resistenciaY, nPisos])
 
   const masaRes = useMemo(() => {
-    const pisos = state.masas.slice(0, nPisos).map(m => ({ masa: parseNum(m.masa), tipo: m.tipo || 'NORMAL', nombre: m.nombre || '' }))
+    const pisos = state.masas.slice(0, nPisos).map((m, i) => {
+      const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
+      const tipo = esAzoteaOSotano(nombre) ? 'AZOTEA' : 'NORMAL'
+      return { masa: parseNum(m.masa), tipo, nombre }
+    })
     return E030.calcularMasa(pisos, nPisos)
-  }, [state.masas, nPisos])
+  }, [state.masas, state.pisoNombres, nPisos])
 
   const geomXRes = useMemo(() => {
     const pisos = state.geometriaX.slice(0, nPisos).map(g => ({ dim: parseNum(g.dim) }))
