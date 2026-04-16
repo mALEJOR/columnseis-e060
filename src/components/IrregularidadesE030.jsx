@@ -7,7 +7,7 @@ const MAX_PISOS = 20
 
 // ── Helpers ──
 const parseNum = v => { const n = parseFloat(v); return isNaN(n) ? '' : n }
-const fmt = (v, d = 5) => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v).toFixed(d)
+const fmt = (v, d = 4) => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v).toFixed(d)
 const fmtPct = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : (Number(v) * 100).toFixed(1) + '%'
 const fmtPctRaw = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v).toFixed(1) + '%'
 const pisoLabel = (idx, nPisos) => idx === nPisos - 1 ? 'Azotea' : (nPisos - idx)
@@ -1151,7 +1151,7 @@ function TabAltura({ state, dispatch }) {
                       onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'CMi', value: parseNum(e.target.value) })} />
                   </td>
                   <td style={{ ...S.cell, ...S.compCell, color: deltaRelInvalid ? '#c00' : 'inherit', fontWeight: deltaRelInvalid ? 700 : 'inherit' }}>
-                    {r.deltaRel == null ? '\u2014' : r.deltaRel.toFixed(6)}
+                    {r.deltaRel == null ? '\u2014' : r.deltaRel.toFixed(4)}
                   </td>
                   <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.Ki)}</td>
                   <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.limit70)}</td>
@@ -1985,7 +1985,7 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
       {tt && (
         <div className="esp-tooltip" style={{left: Math.min(tt.x+12, W-140), top: Math.max(tt.y-50,10)}}>
           T={tt.T.toFixed(2)}s &nbsp; C={tt.C.toFixed(4)}<br/>
-          Sa={tt.Sa.toFixed(4)} m/s2 &nbsp; Sa/g={tt.SaG.toFixed(5)}
+          Sa={tt.Sa.toFixed(4)} m/s2 &nbsp; Sa/g={tt.SaG.toFixed(4)}
         </div>
       )}
     </div>
@@ -2244,7 +2244,7 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
                 <tr><td className="lbl">Ip</td><td className="vx">{IpX.toFixed(2)}</td><td className="vy">{IpY.toFixed(2)}</td></tr>
                 <tr><td className="lbl" style={{fontWeight:700}}>R = Ro*Ia*Ip</td><td className="vx" style={{fontWeight:700,fontSize:11}}>{Rx.toFixed(2)}</td><td className="vy" style={{fontWeight:700,fontSize:11}}>{Ry.toFixed(2)}</td></tr>
                 <tr><td className="lbl">Sa max (m/s2)</td><td className="vx">{saMaxX.toFixed(4)}</td><td className="vy">{saMaxY.toFixed(4)}</td></tr>
-                <tr><td className="lbl">Sa/g max</td><td className="vx">{sagMaxX.toFixed(5)}</td><td className="vy">{sagMaxY.toFixed(5)}</td></tr>
+                <tr><td className="lbl">Sa/g max</td><td className="vx">{sagMaxX.toFixed(4)}</td><td className="vy">{sagMaxY.toFixed(4)}</td></tr>
                 <tr><td className="lbl" colSpan={3} style={{textAlign:'center',color:'var(--text3)',fontSize:8,paddingTop:4}}>
                   Z={Z} &nbsp; S={sVal?.toFixed(2)} &nbsp; U={U.toFixed(1)} &nbsp; Tp={Tp}s &nbsp; TL={TL}s
                 </td></tr>
@@ -2291,7 +2291,7 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
                 {activeEsp.map((p, i) => (
                   <tr key={i}>
                     <td style={S.cell}>{p.T.toFixed(2)}</td><td style={S.cell}>{p.C.toFixed(4)}</td>
-                    <td style={S.cell}>{p.Sa.toFixed(4)}</td><td style={S.cell}>{p.SaG.toFixed(5)}</td>
+                    <td style={S.cell}>{p.Sa.toFixed(4)}</td><td style={S.cell}>{p.SaG.toFixed(4)}</td>
                   </tr>
                 ))}
               </tbody>
