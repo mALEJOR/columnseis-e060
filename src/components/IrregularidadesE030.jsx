@@ -1118,14 +1118,22 @@ function TabAltura({ state, dispatch }) {
 
   // Geometria X and Y
   const geomXRes = useMemo(() => {
-    const pisos = state.geometriaX.slice(0, nPisos).map(g => ({ dim: parseNum(g.dim) }))
+    const pisos = state.geometriaX.slice(0, nPisos).map((g, i) => {
+      const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
+      const tipo = esAzoteaOSotano(nombre) ? 'AZOTEA' : 'NORMAL'
+      return { dim: parseNum(g.dim), tipo, nombre }
+    })
     return E030.calcularGeometria(pisos, nPisos)
-  }, [state.geometriaX, nPisos])
+  }, [state.geometriaX, state.pisoNombres, nPisos])
 
   const geomYRes = useMemo(() => {
-    const pisos = state.geometriaY.slice(0, nPisos).map(g => ({ dim: parseNum(g.dim) }))
+    const pisos = state.geometriaY.slice(0, nPisos).map((g, i) => {
+      const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
+      const tipo = esAzoteaOSotano(nombre) ? 'AZOTEA' : 'NORMAL'
+      return { dim: parseNum(g.dim), tipo, nombre }
+    })
     return E030.calcularGeometria(pisos, nPisos)
-  }, [state.geometriaY, nPisos])
+  }, [state.geometriaY, state.pisoNombres, nPisos])
 
   // Discontinuidad de sistemas resistentes
   const discontRes = useMemo(() => {
@@ -1368,7 +1376,7 @@ function TabAltura({ state, dispatch }) {
       </Section>
 
       <Section title="6. IRREGULARIDAD DE GEOMETRIA VERTICAL (Ia = 0.90)">
-        <p className="e030-hint">Criterio: a &gt; 1.30*a(i+1) | a = dimension en planta del elemento resistente</p>
+        <p className="e030-hint">Criterio: a &gt; 1.30*a(piso adyacente) | Azoteas y sotanos se excluyen automaticamente</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div onPaste={handlePaste}>
             <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. X-X</h4>
@@ -1379,23 +1387,29 @@ function TabAltura({ state, dispatch }) {
                     <th style={S.headerCell}>Piso</th>
                     <th style={{ ...S.headerCell, ...S.inputCell }}>a (m)</th>
                     <th style={{ ...S.headerCell, ...S.compCell }}>1.30*a+1</th>
+                    <th style={{ ...S.headerCell, ...S.compCell }}>1.30*a-1</th>
                     <th style={S.headerCell}>Cond</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {geomXRes.rows.map((r, i) => (
-                    <tr key={i}>
-                      <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
-                      <td style={{ ...S.cell, ...S.inputCell }}>
-                        <input type="number" step="0.1" style={S.tableInput}
-                          data-array="geometriaX" data-field="dim" data-idx={i}
-                          value={state.geometriaX[i]?.dim ?? ''}
-                          onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'geometriaX', index: i, field: 'dim', value: parseNum(e.target.value) })} />
-                      </td>
-                      <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.limit130)}</td>
-                      <td style={{ ...S.cell, color: condColor(r.cond), fontWeight: 700 }}>{r.cond || '\u2014'}</td>
-                    </tr>
-                  ))}
+                  {geomXRes.rows.map((r, i) => {
+                    const excluido = r.cond === 'EXCLUIDO'
+                    const rowStyle = excluido ? { opacity: 0.5, background: 'rgba(0,0,0,0.15)' } : {}
+                    return (
+                      <tr key={i} style={rowStyle}>
+                        <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
+                        <td style={{ ...S.cell, ...S.inputCell }}>
+                          <input type="number" step="0.1" style={S.tableInput}
+                            data-array="geometriaX" data-field="dim" data-idx={i}
+                            value={state.geometriaX[i]?.dim ?? ''}
+                            onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'geometriaX', index: i, field: 'dim', value: parseNum(e.target.value) })} />
+                        </td>
+                        <td style={{ ...S.cell, ...S.compCell }}>{excluido ? '\u2014' : fmtK(r.limit_above)}</td>
+                        <td style={{ ...S.cell, ...S.compCell }}>{excluido ? '\u2014' : fmtK(r.limit_below)}</td>
+                        <td style={{ ...S.cell, color: excluido ? 'var(--text3)' : condColor(r.cond), fontWeight: 700 }}>{r.cond || '\u2014'}</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -1409,23 +1423,29 @@ function TabAltura({ state, dispatch }) {
                     <th style={S.headerCell}>Piso</th>
                     <th style={{ ...S.headerCell, ...S.inputCell }}>a (m)</th>
                     <th style={{ ...S.headerCell, ...S.compCell }}>1.30*a+1</th>
+                    <th style={{ ...S.headerCell, ...S.compCell }}>1.30*a-1</th>
                     <th style={S.headerCell}>Cond</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {geomYRes.rows.map((r, i) => (
-                    <tr key={i}>
-                      <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
-                      <td style={{ ...S.cell, ...S.inputCell }}>
-                        <input type="number" step="0.1" style={S.tableInput}
-                          data-array="geometriaY" data-field="dim" data-idx={i}
-                          value={state.geometriaY[i]?.dim ?? ''}
-                          onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'geometriaY', index: i, field: 'dim', value: parseNum(e.target.value) })} />
-                      </td>
-                      <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.limit130)}</td>
-                      <td style={{ ...S.cell, color: condColor(r.cond), fontWeight: 700 }}>{r.cond || '\u2014'}</td>
-                    </tr>
-                  ))}
+                  {geomYRes.rows.map((r, i) => {
+                    const excluido = r.cond === 'EXCLUIDO'
+                    const rowStyle = excluido ? { opacity: 0.5, background: 'rgba(0,0,0,0.15)' } : {}
+                    return (
+                      <tr key={i} style={rowStyle}>
+                        <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
+                        <td style={{ ...S.cell, ...S.inputCell }}>
+                          <input type="number" step="0.1" style={S.tableInput}
+                            data-array="geometriaY" data-field="dim" data-idx={i}
+                            value={state.geometriaY[i]?.dim ?? ''}
+                            onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'geometriaY', index: i, field: 'dim', value: parseNum(e.target.value) })} />
+                        </td>
+                        <td style={{ ...S.cell, ...S.compCell }}>{excluido ? '\u2014' : fmtK(r.limit_above)}</td>
+                        <td style={{ ...S.cell, ...S.compCell }}>{excluido ? '\u2014' : fmtK(r.limit_below)}</td>
+                        <td style={{ ...S.cell, color: excluido ? 'var(--text3)' : condColor(r.cond), fontWeight: 700 }}>{r.cond || '\u2014'}</td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -2523,14 +2543,22 @@ export default function IrregularidadesE030({ onBack }) {
   }, [state.masas, state.pisoNombres, nPisos])
 
   const geomXRes = useMemo(() => {
-    const pisos = state.geometriaX.slice(0, nPisos).map(g => ({ dim: parseNum(g.dim) }))
+    const pisos = state.geometriaX.slice(0, nPisos).map((g, i) => {
+      const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
+      const tipo = esAzoteaOSotano(nombre) ? 'AZOTEA' : 'NORMAL'
+      return { dim: parseNum(g.dim), tipo, nombre }
+    })
     return E030.calcularGeometria(pisos, nPisos)
-  }, [state.geometriaX, nPisos])
+  }, [state.geometriaX, state.pisoNombres, nPisos])
 
   const geomYRes = useMemo(() => {
-    const pisos = state.geometriaY.slice(0, nPisos).map(g => ({ dim: parseNum(g.dim) }))
+    const pisos = state.geometriaY.slice(0, nPisos).map((g, i) => {
+      const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
+      const tipo = esAzoteaOSotano(nombre) ? 'AZOTEA' : 'NORMAL'
+      return { dim: parseNum(g.dim), tipo, nombre }
+    })
     return E030.calcularGeometria(pisos, nPisos)
-  }, [state.geometriaY, nPisos])
+  }, [state.geometriaY, state.pisoNombres, nPisos])
 
   const discontRes = useMemo(() => {
     const d = state.discontinuidad

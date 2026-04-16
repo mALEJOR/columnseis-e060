@@ -492,30 +492,60 @@ export function calcularMasa(pisos, nPisos) {
 }
 
 // 6. Geometría Vertical (Ia = 0.90)
-// a > 1.30*a(i+1)
+// a > 1.30 * a(adyacente), ignorando azoteas y sotanos
+// Array convention: index 0 = top floor, index (nPisos-1) = bottom floor
+// pisos[i] = { dim, nombre, tipo }   tipo='NORMAL' | 'AZOTEA' | 'SOTANO'
 export function calcularGeometria(pisos, nPisos) {
-  // pisos[i] = {dim} — dimension in plan
   const rows = []
   for (let i = 0; i < nPisos; i++) {
-    const floorNum = i + 1
-    const ai = pisos[i]?.dim
+    const p = pisos[i] || {}
+    const ai = p.dim
+    const tipo = p.tipo || 'NORMAL'
 
-    let limit130 = '---'
-    if (floorNum > 1 && pisos[i - 1]?.dim != null && pisos[i - 1].dim !== '') {
-      limit130 = 1.3 * pisos[i - 1].dim
+    if (tipo !== 'NORMAL') {
+      rows.push({
+        piso: i === nPisos - 1 ? 'Azotea' : (nPisos - i),
+        nombre: p.nombre || '', tipo, dim: ai ?? '',
+        limit_above: '---', limit_below: '---', cond: 'EXCLUIDO',
+      })
+      continue
+    }
+
+    // Nearest NORMAL neighbor above (array index < i)
+    let limit_above = '---'
+    for (let j = i - 1; j >= 0; j--) {
+      if ((pisos[j]?.tipo || 'NORMAL') === 'NORMAL') {
+        const dj = pisos[j]?.dim
+        if (dj != null && dj !== '') limit_above = 1.3 * dj
+        break
+      }
+    }
+
+    // Nearest NORMAL neighbor below (array index > i)
+    let limit_below = '---'
+    for (let j = i + 1; j < nPisos; j++) {
+      if ((pisos[j]?.tipo || 'NORMAL') === 'NORMAL') {
+        const dj = pisos[j]?.dim
+        if (dj != null && dj !== '') limit_below = 1.3 * dj
+        break
+      }
     }
 
     let cond = ''
     if (ai != null && ai !== '') {
-      if (limit130 === '---') cond = 'OK'
-      else cond = ai > limit130 ? 'IRREG' : 'OK'
+      if (limit_above === '---' && limit_below === '---') {
+        cond = 'OK'
+      } else {
+        const excAbove = typeof limit_above === 'number' && ai > limit_above
+        const excBelow = typeof limit_below === 'number' && ai > limit_below
+        cond = (excAbove || excBelow) ? 'IRREG' : 'OK'
+      }
     }
 
     rows.push({
       piso: i === nPisos - 1 ? 'Azotea' : (nPisos - i),
-      dim: ai ?? '',
-      limit130,
-      cond,
+      nombre: p.nombre || '', tipo, dim: ai ?? '',
+      limit_above, limit_below, cond,
     })
   }
 
