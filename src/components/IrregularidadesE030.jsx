@@ -1123,36 +1123,43 @@ function TabAltura({ state, dispatch }) {
           <thead>
             <tr>
               <th style={S.headerCell}>Piso</th>
-              <th style={{ ...S.headerCell, ...S.inputCell }}>Vi</th>
-              <th style={{ ...S.headerCell, ...S.inputCell }}>CMi</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>Ki</th>
+              <th style={{ ...S.headerCell, ...S.inputCell }}>Vi (Tn)</th>
+              <th style={{ ...S.headerCell, ...S.inputCell }}>δ abs (m)</th>
+              <th style={{ ...S.headerCell, ...S.compCell }}>Δ rel (m)</th>
+              <th style={{ ...S.headerCell, ...S.compCell }}>Ki (Tn/m)</th>
               <th style={{ ...S.headerCell, ...S.compCell }}>0.70K+1</th>
               <th style={{ ...S.headerCell, ...S.compCell }}>0.80Pm3</th>
               <th style={S.headerCell}>Cond</th>
             </tr>
           </thead>
           <tbody>
-            {res.rows.map((r, i) => (
-              <tr key={i}>
-                <td style={S.cell}>{r.piso}</td>
-                <td style={{ ...S.cell, ...S.inputCell }}>
-                  <input type="number" style={S.tableInput}
-                    data-array={arrayName} data-field="Vi" data-idx={i}
-                    value={state[arrayName][i]?.Vi ?? ''}
-                    onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'Vi', value: parseNum(e.target.value) })} />
-                </td>
-                <td style={{ ...S.cell, ...S.inputCell }}>
-                  <input type="number" step="0.0001" style={S.tableInput}
-                    data-array={arrayName} data-field="CMi" data-idx={i}
-                    value={state[arrayName][i]?.CMi ?? ''}
-                    onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'CMi', value: parseNum(e.target.value) })} />
-                </td>
-                <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.Ki)}</td>
-                <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.limit70)}</td>
-                <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.limit80avg)}</td>
-                <td style={{ ...S.cell, color: condColor(r.cond), fontWeight: 700 }}>{r.cond || '\u2014'}</td>
-              </tr>
-            ))}
+            {res.rows.map((r, i) => {
+              const deltaRelInvalid = r.deltaRel != null && r.deltaRel <= 0
+              return (
+                <tr key={i}>
+                  <td style={S.cell}>{r.piso}</td>
+                  <td style={{ ...S.cell, ...S.inputCell }}>
+                    <input type="number" style={S.tableInput}
+                      data-array={arrayName} data-field="Vi" data-idx={i}
+                      value={state[arrayName][i]?.Vi ?? ''}
+                      onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'Vi', value: parseNum(e.target.value) })} />
+                  </td>
+                  <td style={{ ...S.cell, ...S.inputCell }}>
+                    <input type="number" step="0.0001" style={S.tableInput}
+                      data-array={arrayName} data-field="CMi" data-idx={i}
+                      value={state[arrayName][i]?.CMi ?? ''}
+                      onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: i, field: 'CMi', value: parseNum(e.target.value) })} />
+                  </td>
+                  <td style={{ ...S.cell, ...S.compCell, color: deltaRelInvalid ? '#c00' : 'inherit', fontWeight: deltaRelInvalid ? 700 : 'inherit' }}>
+                    {r.deltaRel == null ? '\u2014' : r.deltaRel.toFixed(6)}
+                  </td>
+                  <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.Ki)}</td>
+                  <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.limit70)}</td>
+                  <td style={{ ...S.cell, ...S.compCell }}>{fmtK(r.limit80avg)}</td>
+                  <td style={{ ...S.cell, color: condColor(r.cond), fontWeight: 700 }}>{r.cond || '\u2014'}</td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

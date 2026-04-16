@@ -248,12 +248,24 @@ export function calcularIpFinal(ipTorsionX, ipTorsionY, ipEsquinasX, ipEsquinasY
  * @returns {object} {rows, ia}
  */
 export function calcularRigidez(pisos, nPisos) {
-  // Calculate Ki for each floor
+  // Array convention: index 0 = top floor, index (nPisos-1) = bottom floor (next to base).
+  // Relative displacement: Δ_i = δ_i - δ_(floor below). For the bottom floor, floor below = base (δ=0).
+  // Ki = Vi / Δ_i
   const Ki = []
+  const deltaRelArr = []
   for (let i = 0; i < nPisos; i++) {
     const p = pisos[i] || {}
-    if (p.Vi != null && p.CMi != null && p.CMi !== 0 && p.Vi !== '' && p.CMi !== '') {
-      Ki.push(p.Vi / p.CMi)
+    const deltaAbs = (p.CMi != null && p.CMi !== '' && !isNaN(p.CMi)) ? Number(p.CMi) : null
+    const below = pisos[i + 1]
+    const deltaAbsBelow = (i < nPisos - 1 && below && below.CMi != null && below.CMi !== '' && !isNaN(below.CMi))
+      ? Number(below.CMi) : 0
+    let deltaRel = null
+    if (deltaAbs != null) deltaRel = deltaAbs - deltaAbsBelow
+    deltaRelArr.push(deltaRel)
+
+    const Vi = (p.Vi != null && p.Vi !== '' && !isNaN(p.Vi)) ? Number(p.Vi) : null
+    if (Vi != null && deltaRel != null && deltaRel > 0) {
+      Ki.push(Vi / deltaRel)
     } else {
       Ki.push(null)
     }
@@ -295,6 +307,7 @@ export function calcularRigidez(pisos, nPisos) {
       piso: i === nPisos - 1 ? 'Azotea' : (nPisos - i),
       Vi: pisos[i]?.Vi ?? '',
       CMi: pisos[i]?.CMi ?? '',
+      deltaRel: deltaRelArr[i],
       Ki: ki,
       limit70,
       limit80avg,
