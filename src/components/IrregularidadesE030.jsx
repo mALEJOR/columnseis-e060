@@ -1459,8 +1459,8 @@ function TabAltura({ state, dispatch }) {
 
       <Section title="7. DISCONTINUIDAD EN LOS SISTEMAS RESISTENTES (Ia = 0.80 / 0.60)">
         <p className="e030-hint">
-          Criterio: %V&gt;10% y (cambio orient. o e/B1&gt;25%) = DISCONTINUO |
-          e = |B1-b1|/2 | V_disc/V_total&gt;25% = EXTREMA (0.60)
+          Criterio: %V&gt;10% y (cambio orient. o e/D_orig&gt;25%) = DISCONTINUO |
+          e = |D_orig - D_modif|/2 | V_disc/V_total&gt;25% = EXTREMA (0.60)
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <label style={{ fontSize: 11, color: 'var(--text2)' }}>Calcular Discontinuidad?</label>
@@ -1494,14 +1494,14 @@ function TabAltura({ state, dispatch }) {
                 <text x="305" y="203" fill="#999" fontSize="8">Nivel i</text>
                 <rect x="80" y="30" width="30" height="30" fill="#1565C0" rx="2"/>
                 <rect x="190" y="30" width="30" height="30" fill="#1565C0" rx="2"/>
-                <text x="160" y="50" fill="#fff" fontSize="9" textAnchor="middle">b1</text>
+                <text x="160" y="50" fill="#fff" fontSize="9" textAnchor="middle">D modif</text>
                 <rect x="60" y="200" width="50" height="40" fill="#4FC3F7" rx="2"/>
                 <rect x="190" y="200" width="50" height="40" fill="#4FC3F7" rx="2"/>
-                <text x="160" y="225" fill="#fff" fontSize="9" textAnchor="middle">B1</text>
+                <text x="160" y="225" fill="#fff" fontSize="9" textAnchor="middle">D orig</text>
                 <line x1="60" y1="250" x2="110" y2="250" stroke="#aaa" strokeWidth="1"/>
                 <line x1="60" y1="247" x2="60" y2="253" stroke="#aaa"/>
                 <line x1="110" y1="247" x2="110" y2="253" stroke="#aaa"/>
-                <text x="85" y="258" fill="#ccc" fontSize="8" textAnchor="middle">B1</text>
+                <text x="85" y="258" fill="#ccc" fontSize="8" textAnchor="middle">D orig</text>
                 <line x1="85" y1="195" x2="85" y2="65" stroke="#aaa" strokeDasharray="2"/>
                 <line x1="95" y1="195" x2="95" y2="65" stroke="#FF9800" strokeDasharray="2"/>
                 <line x1="85" y1="130" x2="95" y2="130" stroke="#FF9800" strokeWidth="2"/>
@@ -1511,7 +1511,7 @@ function TabAltura({ state, dispatch }) {
                 <defs>
                   <marker id="arrowR" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#FF5252"/></marker>
                 </defs>
-                <text x="160" y="16" fill="#fff" fontSize="10" textAnchor="middle" fontWeight="600">e = |B1 - b1| / 2</text>
+                <text x="160" y="16" fill="#fff" fontSize="10" textAnchor="middle" fontWeight="600">e = |D orig - D modif| / 2</text>
               </svg>
             </div>
 
@@ -1542,8 +1542,8 @@ function TabAltura({ state, dispatch }) {
                     <th style={{ ...S.headerCell, ...S.inputCell }}>Vx (Tn)</th>
                     <th style={{ ...S.headerCell, ...S.inputCell }}>Vy (Tn)</th>
                     <th style={S.headerCell}>Cambio Orient.</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>B1 (m)</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>b1 (m)</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>D orig (m)</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>D modif (m)</th>
                     <th style={{ ...S.headerCell, ...S.compCell }}>e (m)</th>
                     <th style={{ ...S.headerCell, ...S.compCell }}>%e</th>
                     <th style={S.headerCell}></th>
