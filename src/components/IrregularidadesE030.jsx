@@ -1486,33 +1486,9 @@ function TabAltura({ state, dispatch }) {
 
         {state.discontinuidad.activo && (
           <>
-            <div id="discont-diagram" style={{ display: 'none', marginBottom: 12, background: 'rgba(0,0,0,0.2)', borderRadius: 6, padding: 10, maxWidth: 340 }}>
-              <svg viewBox="0 0 320 260" width="320" height="260" style={{ display: 'block' }}>
-                <line x1="20" y1="60" x2="300" y2="60" stroke="#555" strokeDasharray="4"/>
-                <text x="305" y="63" fill="#999" fontSize="8">Nivel i+1</text>
-                <line x1="20" y1="200" x2="300" y2="200" stroke="#555" strokeDasharray="4"/>
-                <text x="305" y="203" fill="#999" fontSize="8">Nivel i</text>
-                <rect x="80" y="30" width="30" height="30" fill="#1565C0" rx="2"/>
-                <rect x="190" y="30" width="30" height="30" fill="#1565C0" rx="2"/>
-                <text x="160" y="50" fill="#fff" fontSize="9" textAnchor="middle">D modif</text>
-                <rect x="60" y="200" width="50" height="40" fill="#4FC3F7" rx="2"/>
-                <rect x="190" y="200" width="50" height="40" fill="#4FC3F7" rx="2"/>
-                <text x="160" y="225" fill="#fff" fontSize="9" textAnchor="middle">D orig</text>
-                <line x1="60" y1="250" x2="110" y2="250" stroke="#aaa" strokeWidth="1"/>
-                <line x1="60" y1="247" x2="60" y2="253" stroke="#aaa"/>
-                <line x1="110" y1="247" x2="110" y2="253" stroke="#aaa"/>
-                <text x="85" y="258" fill="#ccc" fontSize="8" textAnchor="middle">D orig</text>
-                <line x1="85" y1="195" x2="85" y2="65" stroke="#aaa" strokeDasharray="2"/>
-                <line x1="95" y1="195" x2="95" y2="65" stroke="#FF9800" strokeDasharray="2"/>
-                <line x1="85" y1="130" x2="95" y2="130" stroke="#FF9800" strokeWidth="2"/>
-                <text x="105" y="133" fill="#FF9800" fontSize="9">e</text>
-                <line x1="130" y1="130" x2="170" y2="130" stroke="#FF5252" strokeWidth="2" markerEnd="url(#arrowR)"/>
-                <text x="150" y="124" fill="#FF5252" fontSize="8" textAnchor="middle">V elem</text>
-                <defs>
-                  <marker id="arrowR" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#FF5252"/></marker>
-                </defs>
-                <text x="160" y="16" fill="#fff" fontSize="10" textAnchor="middle" fontWeight="600">e = |D orig - D modif| / 2</text>
-              </svg>
+            <div id="discont-diagram" style={{ display: 'none', marginBottom: 12, background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: 10, maxWidth: 340 }}>
+              <img src="/images/sopa.jpg" alt="Diagrama de discontinuidad vertical"
+                style={{ maxWidth: '100%', borderRadius: 8 }} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 500, marginBottom: 12 }}>
