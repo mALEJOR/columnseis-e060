@@ -554,7 +554,8 @@ export function calcularGeometria(pisos, nPisos) {
 }
 
 // Discontinuidad en los Sistemas Resistentes (Ia = 0.80 / 0.60)
-// elementos = [{ nombre, vx, vy, cambioOrientacion, desplEje, dimElem }]
+// elementos = [{ nombre, vx, vy, cambioOrientacion, B1, b1 }]
+// e = |B1 - b1| / 2,  %e = e / B1 * 100
 export function calcularDiscontinuidad(activo, elementos, vTotalX, vTotalY) {
   const empty = {
     rows: [], vDiscontX: 0, vDiscontY: 0, pctDiscontX: 0, pctDiscontY: 0,
@@ -566,25 +567,27 @@ export function calcularDiscontinuidad(activo, elementos, vTotalX, vTotalY) {
   const vY = Number(vTotalY) || 0
 
   const rows = elementos
-    .filter(el => el.nombre || el.vx || el.vy || el.cambioOrientacion || el.desplEje || el.dimElem)
+    .filter(el => el.nombre || el.vx || el.vy || el.cambioOrientacion || el.B1 || el.b1)
     .map(el => {
       const vx = typeof el.vx === 'number' ? el.vx : (parseFloat(el.vx) || 0)
       const vy = typeof el.vy === 'number' ? el.vy : (parseFloat(el.vy) || 0)
-      const desplEje = typeof el.desplEje === 'number' ? el.desplEje : (parseFloat(el.desplEje) || 0)
-      const dimElem = typeof el.dimElem === 'number' ? el.dimElem : (parseFloat(el.dimElem) || 0)
+      const B1 = typeof el.B1 === 'number' ? el.B1 : (parseFloat(el.B1) || 0)
+      const b1 = typeof el.b1 === 'number' ? el.b1 : (parseFloat(el.b1) || 0)
       const cambioOrientacion = !!el.cambioOrientacion
+
+      const e = B1 > 0 ? Math.abs(B1 - b1) / 2 : null
+      const pctE = (B1 > 0 && e != null) ? (e / B1) * 100 : null
 
       const pctVx = vX > 0 ? (vx / vX) * 100 : 0
       const pctVy = vY > 0 ? (vy / vY) * 100 : 0
-      const pctDespl = dimElem > 0 ? (desplEje / dimElem) * 100 : 0
 
-      const tieneDesalineamiento = cambioOrientacion || pctDespl > 25
+      const tieneDesalineamiento = cambioOrientacion || (pctE != null && pctE > 25)
       const discontinuoX = pctVx > 10 && tieneDesalineamiento
       const discontinuoY = pctVy > 10 && tieneDesalineamiento
 
       return {
-        nombre: el.nombre || '', vx, vy, cambioOrientacion, desplEje, dimElem,
-        pctVx, pctVy, pctDespl, tieneDesalineamiento, discontinuoX, discontinuoY,
+        nombre: el.nombre || '', vx, vy, cambioOrientacion, B1, b1, e, pctE,
+        pctVx, pctVy, tieneDesalineamiento, discontinuoX, discontinuoY,
       }
     })
 

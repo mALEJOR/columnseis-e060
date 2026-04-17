@@ -118,7 +118,7 @@ function initState() {
       activo: true,
       vTotalX: '', vTotalY: '',
       elementos: Array.from({ length: 3 }, () => ({
-        nombre: '', vx: '', vy: '', cambioOrientacion: false, desplEje: '', dimElem: '',
+        nombre: '', vx: '', vy: '', cambioOrientacion: false, B1: '', b1: '',
       })),
     },
   }
@@ -161,11 +161,11 @@ function reducer(state, action) {
       return { ...state, discontinuidad: { ...state.discontinuidad, elementos: elems } }
     }
     case 'ADD_DISCONT_ELEM': {
-      return { ...state, discontinuidad: { ...state.discontinuidad, elementos: [...state.discontinuidad.elementos, { nombre: '', vx: '', vy: '', cambioOrientacion: false, desplEje: '', dimElem: '' }] } }
+      return { ...state, discontinuidad: { ...state.discontinuidad, elementos: [...state.discontinuidad.elementos, { nombre: '', vx: '', vy: '', cambioOrientacion: false, B1: '', b1: '' }] } }
     }
     case 'DEL_DISCONT_ELEM': {
       const elems = state.discontinuidad.elementos.filter((_, i) => i !== action.index)
-      return { ...state, discontinuidad: { ...state.discontinuidad, elementos: elems.length > 0 ? elems : [{ nombre: '', vx: '', vy: '', cambioOrientacion: false, desplEje: '', dimElem: '' }] } }
+      return { ...state, discontinuidad: { ...state.discontinuidad, elementos: elems.length > 0 ? elems : [{ nombre: '', vx: '', vy: '', cambioOrientacion: false, B1: '', b1: '' }] } }
     }
     case 'RESET': return initState()
     default: return state
@@ -1459,8 +1459,8 @@ function TabAltura({ state, dispatch }) {
 
       <Section title="7. DISCONTINUIDAD EN LOS SISTEMAS RESISTENTES (Ia = 0.80 / 0.60)">
         <p className="e030-hint">
-          Criterio: elemento con %V&gt;10% y (cambio de orientacion o despl.eje/dim&gt;25%) = DISCONTINUO |
-          V_discont/V_total&gt;25% = EXTREMA (0.60) | ≥1 discontinuo = IRREG (0.80)
+          Criterio: %V&gt;10% y (cambio orient. o e/B1&gt;25%) = DISCONTINUO |
+          e = |B1-b1|/2 | V_disc/V_total&gt;25% = EXTREMA (0.60)
         </p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
           <label style={{ fontSize: 11, color: 'var(--text2)' }}>Calcular Discontinuidad?</label>
@@ -1472,10 +1472,49 @@ function TabAltura({ state, dispatch }) {
             <option value="SI">SI</option>
             <option value="NO">NO</option>
           </select>
+          {state.discontinuidad.activo && (
+            <button type="button"
+              onClick={() => {
+                const el = document.getElementById('discont-diagram')
+                if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'
+              }}
+              style={{ background: 'var(--surface3)', border: '1px solid var(--border)', color: '#4FC3F7', padding: '3px 8px', borderRadius: 3, fontSize: 10, cursor: 'pointer' }}>
+              ? Diagrama de referencia
+            </button>
+          )}
         </div>
 
         {state.discontinuidad.activo && (
           <>
+            <div id="discont-diagram" style={{ display: 'none', marginBottom: 12, background: 'rgba(0,0,0,0.2)', borderRadius: 6, padding: 10, maxWidth: 340 }}>
+              <svg viewBox="0 0 320 260" width="320" height="260" style={{ display: 'block' }}>
+                <line x1="20" y1="60" x2="300" y2="60" stroke="#555" strokeDasharray="4"/>
+                <text x="305" y="63" fill="#999" fontSize="8">Nivel i+1</text>
+                <line x1="20" y1="200" x2="300" y2="200" stroke="#555" strokeDasharray="4"/>
+                <text x="305" y="203" fill="#999" fontSize="8">Nivel i</text>
+                <rect x="80" y="30" width="30" height="30" fill="#1565C0" rx="2"/>
+                <rect x="190" y="30" width="30" height="30" fill="#1565C0" rx="2"/>
+                <text x="160" y="50" fill="#fff" fontSize="9" textAnchor="middle">b1</text>
+                <rect x="60" y="200" width="50" height="40" fill="#4FC3F7" rx="2"/>
+                <rect x="190" y="200" width="50" height="40" fill="#4FC3F7" rx="2"/>
+                <text x="160" y="225" fill="#fff" fontSize="9" textAnchor="middle">B1</text>
+                <line x1="60" y1="250" x2="110" y2="250" stroke="#aaa" strokeWidth="1"/>
+                <line x1="60" y1="247" x2="60" y2="253" stroke="#aaa"/>
+                <line x1="110" y1="247" x2="110" y2="253" stroke="#aaa"/>
+                <text x="85" y="258" fill="#ccc" fontSize="8" textAnchor="middle">B1</text>
+                <line x1="85" y1="195" x2="85" y2="65" stroke="#aaa" strokeDasharray="2"/>
+                <line x1="95" y1="195" x2="95" y2="65" stroke="#FF9800" strokeDasharray="2"/>
+                <line x1="85" y1="130" x2="95" y2="130" stroke="#FF9800" strokeWidth="2"/>
+                <text x="105" y="133" fill="#FF9800" fontSize="9">e</text>
+                <line x1="130" y1="130" x2="170" y2="130" stroke="#FF5252" strokeWidth="2" markerEnd="url(#arrowR)"/>
+                <text x="150" y="124" fill="#FF5252" fontSize="8" textAnchor="middle">V elem</text>
+                <defs>
+                  <marker id="arrowR" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="#FF5252"/></marker>
+                </defs>
+                <text x="160" y="16" fill="#fff" fontSize="10" textAnchor="middle" fontWeight="600">e = |B1 - b1| / 2</text>
+              </svg>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 500, marginBottom: 12 }}>
               <div className="e030-field-row">
                 <label>V total X (Tn):</label>
@@ -1503,18 +1542,20 @@ function TabAltura({ state, dispatch }) {
                     <th style={{ ...S.headerCell, ...S.inputCell }}>Vx (Tn)</th>
                     <th style={{ ...S.headerCell, ...S.inputCell }}>Vy (Tn)</th>
                     <th style={S.headerCell}>Cambio Orient.</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>Despl.eje (m)</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>Dim.elem (m)</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>% Despl</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>B1 (m)</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>b1 (m)</th>
+                    <th style={{ ...S.headerCell, ...S.compCell }}>e (m)</th>
+                    <th style={{ ...S.headerCell, ...S.compCell }}>%e</th>
                     <th style={S.headerCell}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {state.discontinuidad.elementos.map((el, i) => {
-                    const dim = parseFloat(el.dimElem) || 0
-                    const desp = parseFloat(el.desplEje) || 0
-                    const pctDespl = dim > 0 ? (desp / dim) * 100 : 0
-                    const pctColor = pctDespl > 25 ? '#c00' : '#2e7d32'
+                    const B1v = parseFloat(el.B1) || 0
+                    const b1v = parseFloat(el.b1) || 0
+                    const eVal = B1v > 0 ? Math.abs(B1v - b1v) / 2 : null
+                    const pctE = (B1v > 0 && eVal != null) ? (eVal / B1v) * 100 : null
+                    const pctColor = pctE != null && pctE > 25 ? '#c00' : '#2e7d32'
                     return (
                       <tr key={i}>
                         <td style={S.cell}>{i + 1}</td>
@@ -1540,16 +1581,19 @@ function TabAltura({ state, dispatch }) {
                         </td>
                         <td style={{ ...S.cell, ...S.inputCell }}>
                           <input type="number" step="0.01" style={S.tableInput}
-                            value={el.desplEje}
-                            onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'desplEje', value: e.target.value })} />
+                            value={el.B1}
+                            onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'B1', value: e.target.value })} />
                         </td>
                         <td style={{ ...S.cell, ...S.inputCell }}>
                           <input type="number" step="0.01" style={S.tableInput}
-                            value={el.dimElem}
-                            onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'dimElem', value: e.target.value })} />
+                            value={el.b1}
+                            onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'b1', value: e.target.value })} />
+                        </td>
+                        <td style={{ ...S.cell, ...S.compCell }}>
+                          {eVal != null ? eVal.toFixed(4) : '\u2014'}
                         </td>
                         <td style={{ ...S.cell, ...S.compCell, color: pctColor, fontWeight: 700 }}>
-                          {dim > 0 ? `${pctDespl.toFixed(1)}%` : '\u2014'}
+                          {pctE != null ? `${pctE.toFixed(1)}%` : '\u2014'}
                         </td>
                         <td style={S.cell}>
                           <button type="button"
@@ -1587,7 +1631,7 @@ function TabAltura({ state, dispatch }) {
                 <tbody>
                   {discontRes.rows.map((r, i) => {
                     const criterio = r.cambioOrientacion ? 'Cambio orient.'
-                      : r.pctDespl > 25 ? `%Despl>25% (${r.pctDespl.toFixed(1)}%)`
+                      : (r.pctE != null && r.pctE > 25) ? `%e=${r.pctE.toFixed(1)}% (>25%)`
                       : 'Alineado'
                     return (
                       <tr key={i}>
@@ -1637,8 +1681,8 @@ function TabAltura({ state, dispatch }) {
                   </tr>
                   <tr>
                     <td style={{ ...S.cell, textAlign: 'left' }}>V discontinuos (Σ)</td>
-                    <td style={S.cell}>{discontRes.vDiscontX.toFixed(2)} Tn</td>
-                    <td style={S.cell}>{discontRes.vDiscontY.toFixed(2)} Tn</td>
+                    <td style={S.cell}>{discontRes.vDiscontX.toFixed(4)} Tn</td>
+                    <td style={S.cell}>{discontRes.vDiscontY.toFixed(4)} Tn</td>
                   </tr>
                   <tr>
                     <td style={{ ...S.cell, textAlign: 'left' }}>% V_discont / V_total</td>
