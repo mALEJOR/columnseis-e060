@@ -13,6 +13,63 @@ const MAX_PISOS = 20
 
 // ── Helpers ──
 const parseNum = v => { const n = parseFloat(v); return isNaN(n) ? '' : n }
+
+/** Parse a number string handling commas as thousands or decimal separator */
+function smartParseNum(str) {
+  if (!str || str === '' || str === '-' || str === '—' || str === '\u2014') return ''
+  let c = str.replace(/\s/g, '')
+  if (c.includes(',') && c.includes('.')) {
+    if (c.lastIndexOf(',') > c.lastIndexOf('.')) c = c.replace(/\./g, '').replace(',', '.')
+    else c = c.replace(/,/g, '')
+  } else if (c.includes(',')) {
+    const parts = c.split(',')
+    c = parts[parts.length - 1].length <= 2 ? c.replace(',', '.') : c.replace(/,/g, '')
+  }
+  const n = parseFloat(c)
+  return isNaN(n) ? '' : n
+}
+
+/**
+ * Universal multi-column paste handler for floor-based tables.
+ * Uses data-array, data-field, data-idx attributes on the focused input.
+ * `fieldOrder` lists the editable fields in column order.
+ */
+function handleMultiPaste(e, dispatch, maxRows, fieldOrder) {
+  const text = (e.clipboardData || window.clipboardData)?.getData('text/plain')
+  if (!text || !text.trim()) return
+
+  const lines = text.trim().split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  const hasTab = lines.some(l => l.includes('\t'))
+
+  const active = document.activeElement
+  const arrayName = active?.dataset?.array
+  const field = active?.dataset?.field
+  const startIdx = parseInt(active?.dataset?.idx)
+
+  if (!arrayName || !field || isNaN(startIdx)) return
+
+  e.preventDefault()
+
+  if (hasTab) {
+    // Multi-column paste
+    const startCol = fieldOrder.indexOf(field)
+    if (startCol === -1) return
+    for (let r = 0; r < lines.length && (startIdx + r) < maxRows; r++) {
+      const cols = lines[r].split('\t')
+      for (let c = 0; c < cols.length; c++) {
+        const targetCol = startCol + c
+        if (targetCol >= fieldOrder.length) break
+        const val = smartParseNum(cols[c])
+        dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: startIdx + r, field: fieldOrder[targetCol], value: val })
+      }
+    }
+  } else {
+    // Single column paste
+    for (let i = 0; i < lines.length && (startIdx + i) < maxRows; i++) {
+      dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: startIdx + i, field, value: smartParseNum(lines[i]) })
+    }
+  }
+}
 const fmt = (v, d = 4) => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v).toFixed(d)
 const fmtPct = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : (Number(v) * 100).toFixed(1) + '%'
 const fmtPctRaw = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v).toFixed(1) + '%'
@@ -175,6 +232,9 @@ function reducer(state, action) {
     }
     case 'SET_DISCONT_CORTANTES_BULK': {
       return { ...state, discontinuidad: { ...state.discontinuidad, cortantes: action.value } }
+    }
+    case 'SET_DISCONT_ELEMS_BULK': {
+      return { ...state, discontinuidad: { ...state.discontinuidad, elementos: action.value } }
     }
     case 'SET_DISCONT_ELEM': {
       const elems = [...state.discontinuidad.elementos]
@@ -343,22 +403,8 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
       return
     }
 
-    // Simple column paste: numbers separated by newlines
-    const lines = text.trim().split(/\r?\n/).map(l => l.trim()).filter(Boolean)
-    if (lines.length > 1 && lines.every(l => !isNaN(parseFloat(l)))) {
-      e.preventDefault()
-      // Find which input is focused to determine column
-      const active = document.activeElement
-      const arrayName = active?.dataset?.array
-      const field = active?.dataset?.field
-      const startIdx = parseInt(active?.dataset?.idx)
-      if (arrayName && field && !isNaN(startIdx)) {
-        for (let i = 0; i < lines.length && (startIdx + i) < nPisos; i++) {
-          dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: startIdx + i, field, value: parseNum(lines[i]) })
-        }
-        setImportMsg({ type: 'ok', text: `Pegados ${Math.min(lines.length, nPisos - startIdx)} valores en ${field}` })
-      }
-    }
+    // Multi-column paste: tab-separated or single column
+    handleMultiPaste(e, dispatch, nPisos, ['hi', 'delta'])
   }, [dispatch, nPisos])
 
   // ── Paste from textarea ──
@@ -620,21 +666,7 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
   }, [torsionXRes, torsionYRes, esquinasRes, diafRes, npRes])
 
   const handlePaste = useCallback((e) => {
-    const text = (e.clipboardData || window.clipboardData)?.getData('text/plain')
-    if (!text || !text.trim()) return
-    const lines = text.trim().split(/\r?\n/).map(l => l.trim()).filter(Boolean)
-    if (lines.length > 1 && lines.every(l => !isNaN(parseFloat(l)))) {
-      e.preventDefault()
-      const active = document.activeElement
-      const arrayName = active?.dataset?.array
-      const field = active?.dataset?.field
-      const startIdx = parseInt(active?.dataset?.idx)
-      if (arrayName && field && !isNaN(startIdx)) {
-        for (let i = 0; i < lines.length && (startIdx + i) < nPisos; i++) {
-          dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: startIdx + i, field, value: parseNum(lines[i]) })
-        }
-      }
-    }
+    handleMultiPaste(e, dispatch, nPisos, ['dmax', 'dprom'])
   }, [dispatch, nPisos])
 
   const renderTorsionTable = (dir, res, arrayName) => (
@@ -1074,21 +1106,15 @@ function TabAltura({ state, dispatch }) {
   const { nPisos } = state
 
   const handlePaste = useCallback((e) => {
-    const text = (e.clipboardData || window.clipboardData)?.getData('text/plain')
-    if (!text || !text.trim()) return
-    const lines = text.trim().split(/\r?\n/).map(l => l.trim()).filter(Boolean)
-    if (lines.length > 1 && lines.every(l => !isNaN(parseFloat(l)))) {
-      e.preventDefault()
-      const active = document.activeElement
-      const arrayName = active?.dataset?.array
-      const field = active?.dataset?.field
-      const startIdx = parseInt(active?.dataset?.idx)
-      if (arrayName && field && !isNaN(startIdx)) {
-        for (let i = 0; i < lines.length && (startIdx + i) < nPisos; i++) {
-          dispatch({ type: 'SET_FLOOR_DATA', arrayName, index: startIdx + i, field, value: parseNum(lines[i]) })
-        }
-      }
+    const active = document.activeElement
+    const arrayName = active?.dataset?.array
+    if (!arrayName) return
+    const fieldOrders = {
+      rigidezX: ['Vi', 'CMi'], rigidezY: ['Vi', 'CMi'],
+      resistenciaX: ['Vi'], resistenciaY: ['Vi'],
+      masas: ['masa'], geometriaX: ['dim'], geometriaY: ['dim'],
     }
+    handleMultiPaste(e, dispatch, nPisos, fieldOrders[arrayName] || ['Vi'])
   }, [dispatch, nPisos])
 
   // Rigidez X and Y
@@ -1510,24 +1536,46 @@ function TabAltura({ state, dispatch }) {
             <div style={{ overflowX: 'auto', marginBottom: 8 }}
               onPaste={ev => {
                 const text = (ev.clipboardData || window.clipboardData).getData('text')
-                if (!text) return
-                const lines = text.trim().split('\n').filter(l => l.trim())
+                if (!text || !text.trim()) return
+                const lines = text.trim().split(/\r?\n/).filter(l => l.trim())
                 if (lines.length === 0) return
                 ev.preventDefault()
-                const parsed = lines.map((line, idx) => {
-                  const cols = line.split('\t').map(c => c.trim())
-                  if (cols.length >= 3) {
-                    return { nombre: cols[0], vx: parseFloat(cols[1].replace(/,/g, '')) || 0, vy: parseFloat(cols[2].replace(/,/g, '')) || 0 }
-                  } else if (cols.length === 2) {
-                    const v1 = parseFloat(cols[0].replace(/,/g, '')), v2 = parseFloat(cols[1].replace(/,/g, ''))
-                    if (!isNaN(v1) && !isNaN(v2)) return { nombre: `Elem ${idx + 1}`, vx: v1, vy: v2 }
-                    return { nombre: cols[0], vx: parseFloat(cols[1].replace(/,/g, '')) || 0, vy: 0 }
-                  } else {
-                    const v = parseFloat(cols[0].replace(/,/g, ''))
-                    return !isNaN(v) ? { nombre: `Elem ${idx + 1}`, vx: v, vy: 0 } : null
+                const colFields = ['nombre', 'vx', 'vy']
+                const active = document.activeElement
+                const startField = active?.dataset?.dcfield
+                const startRow = parseInt(active?.dataset?.dcidx)
+                const startCol = startField ? colFields.indexOf(startField) : -1
+
+                if (!isNaN(startRow) && startCol >= 0) {
+                  // Cell-level paste: fill from focused cell
+                  const corts = [...state.discontinuidad.cortantes]
+                  for (let r = 0; r < lines.length; r++) {
+                    const row = startRow + r
+                    while (row >= corts.length) corts.push({ nombre: '', vx: '', vy: '' })
+                    const cols = lines[r].split('\t').map(c => c.trim())
+                    for (let c = 0; c < cols.length; c++) {
+                      const ci = startCol + c
+                      if (ci >= colFields.length) break
+                      const key = colFields[ci]
+                      corts[row] = { ...corts[row], [key]: key === 'nombre' ? cols[c] : smartParseNum(cols[c]) }
+                    }
                   }
-                }).filter(Boolean)
-                if (parsed.length > 0) dispatch({ type: 'SET_DISCONT_CORTANTES_BULK', value: parsed })
+                  dispatch({ type: 'SET_DISCONT_CORTANTES_BULK', value: corts })
+                } else {
+                  // Bulk paste: replace all
+                  const parsed = lines.map((line, idx) => {
+                    const cols = line.split('\t').map(c => c.trim())
+                    if (cols.length >= 3) return { nombre: cols[0], vx: smartParseNum(cols[1]), vy: smartParseNum(cols[2]) }
+                    if (cols.length === 2) {
+                      const v1 = smartParseNum(cols[0]), v2 = smartParseNum(cols[1])
+                      if (v1 !== '' && v2 !== '') return { nombre: `Elem ${idx + 1}`, vx: v1, vy: v2 }
+                      return { nombre: cols[0], vx: smartParseNum(cols[1]), vy: 0 }
+                    }
+                    const v = smartParseNum(cols[0])
+                    return v !== '' ? { nombre: `Elem ${idx + 1}`, vx: v, vy: 0 } : null
+                  }).filter(Boolean)
+                  if (parsed.length > 0) dispatch({ type: 'SET_DISCONT_CORTANTES_BULK', value: parsed })
+                }
               }}>
               <table className="e030-table">
                 <thead>
@@ -1545,14 +1593,17 @@ function TabAltura({ state, dispatch }) {
                       <td style={S.cell}>{i + 1}</td>
                       <td style={{ ...S.cell, ...S.inputCell }}>
                         <input type="text" style={S.tableInput} value={c.nombre}
+                          data-dcfield="nombre" data-dcidx={i}
                           onChange={e => dispatch({ type: 'SET_DISCONT_CORTANTE', index: i, field: 'nombre', value: e.target.value })} />
                       </td>
                       <td style={{ ...S.cell, ...S.inputCell }}>
                         <input type="number" style={S.tableInput} value={c.vx}
+                          data-dcfield="vx" data-dcidx={i}
                           onChange={e => dispatch({ type: 'SET_DISCONT_CORTANTE', index: i, field: 'vx', value: e.target.value })} />
                       </td>
                       <td style={{ ...S.cell, ...S.inputCell }}>
                         <input type="number" style={S.tableInput} value={c.vy}
+                          data-dcfield="vy" data-dcidx={i}
                           onChange={e => dispatch({ type: 'SET_DISCONT_CORTANTE', index: i, field: 'vy', value: e.target.value })} />
                       </td>
                       <td style={S.cell}>
@@ -1578,7 +1629,33 @@ function TabAltura({ state, dispatch }) {
               TABLA B: ELEMENTOS CON DESALINEAMIENTO VERTICAL
             </h4>
             <p className="e030-hint" style={{ marginBottom: 8 }}>Solo agregar los elementos que tienen discontinuidad vertical. Los cortantes deben coincidir con los de la Tabla A.</p>
-            <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+            <div style={{ overflowX: 'auto', marginBottom: 12 }}
+              onPaste={ev => {
+                const text = (ev.clipboardData || window.clipboardData).getData('text')
+                if (!text || !text.trim()) return
+                const lines = text.trim().split(/\r?\n/).filter(l => l.trim())
+                if (lines.length === 0) return
+                const colFields = ['nombre', 'vx', 'vy', 'B1', 'b1']
+                const active = document.activeElement
+                const startField = active?.dataset?.defield
+                const startRow = parseInt(active?.dataset?.deidx)
+                const startCol = startField ? colFields.indexOf(startField) : -1
+                if (isNaN(startRow) || startCol < 0) return
+                ev.preventDefault()
+                const elems = [...state.discontinuidad.elementos]
+                for (let r = 0; r < lines.length; r++) {
+                  const row = startRow + r
+                  while (row >= elems.length) elems.push({ nombre: '', vx: '', vy: '', cambioOrientacion: false, B1: '', b1: '' })
+                  const cols = lines[r].split('\t').map(c => c.trim())
+                  for (let c = 0; c < cols.length; c++) {
+                    const ci = startCol + c
+                    if (ci >= colFields.length) break
+                    const key = colFields[ci]
+                    elems[row] = { ...elems[row], [key]: key === 'nombre' ? cols[c] : smartParseNum(cols[c]) }
+                  }
+                }
+                dispatch({ type: 'SET_DISCONT_ELEMS_BULK', value: elems })
+              }}>
               <table className="e030-table">
                 <thead>
                   <tr>
@@ -1606,17 +1683,17 @@ function TabAltura({ state, dispatch }) {
                         <td style={S.cell}>{i + 1}</td>
                         <td style={{ ...S.cell, ...S.inputCell }}>
                           <input type="text" style={S.tableInput}
-                            value={el.nombre}
+                            value={el.nombre} data-defield="nombre" data-deidx={i}
                             onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'nombre', value: e.target.value })} />
                         </td>
                         <td style={{ ...S.cell, ...S.inputCell }}>
                           <input type="number" style={S.tableInput}
-                            value={el.vx}
+                            value={el.vx} data-defield="vx" data-deidx={i}
                             onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'vx', value: e.target.value })} />
                         </td>
                         <td style={{ ...S.cell, ...S.inputCell }}>
                           <input type="number" style={S.tableInput}
-                            value={el.vy}
+                            value={el.vy} data-defield="vy" data-deidx={i}
                             onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'vy', value: e.target.value })} />
                         </td>
                         <td style={S.cell}>
@@ -1626,12 +1703,12 @@ function TabAltura({ state, dispatch }) {
                         </td>
                         <td style={{ ...S.cell, ...S.inputCell }}>
                           <input type="number" step="0.01" style={S.tableInput}
-                            value={el.B1}
+                            value={el.B1} data-defield="B1" data-deidx={i}
                             onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'B1', value: e.target.value })} />
                         </td>
                         <td style={{ ...S.cell, ...S.inputCell }}>
                           <input type="number" step="0.01" style={S.tableInput}
-                            value={el.b1}
+                            value={el.b1} data-defield="b1" data-deidx={i}
                             onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'b1', value: e.target.value })} />
                         </td>
                         <td style={{ ...S.cell, ...S.compCell }}>
