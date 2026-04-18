@@ -1145,7 +1145,7 @@ function TabAltura({ state, dispatch }) {
   // Discontinuidad de sistemas resistentes
   const discontRes = useMemo(() => {
     const d = state.discontinuidad
-    return E030.calcularDiscontinuidad(d.activo, d.elementos, parseNum(d.vTotalX), parseNum(d.vTotalY))
+    return E030.calcularDiscontinuidad(d.activo, d.elementos)
   }, [state.discontinuidad])
 
   const iaFinal = useMemo(() => {
@@ -1488,19 +1488,9 @@ function TabAltura({ state, dispatch }) {
           <>
             <DiagramaReferencia svgFallback={<SVGDiscontinuidad />} imagenIA="/images/discontinuidad_ref.png" titulo="Discontinuidad de Sistemas Resistentes" />
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 500, marginBottom: 12 }}>
-              <div className="e030-field-row">
-                <label>V total X (Tn):</label>
-                <input type="number" className="e030-field-input"
-                  value={state.discontinuidad.vTotalX}
-                  onChange={e => dispatch({ type: 'SET_DISCONT_GLOBAL', field: 'vTotalX', value: e.target.value })} />
-              </div>
-              <div className="e030-field-row">
-                <label>V total Y (Tn):</label>
-                <input type="number" className="e030-field-input"
-                  value={state.discontinuidad.vTotalY}
-                  onChange={e => dispatch({ type: 'SET_DISCONT_GLOBAL', field: 'vTotalY', value: e.target.value })} />
-              </div>
+            <div style={{ display: 'flex', gap: 20, marginBottom: 12, fontSize: 11 }}>
+              <span style={{ color: 'var(--text2)' }}>V total X: <b style={{ color: '#4FC3F7' }}>{fmt(discontRes.vTotalX)} Tn</b> <span style={{ color: 'var(--text3)', fontSize: 9 }}>(Σ auto)</span></span>
+              <span style={{ color: 'var(--text2)' }}>V total Y: <b style={{ color: '#4FC3F7' }}>{fmt(discontRes.vTotalY)} Tn</b> <span style={{ color: 'var(--text3)', fontSize: 9 }}>(Σ auto)</span></span>
             </div>
 
             <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>
@@ -1644,8 +1634,8 @@ function TabAltura({ state, dispatch }) {
                 <tbody>
                   <tr>
                     <td style={{ ...S.cell, textAlign: 'left' }}>V total</td>
-                    <td style={S.cell}>{fmt(parseNum(state.discontinuidad.vTotalX))} Tn</td>
-                    <td style={S.cell}>{fmt(parseNum(state.discontinuidad.vTotalY))} Tn</td>
+                    <td style={S.cell}>{fmt(discontRes.vTotalX)} Tn</td>
+                    <td style={S.cell}>{fmt(discontRes.vTotalY)} Tn</td>
                   </tr>
                   <tr>
                     <td style={{ ...S.cell, textAlign: 'left' }}>N° elementos discontinuos</td>
@@ -2579,7 +2569,7 @@ export default function IrregularidadesE030({ onBack }) {
 
   const discontRes = useMemo(() => {
     const d = state.discontinuidad
-    return E030.calcularDiscontinuidad(d.activo, d.elementos, parseNum(d.vTotalX), parseNum(d.vTotalY))
+    return E030.calcularDiscontinuidad(d.activo, d.elementos)
   }, [state.discontinuidad])
 
   const iaFinal = useMemo(() => {
