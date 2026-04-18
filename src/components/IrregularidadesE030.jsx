@@ -878,7 +878,7 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
 
       <Section title="4. IRREGULARIDAD POR SISTEMAS NO PARALELOS (Ip = 0.90)" dark>
         <p className="e030-hint">Ingresar la direccion del sistema no paralelo (dX, dY), luego los cortantes de TODOS los elementos. Marcar con NP los que son "no paralelos".</p>
-        <DiagramaReferencia svgFallback={<SVGNoParalelos />} imagenIA="/images/no_paralelos_ref.png" titulo="Sistemas No Paralelos"
+        <DiagramaReferencia svgFallback={<SVGNoParalelos />} titulo="Sistemas No Paralelos"
           formulas={<>Si 15° &lt; θ &lt; 75° = NO PARALELO | Ip = 0.90</>} />
         <div className="e030-field-row" style={{ marginBottom: 12 }}>
           <label>Calcular Sistemas No Paralelos?</label>
@@ -1346,7 +1346,7 @@ function TabAltura({ state, dispatch }) {
     <div>
       <Section title="1. IRREGULARIDAD DE RIGIDEZ - PISO BLANDO (Ia = 0.75)">
         <p className="e030-hint">Criterio: Ki &lt; 0.70*K(i+1) o Ki &lt; 0.80*Prom(3 pisos sup.) | Ki = Vi/CMi</p>
-        <DiagramaReferencia svgFallback={<SVGPisoBlando />} imagenIA="/images/piso_blando_ref.png" titulo="Piso Blando - Rigidez Lateral"
+        <DiagramaReferencia svgFallback={<SVGPisoBlando />} titulo="Piso Blando - Rigidez Lateral"
           formulas={<>Ki = Vi / Δi | Si Ki &lt; 0.70*K(i+1) o Ki &lt; 0.80*Prom(3 sup) = IRREGULAR (Ia=0.75)</>} />
         {renderRigidezTable('X-X', rigXRes, 'rigidezX')}
         {renderRigidezTable('Y-Y', rigYRes, 'rigidezY')}
@@ -1388,7 +1388,7 @@ function TabAltura({ state, dispatch }) {
 
       <Section title="5. IRREGULARIDAD DE MASA O PESO (Ia = 0.90)">
         <p className="e030-hint">Criterio: mi &gt; 1.50*m(i+1) o mi &gt; 1.50*m(i-1) | Pisos con nombre "azotea" o "sotano" se excluyen automaticamente</p>
-        <DiagramaReferencia svgFallback={<SVGMasa />} imagenIA="/images/masa_ref.png" titulo="Irregularidad de Masa"
+        <DiagramaReferencia svgFallback={<SVGMasa />} titulo="Irregularidad de Masa"
           formulas={<>mi &gt; 1.50 * m(i+1) o mi &gt; 1.50 * m(i-1) = IRREGULAR (Ia=0.90) | No aplica en azoteas ni sotanos</>} />
         <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
           <table className="e030-table" style={{ maxWidth: 550 }}>
@@ -1430,7 +1430,7 @@ function TabAltura({ state, dispatch }) {
 
       <Section title="6. IRREGULARIDAD DE GEOMETRIA VERTICAL (Ia = 0.90)">
         <p className="e030-hint">Criterio: a &gt; 1.30*a(piso adyacente) | Azoteas y sotanos se excluyen automaticamente</p>
-        <DiagramaReferencia svgFallback={<SVGGeometriaVertical />} imagenIA="/images/geometria_vertical_ref.png" titulo="Geometria Vertical"
+        <DiagramaReferencia svgFallback={<SVGGeometriaVertical />} titulo="Geometria Vertical"
           formulas={<>Di &gt; 1.30 * D(piso adyacente) = IRREGULAR (Ia=0.90) | No aplica en azoteas ni sotanos</>} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div onPaste={handlePaste}>
@@ -1531,7 +1531,8 @@ function TabAltura({ state, dispatch }) {
 
         {state.discontinuidad.activo && (
           <>
-            <DiagramaReferencia svgFallback={<SVGDiscontinuidad />} imagenIA="/images/discontinuidad_ref.png" titulo="Discontinuidad de Sistemas Resistentes"
+            <DiagramaReferencia svgFallback={<SVGDiscontinuidad />} titulo="Discontinuidad de Sistemas Resistentes"
+              extraImage="/images/sopa.jpg"
               formulas={<><div>e = |D orig - D modif| / 2</div><div>Criterio: %V &gt; 10% Y (cambio orient. O %e &gt; 25%) = DISCONTINUO</div><div>V_discont / V_total &gt; 25% = EXTREMA (Ia=0.60) | ≥1 discontinuo = IRREG (Ia=0.80)</div></>} />
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
