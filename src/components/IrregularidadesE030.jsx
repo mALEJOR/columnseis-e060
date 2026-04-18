@@ -2,6 +2,12 @@ import { useState, useReducer, useMemo, useCallback, useRef } from 'react'
 import * as E030 from '../utils/irregularidadesE030'
 import * as Espectro from '../utils/espectroE030'
 import { parseExcelFile, parseClipboardText, isETABSTable } from '../utils/etabsDriftsParser'
+import DiagramaReferencia from './diagrams/DiagramaReferencia'
+import SVGPisoBlando from './diagrams/SVGPisoBlando'
+import SVGMasa from './diagrams/SVGMasa'
+import SVGGeometriaVertical from './diagrams/SVGGeometriaVertical'
+import SVGDiscontinuidad from './diagrams/SVGDiscontinuidad'
+import SVGNoParalelos from './diagrams/SVGNoParalelos'
 
 const MAX_PISOS = 20
 
@@ -825,6 +831,7 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
 
       <Section title="4. IRREGULARIDAD POR SISTEMAS NO PARALELOS (Ip = 0.90)" dark>
         <p className="e030-hint">Ingresar la direccion del sistema no paralelo (dX, dY), luego los cortantes de TODOS los elementos. Marcar con NP los que son "no paralelos".</p>
+        <DiagramaReferencia svgFallback={<SVGNoParalelos />} imagenIA="/images/no_paralelos_ref.png" titulo="Sistemas No Paralelos" />
         <div className="e030-field-row" style={{ marginBottom: 12 }}>
           <label>Calcular Sistemas No Paralelos?</label>
           <select className="e030-field-input" style={{ width: 80 }}
@@ -1297,6 +1304,7 @@ function TabAltura({ state, dispatch }) {
     <div>
       <Section title="1. IRREGULARIDAD DE RIGIDEZ - PISO BLANDO (Ia = 0.75)">
         <p className="e030-hint">Criterio: Ki &lt; 0.70*K(i+1) o Ki &lt; 0.80*Prom(3 pisos sup.) | Ki = Vi/CMi</p>
+        <DiagramaReferencia svgFallback={<SVGPisoBlando />} imagenIA="/images/piso_blando_ref.png" titulo="Piso Blando - Rigidez Lateral" />
         {renderRigidezTable('X-X', rigXRes, 'rigidezX')}
         {renderRigidezTable('Y-Y', rigYRes, 'rigidezY')}
         <div className="e030-summary-row">
@@ -1337,6 +1345,7 @@ function TabAltura({ state, dispatch }) {
 
       <Section title="5. IRREGULARIDAD DE MASA O PESO (Ia = 0.90)">
         <p className="e030-hint">Criterio: mi &gt; 1.50*m(i+1) o mi &gt; 1.50*m(i-1) | Pisos con nombre "azotea" o "sotano" se excluyen automaticamente</p>
+        <DiagramaReferencia svgFallback={<SVGMasa />} imagenIA="/images/masa_ref.png" titulo="Irregularidad de Masa" />
         <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
           <table className="e030-table" style={{ maxWidth: 550 }}>
             <thead>
@@ -1377,6 +1386,7 @@ function TabAltura({ state, dispatch }) {
 
       <Section title="6. IRREGULARIDAD DE GEOMETRIA VERTICAL (Ia = 0.90)">
         <p className="e030-hint">Criterio: a &gt; 1.30*a(piso adyacente) | Azoteas y sotanos se excluyen automaticamente</p>
+        <DiagramaReferencia svgFallback={<SVGGeometriaVertical />} imagenIA="/images/geometria_vertical_ref.png" titulo="Geometria Vertical" />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div onPaste={handlePaste}>
             <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. X-X</h4>
@@ -1472,24 +1482,11 @@ function TabAltura({ state, dispatch }) {
             <option value="SI">SI</option>
             <option value="NO">NO</option>
           </select>
-          {state.discontinuidad.activo && (
-            <button type="button"
-              onClick={() => {
-                const el = document.getElementById('discont-diagram')
-                if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'
-              }}
-              style={{ background: 'var(--surface3)', border: '1px solid var(--border)', color: '#4FC3F7', padding: '3px 8px', borderRadius: 3, fontSize: 10, cursor: 'pointer' }}>
-              ? Diagrama de referencia
-            </button>
-          )}
         </div>
 
         {state.discontinuidad.activo && (
           <>
-            <div id="discont-diagram" style={{ display: 'none', marginBottom: 12, background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: 10, maxWidth: 340 }}>
-              <img src="/images/diagrama_discontinuidad.png" alt="Diagrama de discontinuidad vertical"
-                style={{ maxWidth: '100%', borderRadius: 8 }} />
-            </div>
+            <DiagramaReferencia svgFallback={<SVGDiscontinuidad />} imagenIA="/images/discontinuidad_ref.png" titulo="Discontinuidad de Sistemas Resistentes" />
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 500, marginBottom: 12 }}>
               <div className="e030-field-row">
