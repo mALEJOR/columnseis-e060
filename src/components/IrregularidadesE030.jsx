@@ -122,7 +122,7 @@ function initState() {
     geometriaY: emptyFloors(),
     discontinuidad: {
       activo: true,
-      vTotalX: '', vTotalY: '',
+      cortantes: Array.from({ length: 3 }, () => ({ nombre: '', vx: '', vy: '' })),
       elementos: Array.from({ length: 3 }, () => ({
         nombre: '', vx: '', vy: '', cambioOrientacion: false, B1: '', b1: '',
       })),
@@ -161,6 +161,21 @@ function reducer(state, action) {
     }
     case 'SET_DISCONT_ACTIVO': return { ...state, discontinuidad: { ...state.discontinuidad, activo: action.value } }
     case 'SET_DISCONT_GLOBAL': return { ...state, discontinuidad: { ...state.discontinuidad, [action.field]: action.value } }
+    case 'SET_DISCONT_CORTANTE': {
+      const corts = [...state.discontinuidad.cortantes]
+      corts[action.index] = { ...corts[action.index], [action.field]: action.value }
+      return { ...state, discontinuidad: { ...state.discontinuidad, cortantes: corts } }
+    }
+    case 'ADD_DISCONT_CORTANTE': {
+      return { ...state, discontinuidad: { ...state.discontinuidad, cortantes: [...state.discontinuidad.cortantes, { nombre: '', vx: '', vy: '' }] } }
+    }
+    case 'DEL_DISCONT_CORTANTE': {
+      const corts = state.discontinuidad.cortantes.filter((_, i) => i !== action.index)
+      return { ...state, discontinuidad: { ...state.discontinuidad, cortantes: corts.length > 0 ? corts : [{ nombre: '', vx: '', vy: '' }] } }
+    }
+    case 'SET_DISCONT_CORTANTES_BULK': {
+      return { ...state, discontinuidad: { ...state.discontinuidad, cortantes: action.value } }
+    }
     case 'SET_DISCONT_ELEM': {
       const elems = [...state.discontinuidad.elementos]
       elems[action.index] = { ...elems[action.index], [action.field]: action.value }
@@ -1145,7 +1160,7 @@ function TabAltura({ state, dispatch }) {
   // Discontinuidad de sistemas resistentes
   const discontRes = useMemo(() => {
     const d = state.discontinuidad
-    return E030.calcularDiscontinuidad(d.activo, d.elementos)
+    return E030.calcularDiscontinuidad(d.activo, d.cortantes, d.elementos)
   }, [state.discontinuidad])
 
   const iaFinal = useMemo(() => {
@@ -1488,20 +1503,87 @@ function TabAltura({ state, dispatch }) {
           <>
             <DiagramaReferencia svgFallback={<SVGDiscontinuidad />} imagenIA="/images/discontinuidad_ref.png" titulo="Discontinuidad de Sistemas Resistentes" />
 
-            <div style={{ display: 'flex', gap: 20, marginBottom: 12, fontSize: 11 }}>
-              <span style={{ color: 'var(--text2)' }}>V total X: <b style={{ color: '#4FC3F7' }}>{fmt(discontRes.vTotalX)} Tn</b> <span style={{ color: 'var(--text3)', fontSize: 9 }}>(Σ auto)</span></span>
-              <span style={{ color: 'var(--text2)' }}>V total Y: <b style={{ color: '#4FC3F7' }}>{fmt(discontRes.vTotalY)} Tn</b> <span style={{ color: 'var(--text3)', fontSize: 9 }}>(Σ auto)</span></span>
+            <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>
+              TABLA A: CORTANTES DE TODOS LOS ELEMENTOS DEL PISO
+            </h4>
+            <p className="e030-hint" style={{ marginBottom: 8 }}>Pegar celdas de Excel/ETABS (Ctrl+V en la tabla) con los cortantes de TODOS los elementos resistentes.</p>
+            <div style={{ overflowX: 'auto', marginBottom: 8 }}
+              onPaste={ev => {
+                const text = (ev.clipboardData || window.clipboardData).getData('text')
+                if (!text) return
+                const lines = text.trim().split('\n').filter(l => l.trim())
+                if (lines.length === 0) return
+                ev.preventDefault()
+                const parsed = lines.map((line, idx) => {
+                  const cols = line.split('\t').map(c => c.trim())
+                  if (cols.length >= 3) {
+                    return { nombre: cols[0], vx: parseFloat(cols[1].replace(/,/g, '')) || 0, vy: parseFloat(cols[2].replace(/,/g, '')) || 0 }
+                  } else if (cols.length === 2) {
+                    const v1 = parseFloat(cols[0].replace(/,/g, '')), v2 = parseFloat(cols[1].replace(/,/g, ''))
+                    if (!isNaN(v1) && !isNaN(v2)) return { nombre: `Elem ${idx + 1}`, vx: v1, vy: v2 }
+                    return { nombre: cols[0], vx: parseFloat(cols[1].replace(/,/g, '')) || 0, vy: 0 }
+                  } else {
+                    const v = parseFloat(cols[0].replace(/,/g, ''))
+                    return !isNaN(v) ? { nombre: `Elem ${idx + 1}`, vx: v, vy: 0 } : null
+                  }
+                }).filter(Boolean)
+                if (parsed.length > 0) dispatch({ type: 'SET_DISCONT_CORTANTES_BULK', value: parsed })
+              }}>
+              <table className="e030-table">
+                <thead>
+                  <tr>
+                    <th style={S.headerCell}>#</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>Elemento</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>Vx (Tn)</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>Vy (Tn)</th>
+                    <th style={S.headerCell}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {state.discontinuidad.cortantes.map((c, i) => (
+                    <tr key={i}>
+                      <td style={S.cell}>{i + 1}</td>
+                      <td style={{ ...S.cell, ...S.inputCell }}>
+                        <input type="text" style={S.tableInput} value={c.nombre}
+                          onChange={e => dispatch({ type: 'SET_DISCONT_CORTANTE', index: i, field: 'nombre', value: e.target.value })} />
+                      </td>
+                      <td style={{ ...S.cell, ...S.inputCell }}>
+                        <input type="number" style={S.tableInput} value={c.vx}
+                          onChange={e => dispatch({ type: 'SET_DISCONT_CORTANTE', index: i, field: 'vx', value: e.target.value })} />
+                      </td>
+                      <td style={{ ...S.cell, ...S.inputCell }}>
+                        <input type="number" style={S.tableInput} value={c.vy}
+                          onChange={e => dispatch({ type: 'SET_DISCONT_CORTANTE', index: i, field: 'vy', value: e.target.value })} />
+                      </td>
+                      <td style={S.cell}>
+                        <button type="button" onClick={() => dispatch({ type: 'DEL_DISCONT_CORTANTE', index: i })}
+                          style={{ background: 'transparent', border: '1px solid var(--border)', color: '#c00', padding: '2px 6px', borderRadius: 3, cursor: 'pointer' }}>✕</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+              <button type="button" onClick={() => dispatch({ type: 'ADD_DISCONT_CORTANTE' })}
+                style={{ background: 'var(--surface3)', border: '1px solid var(--border)', color: 'var(--text1)', padding: '4px 10px', borderRadius: 3, fontSize: 11, cursor: 'pointer' }}>
+                + Agregar fila
+              </button>
+              <span style={{ fontSize: 11, color: 'var(--text2)' }}>V total X: <b style={{ color: '#4FC3F7' }}>{fmt(discontRes.vTotalX)} Tn</b></span>
+              <span style={{ fontSize: 11, color: 'var(--text2)' }}>V total Y: <b style={{ color: '#4FC3F7' }}>{fmt(discontRes.vTotalY)} Tn</b></span>
+              <span style={{ fontSize: 10, color: 'var(--text3)' }}>({discontRes.nCortantes} elem.)</span>
             </div>
 
             <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>
-              ELEMENTOS CON DESALINEAMIENTO VERTICAL
+              TABLA B: ELEMENTOS CON DESALINEAMIENTO VERTICAL
             </h4>
+            <p className="e030-hint" style={{ marginBottom: 8 }}>Solo agregar los elementos que tienen discontinuidad vertical. Los cortantes deben coincidir con los de la Tabla A.</p>
             <div style={{ overflowX: 'auto', marginBottom: 12 }}>
               <table className="e030-table">
                 <thead>
                   <tr>
                     <th style={S.headerCell}>#</th>
-                    <th style={S.headerCell}>Elemento</th>
+                    <th style={{ ...S.headerCell, ...S.inputCell }}>Elemento</th>
                     <th style={{ ...S.headerCell, ...S.inputCell }}>Vx (Tn)</th>
                     <th style={{ ...S.headerCell, ...S.inputCell }}>Vy (Tn)</th>
                     <th style={S.headerCell}>Cambio Orient.</th>
@@ -2569,7 +2651,7 @@ export default function IrregularidadesE030({ onBack }) {
 
   const discontRes = useMemo(() => {
     const d = state.discontinuidad
-    return E030.calcularDiscontinuidad(d.activo, d.elementos)
+    return E030.calcularDiscontinuidad(d.activo, d.cortantes, d.elementos)
   }, [state.discontinuidad])
 
   const iaFinal = useMemo(() => {

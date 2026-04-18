@@ -556,18 +556,17 @@ export function calcularGeometria(pisos, nPisos) {
 // Discontinuidad en los Sistemas Resistentes (Ia = 0.80 / 0.60)
 // elementos = [{ nombre, vx, vy, cambioOrientacion, B1, b1 }]
 // e = |B1 - b1| / 2,  %e = e / B1 * 100
-export function calcularDiscontinuidad(activo, elementos) {
+export function calcularDiscontinuidad(activo, cortantes, elementos) {
   const empty = {
-    rows: [], vTotalX: 0, vTotalY: 0, vDiscontX: 0, vDiscontY: 0, pctDiscontX: 0, pctDiscontY: 0,
+    rows: [], vTotalX: 0, vTotalY: 0, nCortantes: 0, vDiscontX: 0, vDiscontY: 0, pctDiscontX: 0, pctDiscontY: 0,
     nDiscontX: 0, nDiscontY: 0, resultadoX: 'REG', resultadoY: 'REG', iaX: 1, iaY: 1,
   }
   if (!activo) return empty
 
-  const filtered = elementos
-    .filter(el => el.nombre || el.vx || el.vy || el.cambioOrientacion || el.B1 || el.b1)
-
-  const vX = filtered.reduce((s, el) => s + (parseFloat(el.vx) || 0), 0)
-  const vY = filtered.reduce((s, el) => s + (parseFloat(el.vy) || 0), 0)
+  // V total from Table A (all elements)
+  const cortantesValidos = (cortantes || []).filter(c => c.nombre || c.vx || c.vy)
+  const vX = cortantesValidos.reduce((s, c) => s + (parseFloat(c.vx) || 0), 0)
+  const vY = cortantesValidos.reduce((s, c) => s + (parseFloat(c.vy) || 0), 0)
 
   const rows = elementos
     .filter(el => el.nombre || el.vx || el.vy || el.cambioOrientacion || el.B1 || el.b1)
@@ -610,7 +609,7 @@ export function calcularDiscontinuidad(activo, elementos) {
   const resY = classify(pctDiscontY, nDiscontY)
 
   return {
-    rows, vTotalX: vX, vTotalY: vY, vDiscontX, vDiscontY, pctDiscontX, pctDiscontY, nDiscontX, nDiscontY,
+    rows, vTotalX: vX, vTotalY: vY, nCortantes: cortantesValidos.length, vDiscontX, vDiscontY, pctDiscontX, pctDiscontY, nDiscontX, nDiscontY,
     resultadoX: resX.resultado, resultadoY: resY.resultado, iaX: resX.ia, iaY: resY.ia,
   }
 }
