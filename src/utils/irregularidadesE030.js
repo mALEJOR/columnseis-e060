@@ -571,8 +571,16 @@ export function calcularDiscontinuidad(activo, cortantes, elementos) {
   const rows = elementos
     .filter(el => el.nombre || el.vx || el.vy || el.cambioOrientacion || el.B1 || el.b1)
     .map(el => {
-      const vx = typeof el.vx === 'number' ? el.vx : (parseFloat(el.vx) || 0)
-      const vy = typeof el.vy === 'number' ? el.vy : (parseFloat(el.vy) || 0)
+      // Auto-link Vx/Vy from cortantes (Table A) by name
+      const nomUpper = (el.nombre || '').trim().toUpperCase()
+      const matchesA = nomUpper ? cortantesValidos.filter(c => (c.nombre || '').trim().toUpperCase() === nomUpper) : []
+      const linked = matchesA.length > 0
+      const vx = linked
+        ? matchesA.reduce((s, c) => s + (parseFloat(c.vx) || 0), 0)
+        : (typeof el.vx === 'number' ? el.vx : (parseFloat(el.vx) || 0))
+      const vy = linked
+        ? matchesA.reduce((s, c) => s + (parseFloat(c.vy) || 0), 0)
+        : (typeof el.vy === 'number' ? el.vy : (parseFloat(el.vy) || 0))
       const B1 = typeof el.B1 === 'number' ? el.B1 : (parseFloat(el.B1) || 0)
       const b1 = typeof el.b1 === 'number' ? el.b1 : (parseFloat(el.b1) || 0)
       const cambioOrientacion = !!el.cambioOrientacion

@@ -878,7 +878,8 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
 
       <Section title="4. IRREGULARIDAD POR SISTEMAS NO PARALELOS (Ip = 0.90)" dark>
         <p className="e030-hint">Ingresar la direccion del sistema no paralelo (dX, dY), luego los cortantes de TODOS los elementos. Marcar con NP los que son "no paralelos".</p>
-        <DiagramaReferencia svgFallback={<SVGNoParalelos />} imagenIA="/images/no_paralelos_ref.png" titulo="Sistemas No Paralelos" />
+        <DiagramaReferencia svgFallback={<SVGNoParalelos />} imagenIA="/images/no_paralelos_ref.png" titulo="Sistemas No Paralelos"
+          formulas={<>Si 15° &lt; θ &lt; 75° = NO PARALELO | Ip = 0.90</>} />
         <div className="e030-field-row" style={{ marginBottom: 12 }}>
           <label>Calcular Sistemas No Paralelos?</label>
           <select className="e030-field-input" style={{ width: 80 }}
@@ -1345,7 +1346,8 @@ function TabAltura({ state, dispatch }) {
     <div>
       <Section title="1. IRREGULARIDAD DE RIGIDEZ - PISO BLANDO (Ia = 0.75)">
         <p className="e030-hint">Criterio: Ki &lt; 0.70*K(i+1) o Ki &lt; 0.80*Prom(3 pisos sup.) | Ki = Vi/CMi</p>
-        <DiagramaReferencia svgFallback={<SVGPisoBlando />} imagenIA="/images/piso_blando_ref.png" titulo="Piso Blando - Rigidez Lateral" />
+        <DiagramaReferencia svgFallback={<SVGPisoBlando />} imagenIA="/images/piso_blando_ref.png" titulo="Piso Blando - Rigidez Lateral"
+          formulas={<>Ki = Vi / Δi | Si Ki &lt; 0.70*K(i+1) o Ki &lt; 0.80*Prom(3 sup) = IRREGULAR (Ia=0.75)</>} />
         {renderRigidezTable('X-X', rigXRes, 'rigidezX')}
         {renderRigidezTable('Y-Y', rigYRes, 'rigidezY')}
         <div className="e030-summary-row">
@@ -1386,7 +1388,8 @@ function TabAltura({ state, dispatch }) {
 
       <Section title="5. IRREGULARIDAD DE MASA O PESO (Ia = 0.90)">
         <p className="e030-hint">Criterio: mi &gt; 1.50*m(i+1) o mi &gt; 1.50*m(i-1) | Pisos con nombre "azotea" o "sotano" se excluyen automaticamente</p>
-        <DiagramaReferencia svgFallback={<SVGMasa />} imagenIA="/images/masa_ref.png" titulo="Irregularidad de Masa" />
+        <DiagramaReferencia svgFallback={<SVGMasa />} imagenIA="/images/masa_ref.png" titulo="Irregularidad de Masa"
+          formulas={<>mi &gt; 1.50 * m(i+1) o mi &gt; 1.50 * m(i-1) = IRREGULAR (Ia=0.90) | No aplica en azoteas ni sotanos</>} />
         <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
           <table className="e030-table" style={{ maxWidth: 550 }}>
             <thead>
@@ -1427,7 +1430,8 @@ function TabAltura({ state, dispatch }) {
 
       <Section title="6. IRREGULARIDAD DE GEOMETRIA VERTICAL (Ia = 0.90)">
         <p className="e030-hint">Criterio: a &gt; 1.30*a(piso adyacente) | Azoteas y sotanos se excluyen automaticamente</p>
-        <DiagramaReferencia svgFallback={<SVGGeometriaVertical />} imagenIA="/images/geometria_vertical_ref.png" titulo="Geometria Vertical" />
+        <DiagramaReferencia svgFallback={<SVGGeometriaVertical />} imagenIA="/images/geometria_vertical_ref.png" titulo="Geometria Vertical"
+          formulas={<>Di &gt; 1.30 * D(piso adyacente) = IRREGULAR (Ia=0.90) | No aplica en azoteas ni sotanos</>} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <div onPaste={handlePaste}>
             <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. X-X</h4>
@@ -1527,11 +1531,28 @@ function TabAltura({ state, dispatch }) {
 
         {state.discontinuidad.activo && (
           <>
-            <DiagramaReferencia svgFallback={<SVGDiscontinuidad />} imagenIA="/images/discontinuidad_ref.png" titulo="Discontinuidad de Sistemas Resistentes" />
+            <DiagramaReferencia svgFallback={<SVGDiscontinuidad />} imagenIA="/images/discontinuidad_ref.png" titulo="Discontinuidad de Sistemas Resistentes"
+              formulas={<><div>e = |D orig - D modif| / 2</div><div>Criterio: %V &gt; 10% Y (cambio orient. O %e &gt; 25%) = DISCONTINUO</div><div>V_discont / V_total &gt; 25% = EXTREMA (Ia=0.60) | ≥1 discontinuo = IRREG (Ia=0.80)</div></>} />
 
-            <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>
-              TABLA A: CORTANTES DE TODOS LOS ELEMENTOS DEL PISO
-            </h4>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+              <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 0, letterSpacing: 1 }}>
+                TABLA A: CORTANTES DE TODOS LOS ELEMENTOS DEL PISO
+              </h4>
+              <span style={{ fontSize: 11, color: 'var(--text2)' }}>V total X: <b style={{ color: '#4FC3F7' }}>{fmt(discontRes.vTotalX)} Tn</b></span>
+              <span style={{ fontSize: 11, color: 'var(--text2)' }}>V total Y: <b style={{ color: '#4FC3F7' }}>{fmt(discontRes.vTotalY)} Tn</b></span>
+              <span style={{ fontSize: 10, color: 'var(--text3)' }}>({discontRes.nCortantes} elem.)</span>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <button type="button" onClick={() => { const el = document.getElementById('tabla-a-body'); if(el) el.style.display = el.style.display === 'none' ? '' : 'none' }}
+                style={{ background: 'var(--surface3)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '3px 8px', borderRadius: 3, fontSize: 10, cursor: 'pointer' }}>
+                Mostrar/Ocultar tabla
+              </button>
+              <button type="button" onClick={() => { if(confirm('Limpiar todos los datos de Tabla A?')) dispatch({ type: 'SET_DISCONT_CORTANTES_BULK', value: [{ nombre: '', vx: '', vy: '' }] }) }}
+                style={{ background: 'var(--surface3)', border: '1px solid var(--border)', color: '#c00', padding: '3px 8px', borderRadius: 3, fontSize: 10, cursor: 'pointer' }}>
+                Limpiar datos
+              </button>
+            </div>
+            <div id="tabla-a-body">
             <p className="e030-hint" style={{ marginBottom: 8 }}>Pegar celdas de Excel/ETABS (Ctrl+V en la tabla) con los cortantes de TODOS los elementos resistentes.</p>
             <div style={{ overflowX: 'auto', marginBottom: 8 }}
               onPaste={ev => {
@@ -1615,20 +1636,16 @@ function TabAltura({ state, dispatch }) {
                 </tbody>
               </table>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-              <button type="button" onClick={() => dispatch({ type: 'ADD_DISCONT_CORTANTE' })}
-                style={{ background: 'var(--surface3)', border: '1px solid var(--border)', color: 'var(--text1)', padding: '4px 10px', borderRadius: 3, fontSize: 11, cursor: 'pointer' }}>
-                + Agregar fila
-              </button>
-              <span style={{ fontSize: 11, color: 'var(--text2)' }}>V total X: <b style={{ color: '#4FC3F7' }}>{fmt(discontRes.vTotalX)} Tn</b></span>
-              <span style={{ fontSize: 11, color: 'var(--text2)' }}>V total Y: <b style={{ color: '#4FC3F7' }}>{fmt(discontRes.vTotalY)} Tn</b></span>
-              <span style={{ fontSize: 10, color: 'var(--text3)' }}>({discontRes.nCortantes} elem.)</span>
-            </div>
+            <button type="button" onClick={() => dispatch({ type: 'ADD_DISCONT_CORTANTE' })}
+              style={{ background: 'var(--surface3)', border: '1px solid var(--border)', color: 'var(--text1)', padding: '4px 10px', borderRadius: 3, fontSize: 11, cursor: 'pointer', marginBottom: 12 }}>
+              + Agregar fila
+            </button>
+            </div>{/* end tabla-a-body */}
 
             <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>
               TABLA B: ELEMENTOS CON DESALINEAMIENTO VERTICAL
             </h4>
-            <p className="e030-hint" style={{ marginBottom: 8 }}>Solo agregar los elementos que tienen discontinuidad vertical. Los cortantes deben coincidir con los de la Tabla A.</p>
+            <p className="e030-hint" style={{ marginBottom: 8 }}>Escribir nombre del elemento para vincular Vx/Vy de Tabla A automaticamente.</p>
             <div style={{ overflowX: 'auto', marginBottom: 12 }}
               onPaste={ev => {
                 const text = (ev.clipboardData || window.clipboardData).getData('text')
@@ -1661,8 +1678,8 @@ function TabAltura({ state, dispatch }) {
                   <tr>
                     <th style={S.headerCell}>#</th>
                     <th style={{ ...S.headerCell, ...S.inputCell }}>Elemento</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>Vx (Tn)</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>Vy (Tn)</th>
+                    <th style={{ ...S.headerCell, ...S.compCell }}>Vx (Tn)</th>
+                    <th style={{ ...S.headerCell, ...S.compCell }}>Vy (Tn)</th>
                     <th style={S.headerCell}>Cambio Orient.</th>
                     <th style={{ ...S.headerCell, ...S.inputCell }}>D orig (m)</th>
                     <th style={{ ...S.headerCell, ...S.inputCell }}>D modif (m)</th>
@@ -1678,23 +1695,37 @@ function TabAltura({ state, dispatch }) {
                     const eVal = B1v > 0 ? Math.abs(B1v - b1v) / 2 : null
                     const pctE = (B1v > 0 && eVal != null) ? (eVal / B1v) * 100 : null
                     const pctColor = pctE != null && pctE > 25 ? '#c00' : '#2e7d32'
+                    // Auto-link Vx/Vy from Tabla A by name
+                    const nomUpper = (el.nombre || '').trim().toUpperCase()
+                    const matchesA = nomUpper ? state.discontinuidad.cortantes.filter(c => (c.nombre || '').trim().toUpperCase() === nomUpper) : []
+                    const linkedVx = matchesA.reduce((s, c) => s + (parseFloat(c.vx) || 0), 0)
+                    const linkedVy = matchesA.reduce((s, c) => s + (parseFloat(c.vy) || 0), 0)
+                    const found = matchesA.length > 0
+                    const useLinked = nomUpper && found
+                    const dispVx = useLinked ? linkedVx : (parseFloat(el.vx) || 0)
+                    const dispVy = useLinked ? linkedVy : (parseFloat(el.vy) || 0)
                     return (
                       <tr key={i}>
                         <td style={S.cell}>{i + 1}</td>
                         <td style={{ ...S.cell, ...S.inputCell }}>
-                          <input type="text" style={S.tableInput}
+                          <input type="text" style={{ ...S.tableInput, borderColor: nomUpper && !found ? '#FF9800' : undefined }}
                             value={el.nombre} data-defield="nombre" data-deidx={i}
+                            title={nomUpper && !found ? 'Elemento no encontrado en Tabla A' : matchesA.length > 1 ? `${matchesA.length} ocurrencias sumadas` : ''}
                             onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'nombre', value: e.target.value })} />
                         </td>
-                        <td style={{ ...S.cell, ...S.inputCell }}>
-                          <input type="number" style={S.tableInput}
-                            value={el.vx} data-defield="vx" data-deidx={i}
-                            onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'vx', value: e.target.value })} />
+                        <td style={{ ...S.cell, ...S.compCell, background: useLinked ? 'rgba(79,195,247,0.08)' : undefined }}>
+                          {useLinked ? fmt(dispVx) : (
+                            <input type="number" style={S.tableInput}
+                              value={el.vx} data-defield="vx" data-deidx={i}
+                              onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'vx', value: e.target.value })} />
+                          )}
                         </td>
-                        <td style={{ ...S.cell, ...S.inputCell }}>
-                          <input type="number" style={S.tableInput}
-                            value={el.vy} data-defield="vy" data-deidx={i}
-                            onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'vy', value: e.target.value })} />
+                        <td style={{ ...S.cell, ...S.compCell, background: useLinked ? 'rgba(79,195,247,0.08)' : undefined }}>
+                          {useLinked ? fmt(dispVy) : (
+                            <input type="number" style={S.tableInput}
+                              value={el.vy} data-defield="vy" data-deidx={i}
+                              onChange={e => dispatch({ type: 'SET_DISCONT_ELEM', index: i, field: 'vy', value: e.target.value })} />
+                          )}
                         </td>
                         <td style={S.cell}>
                           <input type="checkbox"
