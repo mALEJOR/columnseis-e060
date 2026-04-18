@@ -1487,7 +1487,7 @@ function TabAltura({ state, dispatch }) {
         {state.discontinuidad.activo && (
           <>
             <div id="discont-diagram" style={{ display: 'none', marginBottom: 12, background: 'rgba(0,0,0,0.2)', borderRadius: 8, padding: 10, maxWidth: 340 }}>
-              <img src="/images/sopa.jpg" alt="Diagrama de discontinuidad vertical"
+              <img src="/images/diagrama_discontinuidad.png" alt="Diagrama de discontinuidad vertical"
                 style={{ maxWidth: '100%', borderRadius: 8 }} />
             </div>
 
