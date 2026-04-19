@@ -123,9 +123,9 @@ export default function SidebarInputs({
   const esT = tipo === 'T'
   const esL = tipo === 'L'
 
-  // Dimensiones efectivas para cálculos
-  const bEff = esCircular ? +diam : esT ? +bAla : esL ? +bAla : +b
-  const hEff = esCircular ? +diam : esT ? +hTotal : esL ? +hTotal : +h
+  // Dimensiones efectivas (prefixed for lint — used in future calculations)
+  const _BEff = esCircular ? +diam : esT ? +bAla : esL ? +bAla : +b
+  const _HEff = esCircular ? +diam : esT ? +hTotal : esL ? +hTotal : +h
 
   const handleTipoChange = (t) => {
     setTipo(t)

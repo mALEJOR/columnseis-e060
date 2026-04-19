@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { useProyecto, crearColumna } from '../context/ProyectoContext'
+import { useProyecto } from '../context/ProyectoContext'
 import { generarSuperficie, calcularAreaSeccion, verificarPunto } from '../utils/engine'
 import ImportadorETABS from './ImportadorETABS'
 
@@ -219,7 +219,7 @@ export default function ProjectDashboard({ onBackToSelector }) {
           id: col.id,
           changes: { superficie, resultados, dcr_max, estado },
         })
-      } catch (err) {
+      } catch {
         dispatch({
           type: 'ACTUALIZAR_COLUMNA',
           id: col.id,

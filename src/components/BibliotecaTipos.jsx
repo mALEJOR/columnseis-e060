@@ -3,7 +3,7 @@ import { useProyecto } from '../context/ProyectoContext'
 import { calcularAreaSeccion, generarDisposicion, generarDisposicionCircular, generarDisposicionT, generarDisposicionL } from '../utils/engine'
 import { VARILLAS_PERU, buscarVarilla } from '../utils/varillas'
 
-const areaFn = d => { const v = buscarVarilla(d); return v ? v.area : Math.PI * d * d / 4 }
+const _AreaFn = d => { const v = buscarVarilla(d); return v ? v.area : Math.PI * d * d / 4 }
 
 function secLabel(geo) {
   if (!geo) return '—'

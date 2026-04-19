@@ -36,7 +36,7 @@ const CSV_COL_MAP = {
 }
 
 function normalizeHeader(h) {
-  return String(h).toLowerCase().trim().replace(/[\s_\-]+/g, ' ')
+  return String(h).toLowerCase().trim().replace(/[\s_-]+/g, ' ')
 }
 
 function detectMapping(headers, isEtabs) {
@@ -120,7 +120,7 @@ const CAMPOS_CSV = [
 ]
 
 export default function ImportadorETABS({ onClose }) {
-  const { columnas, dispatch } = useProyecto()
+  const { dispatch } = useProyecto()
 
   // Estado
   const [step, setStep] = useState('drop')  // drop | preview | result
@@ -216,7 +216,6 @@ export default function ImportadorETABS({ onClose }) {
 
   // ── Importar datos ──
   const importar = () => {
-    const campos = isEtabs ? CAMPOS : CAMPOS_CSV
     const nombreKey = 'nombre'
     const pKey = isEtabs ? 'P' : 'Pu'
     const muxKey = isEtabs ? 'M3' : 'Mux'

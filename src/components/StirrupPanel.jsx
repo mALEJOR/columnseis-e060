@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { VARILLAS_PERU, VARILLAS_ESTRIBOS, VARILLAS_LONGITUDINALES, buscarVarilla, labelVarilla } from '../utils/varillas'
+import { VARILLAS_PERU, VARILLAS_ESTRIBOS, VARILLAS_LONGITUDINALES, labelVarilla } from '../utils/varillas'
 
 function Resultado({ label, value, unit, ok, info }) {
   return (
