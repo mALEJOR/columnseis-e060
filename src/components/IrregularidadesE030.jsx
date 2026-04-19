@@ -73,7 +73,6 @@ function handleMultiPaste(e, dispatch, maxRows, fieldOrder) {
 const fmt = (v, d = 4) => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v).toFixed(d)
 const fmtPct = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : (Number(v) * 100).toFixed(1) + '%'
 const fmtPctRaw = v => (v === '' || v == null || isNaN(v)) ? '\u2014' : Number(v).toFixed(1) + '%'
-const pisoLabel = (idx, nPisos) => idx === nPisos - 1 ? 'Azotea' : (nPisos - idx)
 
 /**
  * Descarga texto como .txt — compatible con Brave, Chrome, Edge, Firefox, Safari.
@@ -100,7 +99,7 @@ function descargarTxt(contenido, nombre) {
     a.download = fileName
     iframeDoc.body.appendChild(a)
     a.click()
-  } catch (e) {
+  } catch {
     // Fallback: descarga directa desde el documento principal
     const a = document.createElement('a')
     a.href = url
@@ -410,7 +409,7 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
   }, [dispatch, nPisos])
 
   // ── Paste from textarea ──
-  const handleTextareaPaste = useCallback((e) => {
+  const handleTextareaPaste = useCallback(() => {
     setTimeout(() => {
       const text = pasteRef.current?.value
       if (!text?.trim()) return
@@ -604,7 +603,7 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
 // ══════════════════════════════════════════════════════════════
 //  TAB 2: IRREG. PLANTA
 // ══════════════════════════════════════════════════════════════
-function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, RoX, RoY }) {
+function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY }) {
   const { nPisos } = state
 
   // Compute inelastic drifts for torsion check
@@ -892,7 +891,6 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
           const gdx = parseNum(state.noParalelos.dx) || 0
           const gdy = parseNum(state.noParalelos.dy) || 0
           const angG = E030.calcularAnguloGlobal(gdx, gdy)
-          const angBg = angG.theta == null ? '' : (angG.theta >= 15 && angG.theta <= 75) ? 'rgba(198,40,40,0.15)' : 'rgba(46,125,50,0.1)'
           return (<>
             {/* SECCION 1: ANGULO GLOBAL */}
             <div style={{ padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r2)', marginBottom: 14 }}>
@@ -1876,7 +1874,7 @@ function TabAltura({ state, dispatch }) {
 // ══════════════════════════════════════════════════════════════
 //  TAB 4: RESUMEN
 // ══════════════════════════════════════════════════════════════
-function TabResumen({ state, RoX, RoY, factor, Rx, Ry, iaX, iaY, ipX, ipY, iaDetails, ipDetails, derivaResX, derivaResY }) {
+function TabResumen({ RoX, RoY, Rx, Ry, iaX, iaY, ipX, ipY, iaDetails, ipDetails, derivaResX, derivaResY }) {
   return (
     <div>
       <Section title="IRREGULARIDADES EN ALTURA (Ia) - Tabla N.8">
@@ -2063,11 +2061,11 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
   const [expName, setExpName] = useState('')
   const [copied, setCopied] = useState(false)
 
-  const mkParams = (dir) => ({
+  const mkParams = useCallback((dir) => ({
     zona, Z, suelo: sKey, S: sVal, categoria, U, sistema: dir === 'X' ? sistemaXName : sistemaYName,
     Ro: dir === 'X' ? RoX : RoY, Ia: dir === 'X' ? IaX : IaY, Ip: dir === 'X' ? IpX : IpY,
     R: dir === 'X' ? Rx : Ry, Tp, TL,
-  })
+  }), [zona, Z, sKey, sVal, categoria, U, sistemaXName, sistemaYName, RoX, RoY, IaX, IaY, IpX, IpY, Rx, Ry, Tp, TL])
 
   const expDeltaT = expRes === 'completo' ? 0.02 : expRes === 'reducido' ? 0.10 : expDT
   const expContent = useMemo(() => {
@@ -2075,7 +2073,7 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
     const esp = expDir === 'X' ? espX : espY
     if (esp.length === 0) return ''
     return Espectro.exportarETABS(esp, mkParams(expDir), expDir + '-' + expDir, expDeltaT)
-  }, [showExport, expDir, expDeltaT, espX, espY, esEMS, zona, sKey, sVal, categoria, U, Rx, Ry, IaX, IaY, IpX, IpY])
+  }, [showExport, expDir, expDeltaT, espX, espY, esEMS, mkParams])
 
   const openExport = (dir) => {
     setExpDir(dir || 'X')
@@ -2088,12 +2086,12 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
   const dlContentX = useMemo(() => {
     if (esEMS || espX.length === 0) return ''
     return Espectro.exportarETABS(espX, mkParams('X'), 'X-X', expDeltaT)
-  }, [espX, esEMS, expDeltaT, zona, sKey, sVal, categoria, U, Rx, IaX, IpX])
+  }, [espX, esEMS, expDeltaT, mkParams])
 
   const dlContentY = useMemo(() => {
     if (esEMS || espY.length === 0) return ''
     return Espectro.exportarETABS(espY, mkParams('Y'), 'Y-Y', expDeltaT)
-  }, [espY, esEMS, expDeltaT, zona, sKey, sVal, categoria, U, Ry, IaY, IpY])
+  }, [espY, esEMS, expDeltaT, mkParams])
 
   const dlNameX = expName || Espectro.generarNombreArchivo('X-X', mkParams('X'))
   const dlNameY = Espectro.generarNombreArchivo('Y-Y', mkParams('Y'))
@@ -2125,13 +2123,18 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
   const xScale = (t) => pad.left + (t / 4.0) * cw
   const yScale = (v) => pad.top + ch - (v / yMaxShared) * ch
 
-  const mkPath = (esp) => esp.map((p, i) => {
-    const val = modoSa === 'Sa' ? p.Sa : p.SaG
-    return `${i === 0 ? 'M' : 'L'}${xScale(p.T).toFixed(1)},${yScale(val).toFixed(1)}`
-  }).join(' ')
+  const mkPath = useCallback((esp) => {
+    const _xScale = (t) => pad.left + (t / 4.0) * cw
+    const _yScale = (v) => pad.top + ch - (v / yMaxShared) * ch
+    return esp.map((p, i) => {
+      const val = modoSa === 'Sa' ? p.Sa : p.SaG
+      return `${i === 0 ? 'M' : 'L'}${_xScale(p.T).toFixed(1)},${_yScale(val).toFixed(1)}`
+    }).join(' ')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modoSa, yMaxShared])
 
-  const pathX = useMemo(() => espX.length > 0 ? mkPath(espX) : '', [espX, modoSa, yMaxShared])
-  const pathY = useMemo(() => espY.length > 0 ? mkPath(espY) : '', [espY, modoSa, yMaxShared])
+  const pathX = useMemo(() => espX.length > 0 ? mkPath(espX) : '', [espX, mkPath])
+  const pathY = useMemo(() => espY.length > 0 ? mkPath(espY) : '', [espY, mkPath])
 
   const gridLinesXAxis = [0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
   const gridLinesYAxis = useMemo(() => {
@@ -2963,13 +2966,13 @@ export default function IrregularidadesE030({ onBack }) {
         )}
         {tab === 'IRREG. PLANTA' && (
           <TabPlanta state={state} dispatch={dispatch} factor={factor} Rx={Rx} Ry={Ry}
-            derivaPermX={derivaPermX} derivaPermY={derivaPermY} RoX={RoX} RoY={RoY} />
+            derivaPermX={derivaPermX} derivaPermY={derivaPermY} />
         )}
         {tab === 'IRREG. ALTURA' && (
           <TabAltura state={state} dispatch={dispatch} />
         )}
         {tab === 'RESUMEN' && (
-          <TabResumen state={state} RoX={RoX} RoY={RoY} factor={factor} Rx={Rx} Ry={Ry}
+          <TabResumen RoX={RoX} RoY={RoY} Rx={Rx} Ry={Ry}
             iaX={iaFinal.iaX} iaY={iaFinal.iaY} ipX={ipFinal.ipX} ipY={ipFinal.ipY}
             iaDetails={iaDetails} ipDetails={ipDetails}
             derivaResX={derivaResX} derivaResY={derivaResY} />
