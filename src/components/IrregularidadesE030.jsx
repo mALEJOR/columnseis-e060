@@ -1408,11 +1408,10 @@ function TabAltura({ state, dispatch }) {
         <DiagramaReferencia svgFallback={<SVGMasa />} titulo="Irregularidad de Masa"
           formulas={<>mi &gt; 1.50 * m(i+1) o mi &gt; 1.50 * m(i-1) = IRREGULAR (Ia=0.90) | No aplica en azoteas ni sotanos</>} />
         <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
-          <table className="e030-table" style={{ maxWidth: 650 }}>
+          <table className="e030-table" style={{ maxWidth: 550 }}>
             <thead>
               <tr>
                 <th style={S.headerCell}>Piso</th>
-                <th style={S.headerCell}>Tipo</th>
                 <th style={{ ...S.headerCell, ...S.inputCell }}>Masa (Tn)</th>
                 <th style={{ ...S.headerCell, ...S.compCell }}>1.50*m+1</th>
                 <th style={{ ...S.headerCell, ...S.compCell }}>1.50*m-1</th>
@@ -1423,11 +1422,9 @@ function TabAltura({ state, dispatch }) {
               {masaRes.rows.map((r, i) => {
                 const excluido = r.cond === 'EXCLUIDO'
                 const rowStyle = excluido ? { opacity: 0.5, background: 'rgba(0,0,0,0.15)' } : {}
-                const tipoActual = state.pisoTipos[i] || detectTipoPiso(state.pisoNombres[i] || defaultPisoNombre(i, nPisos))
                 return (
                   <tr key={i} style={rowStyle}>
                     <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
-                    <td style={{ ...S.cell, fontSize: 9, color: excluido ? 'var(--text3)' : 'var(--text2)' }}>{tipoActual}</td>
                     <td style={{ ...S.cell, ...S.inputCell }}>
                       <input type="number" style={S.tableInput}
                         data-array="masas" data-field="masa" data-idx={i}
@@ -1449,7 +1446,7 @@ function TabAltura({ state, dispatch }) {
       </Section>
 
       <Section title="6. IRREGULARIDAD DE GEOMETRIA VERTICAL (Ia = 0.90)">
-        <p className="e030-hint">Criterio: a &gt; 1.30*a(piso adyacente) | Azoteas y sotanos se excluyen (tipo heredado de seccion Masa)</p>
+        <p className="e030-hint">Criterio: a &gt; 1.30*a(piso adyacente) | Azoteas y sotanos se excluyen (tipo definido en Derivas)</p>
         <DiagramaReferencia svgFallback={<SVGGeometriaVertical />} titulo="Geometria Vertical"
           formulas={<>Di &gt; 1.30 * D(piso adyacente) = IRREGULAR (Ia=0.90) | No aplica en azoteas ni sotanos</>} />
         <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
