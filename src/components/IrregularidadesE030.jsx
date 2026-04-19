@@ -148,9 +148,11 @@ function defaultPisoNombre(i, nPisos) {
   return `Piso ${nPisos - i}`
 }
 
-function esAzoteaOSotano(nombre) {
+function detectTipoPiso(nombre) {
   const n = (nombre || '').trim().toLowerCase()
-  return n.includes('azotea') || n.includes('sotano') || n.includes('sótano') || n.includes('basement') || n.includes('roof')
+  if (n.includes('azotea') || n.includes('roof')) return 'AZOTEA'
+  if (n.includes('sotano') || n.includes('sótano') || n.includes('basement')) return 'SOTANO'
+  return 'NORMAL'
 }
 
 function initState() {
@@ -265,6 +267,18 @@ function Section({ title, dark, children, defaultOpen = true }) {
         <span style={{ flex: 1 }}>{title}</span>
       </div>
       {open && <div style={{ padding: '0 4px' }}>{children}</div>}
+    </div>
+  )
+}
+
+function PasteIndicator() {
+  return (
+    <div style={{
+      padding: '4px 10px', marginBottom: 6, fontSize: 12, fontFamily: 'var(--cond)',
+      background: 'rgba(79,195,247,0.08)', border: '1px solid rgba(79,195,247,0.2)',
+      color: '#4FC3F7', borderRadius: 4, display: 'inline-block',
+    }}>
+      Pegar celdas de Excel/ETABS (Ctrl+V en la tabla)
     </div>
   )
 }
@@ -442,6 +456,7 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
   const renderTable = (dir, results, arrayName) => (
     <div style={{ marginBottom: 16 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#2e7d32', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
+      <PasteIndicator />
       <div style={{ overflowX: 'auto' }}>
         <table className="e030-table">
           <thead>
@@ -672,6 +687,7 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
   const renderTorsionTable = (dir, res, arrayName) => (
     <div style={{ marginBottom: 12 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
+      <PasteIndicator />
       <div style={{ overflowX: 'auto' }}>
         <table className="e030-table">
           <thead>
@@ -940,6 +956,7 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
             {/* TABLA: ELEMENTOS + CHECKBOXES */}
             <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#2e75b6', marginBottom: 6, letterSpacing: .5 }}>ELEMENTOS RESISTENTES — CORTANTES Y SELECCION</h4>
             <p className="e030-hint">Vx/Vy = cortante (Tn). NP X/Y = marcar si el elemento es "no paralelo" en esa direccion. V_piso = SUM todos. V_nopar = SUM marcados.</p>
+            <PasteIndicator />
             <div style={{ overflowX: 'auto', marginBottom: 14 }}>
               <table className="e030-table">
                 <thead>
@@ -1159,30 +1176,30 @@ function TabAltura({ state, dispatch }) {
   const masaRes = useMemo(() => {
     const pisos = state.masas.slice(0, nPisos).map((m, i) => {
       const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
-      const tipo = esAzoteaOSotano(nombre) ? 'AZOTEA' : 'NORMAL'
+      const tipo = m.tipo || detectTipoPiso(nombre)
       return { masa: parseNum(m.masa), tipo, nombre }
     })
     return E030.calcularMasa(pisos, nPisos)
   }, [state.masas, state.pisoNombres, nPisos])
 
-  // Geometria X and Y
+  // Geometria X and Y — tipo comes from masas (shared) or auto-detected
   const geomXRes = useMemo(() => {
     const pisos = state.geometriaX.slice(0, nPisos).map((g, i) => {
       const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
-      const tipo = esAzoteaOSotano(nombre) ? 'AZOTEA' : 'NORMAL'
+      const tipo = state.masas[i]?.tipo || detectTipoPiso(nombre)
       return { dim: parseNum(g.dim), tipo, nombre }
     })
     return E030.calcularGeometria(pisos, nPisos)
-  }, [state.geometriaX, state.pisoNombres, nPisos])
+  }, [state.geometriaX, state.pisoNombres, state.masas, nPisos])
 
   const geomYRes = useMemo(() => {
     const pisos = state.geometriaY.slice(0, nPisos).map((g, i) => {
       const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
-      const tipo = esAzoteaOSotano(nombre) ? 'AZOTEA' : 'NORMAL'
+      const tipo = state.masas[i]?.tipo || detectTipoPiso(nombre)
       return { dim: parseNum(g.dim), tipo, nombre }
     })
     return E030.calcularGeometria(pisos, nPisos)
-  }, [state.geometriaY, state.pisoNombres, nPisos])
+  }, [state.geometriaY, state.pisoNombres, state.masas, nPisos])
 
   // Discontinuidad de sistemas resistentes
   const discontRes = useMemo(() => {
@@ -1200,6 +1217,7 @@ function TabAltura({ state, dispatch }) {
   const renderRigidezTable = (dir, res, arrayName) => (
     <div style={{ marginBottom: 12 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
+      <PasteIndicator />
       <div style={{ overflowX: 'auto' }}>
         <table className="e030-table">
           <thead>
@@ -1283,6 +1301,7 @@ function TabAltura({ state, dispatch }) {
   const renderResistenciaTable = (dir, res, arrayName, factorLabel, limitKey) => (
     <div style={{ marginBottom: 12 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
+      <PasteIndicator />
       <div style={{ overflowX: 'auto' }}>
         <table className="e030-table">
           <thead>
@@ -1390,11 +1409,13 @@ function TabAltura({ state, dispatch }) {
         <p className="e030-hint">Criterio: mi &gt; 1.50*m(i+1) o mi &gt; 1.50*m(i-1) | Pisos con nombre "azotea" o "sotano" se excluyen automaticamente</p>
         <DiagramaReferencia svgFallback={<SVGMasa />} titulo="Irregularidad de Masa"
           formulas={<>mi &gt; 1.50 * m(i+1) o mi &gt; 1.50 * m(i-1) = IRREGULAR (Ia=0.90) | No aplica en azoteas ni sotanos</>} />
+        <PasteIndicator />
         <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
-          <table className="e030-table" style={{ maxWidth: 550 }}>
+          <table className="e030-table" style={{ maxWidth: 650 }}>
             <thead>
               <tr>
                 <th style={S.headerCell}>Piso</th>
+                <th style={S.headerCell}>Tipo</th>
                 <th style={{ ...S.headerCell, ...S.inputCell }}>Masa (Tn)</th>
                 <th style={{ ...S.headerCell, ...S.compCell }}>1.50*m+1</th>
                 <th style={{ ...S.headerCell, ...S.compCell }}>1.50*m-1</th>
@@ -1405,9 +1426,19 @@ function TabAltura({ state, dispatch }) {
               {masaRes.rows.map((r, i) => {
                 const excluido = r.cond === 'EXCLUIDO'
                 const rowStyle = excluido ? { opacity: 0.5, background: 'rgba(0,0,0,0.15)' } : {}
+                const tipoActual = state.masas[i]?.tipo || detectTipoPiso(state.pisoNombres[i] || defaultPisoNombre(i, nPisos))
                 return (
                   <tr key={i} style={rowStyle}>
                     <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
+                    <td style={S.cell}>
+                      <select style={{ ...S.tableInput, width: 80, background: 'transparent', cursor: 'pointer' }}
+                        value={tipoActual}
+                        onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'masas', index: i, field: 'tipo', value: e.target.value })}>
+                        <option value="NORMAL">NORMAL</option>
+                        <option value="AZOTEA">AZOTEA</option>
+                        <option value="SOTANO">SOTANO</option>
+                      </select>
+                    </td>
                     <td style={{ ...S.cell, ...S.inputCell }}>
                       <input type="number" style={S.tableInput}
                         data-array="masas" data-field="masa" data-idx={i}
@@ -1429,82 +1460,58 @@ function TabAltura({ state, dispatch }) {
       </Section>
 
       <Section title="6. IRREGULARIDAD DE GEOMETRIA VERTICAL (Ia = 0.90)">
-        <p className="e030-hint">Criterio: a &gt; 1.30*a(piso adyacente) | Azoteas y sotanos se excluyen automaticamente</p>
+        <p className="e030-hint">Criterio: a &gt; 1.30*a(piso adyacente) | Azoteas y sotanos se excluyen (tipo heredado de seccion Masa)</p>
         <DiagramaReferencia svgFallback={<SVGGeometriaVertical />} titulo="Geometria Vertical"
           formulas={<>Di &gt; 1.30 * D(piso adyacente) = IRREGULAR (Ia=0.90) | No aplica en azoteas ni sotanos</>} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div onPaste={handlePaste}>
-            <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. X-X</h4>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="e030-table">
-                <thead>
-                  <tr>
-                    <th style={S.headerCell}>Piso</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>a (m)</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>1.30*a+1</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>1.30*a-1</th>
-                    <th style={S.headerCell}>Cond</th>
+        <PasteIndicator />
+        <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
+          <table className="e030-table">
+            <thead>
+              <tr>
+                <th style={S.headerCell}>Piso</th>
+                <th style={{ ...S.headerCell, ...S.inputCell }}>Dim X (m)</th>
+                <th style={{ ...S.headerCell, ...S.compCell }}>1.30*X+1</th>
+                <th style={{ ...S.headerCell, ...S.compCell }}>1.30*X-1</th>
+                <th style={S.headerCell}>Cond X</th>
+                <th style={{ ...S.headerCell, ...S.inputCell }}>Dim Y (m)</th>
+                <th style={{ ...S.headerCell, ...S.compCell }}>1.30*Y+1</th>
+                <th style={{ ...S.headerCell, ...S.compCell }}>1.30*Y-1</th>
+                <th style={S.headerCell}>Cond Y</th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: nPisos }, (_, i) => {
+                const rx = geomXRes.rows[i] || {}
+                const ry = geomYRes.rows[i] || {}
+                const excluidoX = rx.cond === 'EXCLUIDO'
+                const excluidoY = ry.cond === 'EXCLUIDO'
+                const rowStyle = (excluidoX && excluidoY) ? { opacity: 0.5, background: 'rgba(0,0,0,0.15)' } : {}
+                return (
+                  <tr key={i} style={rowStyle}>
+                    <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
+                    <td style={{ ...S.cell, ...S.inputCell }}>
+                      <input type="number" step="0.1" style={S.tableInput}
+                        data-array="geometriaX" data-field="dim" data-idx={i}
+                        value={state.geometriaX[i]?.dim ?? ''}
+                        onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'geometriaX', index: i, field: 'dim', value: parseNum(e.target.value) })} />
+                    </td>
+                    <td style={{ ...S.cell, ...S.compCell }}>{excluidoX ? '\u2014' : fmtK(rx.limit_above)}</td>
+                    <td style={{ ...S.cell, ...S.compCell }}>{excluidoX ? '\u2014' : fmtK(rx.limit_below)}</td>
+                    <td style={{ ...S.cell, color: excluidoX ? 'var(--text3)' : condColor(rx.cond), fontWeight: 700 }}>{rx.cond || '\u2014'}</td>
+                    <td style={{ ...S.cell, ...S.inputCell }}>
+                      <input type="number" step="0.1" style={S.tableInput}
+                        data-array="geometriaY" data-field="dim" data-idx={i}
+                        value={state.geometriaY[i]?.dim ?? ''}
+                        onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'geometriaY', index: i, field: 'dim', value: parseNum(e.target.value) })} />
+                    </td>
+                    <td style={{ ...S.cell, ...S.compCell }}>{excluidoY ? '\u2014' : fmtK(ry.limit_above)}</td>
+                    <td style={{ ...S.cell, ...S.compCell }}>{excluidoY ? '\u2014' : fmtK(ry.limit_below)}</td>
+                    <td style={{ ...S.cell, color: excluidoY ? 'var(--text3)' : condColor(ry.cond), fontWeight: 700 }}>{ry.cond || '\u2014'}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {geomXRes.rows.map((r, i) => {
-                    const excluido = r.cond === 'EXCLUIDO'
-                    const rowStyle = excluido ? { opacity: 0.5, background: 'rgba(0,0,0,0.15)' } : {}
-                    return (
-                      <tr key={i} style={rowStyle}>
-                        <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
-                        <td style={{ ...S.cell, ...S.inputCell }}>
-                          <input type="number" step="0.1" style={S.tableInput}
-                            data-array="geometriaX" data-field="dim" data-idx={i}
-                            value={state.geometriaX[i]?.dim ?? ''}
-                            onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'geometriaX', index: i, field: 'dim', value: parseNum(e.target.value) })} />
-                        </td>
-                        <td style={{ ...S.cell, ...S.compCell }}>{excluido ? '\u2014' : fmtK(r.limit_above)}</td>
-                        <td style={{ ...S.cell, ...S.compCell }}>{excluido ? '\u2014' : fmtK(r.limit_below)}</td>
-                        <td style={{ ...S.cell, color: excluido ? 'var(--text3)' : condColor(r.cond), fontWeight: 700 }}>{r.cond || '\u2014'}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div onPaste={handlePaste}>
-            <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. Y-Y</h4>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="e030-table">
-                <thead>
-                  <tr>
-                    <th style={S.headerCell}>Piso</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>a (m)</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>1.30*a+1</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>1.30*a-1</th>
-                    <th style={S.headerCell}>Cond</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {geomYRes.rows.map((r, i) => {
-                    const excluido = r.cond === 'EXCLUIDO'
-                    const rowStyle = excluido ? { opacity: 0.5, background: 'rgba(0,0,0,0.15)' } : {}
-                    return (
-                      <tr key={i} style={rowStyle}>
-                        <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
-                        <td style={{ ...S.cell, ...S.inputCell }}>
-                          <input type="number" step="0.1" style={S.tableInput}
-                            data-array="geometriaY" data-field="dim" data-idx={i}
-                            value={state.geometriaY[i]?.dim ?? ''}
-                            onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'geometriaY', index: i, field: 'dim', value: parseNum(e.target.value) })} />
-                        </td>
-                        <td style={{ ...S.cell, ...S.compCell }}>{excluido ? '\u2014' : fmtK(r.limit_above)}</td>
-                        <td style={{ ...S.cell, ...S.compCell }}>{excluido ? '\u2014' : fmtK(r.limit_below)}</td>
-                        <td style={{ ...S.cell, color: excluido ? 'var(--text3)' : condColor(r.cond), fontWeight: 700 }}>{r.cond || '\u2014'}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
         <div className="e030-summary-row">
           <span>Ia Geom X: <b style={{ color: '#ffc107', fontSize: 13 }}>{geomXRes.ia}</b></span>
@@ -2734,7 +2741,7 @@ export default function IrregularidadesE030({ onBack }) {
   const masaRes = useMemo(() => {
     const pisos = state.masas.slice(0, nPisos).map((m, i) => {
       const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
-      const tipo = esAzoteaOSotano(nombre) ? 'AZOTEA' : 'NORMAL'
+      const tipo = m.tipo || detectTipoPiso(nombre)
       return { masa: parseNum(m.masa), tipo, nombre }
     })
     return E030.calcularMasa(pisos, nPisos)
@@ -2743,20 +2750,20 @@ export default function IrregularidadesE030({ onBack }) {
   const geomXRes = useMemo(() => {
     const pisos = state.geometriaX.slice(0, nPisos).map((g, i) => {
       const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
-      const tipo = esAzoteaOSotano(nombre) ? 'AZOTEA' : 'NORMAL'
+      const tipo = state.masas[i]?.tipo || detectTipoPiso(nombre)
       return { dim: parseNum(g.dim), tipo, nombre }
     })
     return E030.calcularGeometria(pisos, nPisos)
-  }, [state.geometriaX, state.pisoNombres, nPisos])
+  }, [state.geometriaX, state.pisoNombres, state.masas, nPisos])
 
   const geomYRes = useMemo(() => {
     const pisos = state.geometriaY.slice(0, nPisos).map((g, i) => {
       const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
-      const tipo = esAzoteaOSotano(nombre) ? 'AZOTEA' : 'NORMAL'
+      const tipo = state.masas[i]?.tipo || detectTipoPiso(nombre)
       return { dim: parseNum(g.dim), tipo, nombre }
     })
     return E030.calcularGeometria(pisos, nPisos)
-  }, [state.geometriaY, state.pisoNombres, nPisos])
+  }, [state.geometriaY, state.pisoNombres, state.masas, nPisos])
 
   const discontRes = useMemo(() => {
     const d = state.discontinuidad
