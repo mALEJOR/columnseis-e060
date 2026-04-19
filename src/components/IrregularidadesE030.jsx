@@ -159,6 +159,7 @@ function initState() {
   return {
     nPisos: 6,
     pisoNombres: Array.from({ length: MAX_PISOS }, () => ''),
+    pisoTipos: Array.from({ length: MAX_PISOS }, () => ''),
     esIrregular: true,
     sistemaX: 'Muros C.A.',
     sistemaY: 'Muros C.A.',
@@ -194,7 +195,16 @@ function reducer(state, action) {
     case 'SET_PISO_NOMBRE': {
       const nombres = [...state.pisoNombres]
       nombres[action.index] = action.value
-      return { ...state, pisoNombres: nombres }
+      // Auto-detect tipo when name changes
+      const tipos = [...state.pisoTipos]
+      const detected = detectTipoPiso(action.value)
+      if (detected !== 'NORMAL') tipos[action.index] = detected
+      return { ...state, pisoNombres: nombres, pisoTipos: tipos }
+    }
+    case 'SET_PISO_TIPO': {
+      const tipos = [...state.pisoTipos]
+      tipos[action.index] = action.value
+      return { ...state, pisoTipos: tipos }
     }
     case 'SET_FLOOR_DATA': {
       const arr = [...state[action.arrayName]]
@@ -448,6 +458,7 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
           <thead>
             <tr>
               <th style={S.headerCell}>Piso</th>
+              <th style={S.headerCell}>Tipo</th>
               <th style={{ ...S.headerCell, ...S.inputCell }}>hi (cm)</th>
               <th style={{ ...S.headerCell, ...S.inputCell }}>di elast.</th>
               <th style={{ ...S.headerCell, ...S.compCell }}>Di=f*R*di</th>
@@ -464,6 +475,15 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
                     placeholder={defaultPisoNombre(i, nPisos)}
                     value={state.pisoNombres[i] || ''}
                     onChange={e => dispatch({ type: 'SET_PISO_NOMBRE', index: i, value: e.target.value })} />
+                </td>
+                <td style={S.cell}>
+                  <select style={{ ...S.tableInput, width: 75, background: 'transparent', cursor: 'pointer' }}
+                    value={state.pisoTipos[i] || detectTipoPiso(state.pisoNombres[i] || defaultPisoNombre(i, nPisos))}
+                    onChange={e => dispatch({ type: 'SET_PISO_TIPO', index: i, value: e.target.value })}>
+                    <option value="NORMAL">NORMAL</option>
+                    <option value="AZOTEA">AZOTEA</option>
+                    <option value="SOTANO">SOTANO</option>
+                  </select>
                 </td>
                 <td style={{ ...S.cell, ...S.inputCell }}>
                   <input type="number" style={S.tableInput}
@@ -1156,30 +1176,30 @@ function TabAltura({ state, dispatch }) {
   const masaRes = useMemo(() => {
     const pisos = state.masas.slice(0, nPisos).map((m, i) => {
       const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
-      const tipo = m.tipo || detectTipoPiso(nombre)
+      const tipo = state.pisoTipos[i] || detectTipoPiso(nombre)
       return { masa: parseNum(m.masa), tipo, nombre }
     })
     return E030.calcularMasa(pisos, nPisos)
-  }, [state.masas, state.pisoNombres, nPisos])
+  }, [state.masas, state.pisoNombres, state.pisoTipos, nPisos])
 
-  // Geometria X and Y — tipo comes from masas (shared) or auto-detected
+  // Geometria X and Y — tipo comes from Derivas (pisoTipos) or auto-detected
   const geomXRes = useMemo(() => {
     const pisos = state.geometriaX.slice(0, nPisos).map((g, i) => {
       const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
-      const tipo = state.masas[i]?.tipo || detectTipoPiso(nombre)
+      const tipo = state.pisoTipos[i] || detectTipoPiso(nombre)
       return { dim: parseNum(g.dim), tipo, nombre }
     })
     return E030.calcularGeometria(pisos, nPisos)
-  }, [state.geometriaX, state.pisoNombres, state.masas, nPisos])
+  }, [state.geometriaX, state.pisoNombres, state.pisoTipos, nPisos])
 
   const geomYRes = useMemo(() => {
     const pisos = state.geometriaY.slice(0, nPisos).map((g, i) => {
       const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
-      const tipo = state.masas[i]?.tipo || detectTipoPiso(nombre)
+      const tipo = state.pisoTipos[i] || detectTipoPiso(nombre)
       return { dim: parseNum(g.dim), tipo, nombre }
     })
     return E030.calcularGeometria(pisos, nPisos)
-  }, [state.geometriaY, state.pisoNombres, state.masas, nPisos])
+  }, [state.geometriaY, state.pisoNombres, state.pisoTipos, nPisos])
 
   // Discontinuidad de sistemas resistentes
   const discontRes = useMemo(() => {
@@ -1403,19 +1423,11 @@ function TabAltura({ state, dispatch }) {
               {masaRes.rows.map((r, i) => {
                 const excluido = r.cond === 'EXCLUIDO'
                 const rowStyle = excluido ? { opacity: 0.5, background: 'rgba(0,0,0,0.15)' } : {}
-                const tipoActual = state.masas[i]?.tipo || detectTipoPiso(state.pisoNombres[i] || defaultPisoNombre(i, nPisos))
+                const tipoActual = state.pisoTipos[i] || detectTipoPiso(state.pisoNombres[i] || defaultPisoNombre(i, nPisos))
                 return (
                   <tr key={i} style={rowStyle}>
                     <td style={S.cell}>{state.pisoNombres[i] || defaultPisoNombre(i, nPisos)}</td>
-                    <td style={S.cell}>
-                      <select style={{ ...S.tableInput, width: 80, background: 'transparent', cursor: 'pointer' }}
-                        value={tipoActual}
-                        onChange={e => dispatch({ type: 'SET_FLOOR_DATA', arrayName: 'masas', index: i, field: 'tipo', value: e.target.value })}>
-                        <option value="NORMAL">NORMAL</option>
-                        <option value="AZOTEA">AZOTEA</option>
-                        <option value="SOTANO">SOTANO</option>
-                      </select>
-                    </td>
+                    <td style={{ ...S.cell, fontSize: 9, color: excluido ? 'var(--text3)' : 'var(--text2)' }}>{tipoActual}</td>
                     <td style={{ ...S.cell, ...S.inputCell }}>
                       <input type="number" style={S.tableInput}
                         data-array="masas" data-field="masa" data-idx={i}
@@ -2721,29 +2733,29 @@ export default function IrregularidadesE030({ onBack }) {
   const masaRes = useMemo(() => {
     const pisos = state.masas.slice(0, nPisos).map((m, i) => {
       const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
-      const tipo = m.tipo || detectTipoPiso(nombre)
+      const tipo = state.pisoTipos[i] || detectTipoPiso(nombre)
       return { masa: parseNum(m.masa), tipo, nombre }
     })
     return E030.calcularMasa(pisos, nPisos)
-  }, [state.masas, state.pisoNombres, nPisos])
+  }, [state.masas, state.pisoNombres, state.pisoTipos, nPisos])
 
   const geomXRes = useMemo(() => {
     const pisos = state.geometriaX.slice(0, nPisos).map((g, i) => {
       const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
-      const tipo = state.masas[i]?.tipo || detectTipoPiso(nombre)
+      const tipo = state.pisoTipos[i] || detectTipoPiso(nombre)
       return { dim: parseNum(g.dim), tipo, nombre }
     })
     return E030.calcularGeometria(pisos, nPisos)
-  }, [state.geometriaX, state.pisoNombres, state.masas, nPisos])
+  }, [state.geometriaX, state.pisoNombres, state.pisoTipos, nPisos])
 
   const geomYRes = useMemo(() => {
     const pisos = state.geometriaY.slice(0, nPisos).map((g, i) => {
       const nombre = state.pisoNombres[i] || defaultPisoNombre(i, nPisos)
-      const tipo = state.masas[i]?.tipo || detectTipoPiso(nombre)
+      const tipo = state.pisoTipos[i] || detectTipoPiso(nombre)
       return { dim: parseNum(g.dim), tipo, nombre }
     })
     return E030.calcularGeometria(pisos, nPisos)
-  }, [state.geometriaY, state.pisoNombres, state.masas, nPisos])
+  }, [state.geometriaY, state.pisoNombres, state.pisoTipos, nPisos])
 
   const discontRes = useMemo(() => {
     const d = state.discontinuidad
