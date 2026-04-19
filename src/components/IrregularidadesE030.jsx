@@ -143,8 +143,7 @@ const condColor = cond => {
 //  STATE
 // ══════════════════════════════════════════════════════════════
 function defaultPisoNombre(i, nPisos) {
-  if (i === 0) return 'Azotea'
-  return `Piso ${nPisos - i}`
+  return String(nPisos - i)
 }
 
 function detectTipoPiso(nombre) {
@@ -277,6 +276,32 @@ function Section({ title, dark, children, defaultOpen = true }) {
       </div>
       {open && <div style={{ padding: '0 4px' }}>{children}</div>}
     </div>
+  )
+}
+
+// ══════════════════════════════════════════════════════════════
+//  Sub-component: Resizable Table Header
+// ══════════════════════════════════════════════════════════════
+function ResizableTh({ style, children, ...props }) {
+  const ref = useRef(null)
+  const onMouseDown = useCallback((e) => {
+    e.preventDefault()
+    const th = ref.current
+    const startX = e.clientX
+    const startW = th.offsetWidth
+    const onMove = (ev) => { th.style.width = Math.max(40, startW + ev.clientX - startX) + 'px' }
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [])
+  return (
+    <th ref={ref} style={{ ...style, position: 'relative', minWidth: 40 }} {...props}>
+      {children}
+      <div onMouseDown={onMouseDown}
+        style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 5, cursor: 'col-resize' }}
+        onMouseEnter={e => { e.target.style.background = 'rgba(79,195,247,0.3)' }}
+        onMouseLeave={e => { e.target.style.background = 'transparent' }} />
+    </th>
   )
 }
 
@@ -457,14 +482,14 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
         <table className="e030-table">
           <thead>
             <tr>
-              <th style={S.headerCell}>Piso</th>
-              <th style={S.headerCell}>Tipo</th>
-              <th style={{ ...S.headerCell, ...S.inputCell }}>hi (cm)</th>
-              <th style={{ ...S.headerCell, ...S.inputCell }}>di elast.</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>Di=f*R*di</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>Dperm</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>Di/Dperm</th>
-              <th style={S.headerCell}>Verif.</th>
+              <ResizableTh style={S.headerCell}>Piso</ResizableTh>
+              <ResizableTh style={S.headerCell}>Tipo</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>hi (cm)</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>di elast.</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>Di=f*R*di</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>Dperm</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>Di/Dperm</ResizableTh>
+              <ResizableTh style={S.headerCell}>Verif.</ResizableTh>
             </tr>
           </thead>
           <tbody>
@@ -591,11 +616,11 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
         <table className="e030-table" style={{ maxWidth: 600 }}>
           <thead>
             <tr>
-              <th style={{ ...S.headerCell, background: '#2e7d32' }}>Direccion</th>
-              <th style={{ ...S.headerCell, background: '#2e7d32' }}>D Max. Calc.</th>
-              <th style={{ ...S.headerCell, background: '#2e7d32' }}>D Permitida</th>
-              <th style={{ ...S.headerCell, background: '#2e7d32' }}>Ratio</th>
-              <th style={{ ...S.headerCell, background: '#2e7d32' }}>Verificacion</th>
+              <ResizableTh style={{ ...S.headerCell, background: '#2e7d32' }}>Direccion</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, background: '#2e7d32' }}>D Max. Calc.</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, background: '#2e7d32' }}>D Permitida</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, background: '#2e7d32' }}>Ratio</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, background: '#2e7d32' }}>Verificacion</ResizableTh>
             </tr>
           </thead>
           <tbody>
@@ -694,14 +719,14 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY }
         <table className="e030-table">
           <thead>
             <tr>
-              <th style={S.headerCell}>Piso</th>
-              <th style={{ ...S.headerCell, ...S.inputCell }}>dmax</th>
-              <th style={{ ...S.headerCell, ...S.inputCell }}>dprom</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>Ratio</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>Di</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>Dperm</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>D&gt;0.5Dp</th>
-              <th style={S.headerCell}>Cond</th>
+              <ResizableTh style={S.headerCell}>Piso</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>dmax</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>dprom</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>Ratio</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>Di</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>Dperm</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>D&gt;0.5Dp</ResizableTh>
+              <ResizableTh style={S.headerCell}>Cond</ResizableTh>
             </tr>
           </thead>
           <tbody>
@@ -961,13 +986,13 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY }
               <table className="e030-table">
                 <thead>
                   <tr>
-                    <th style={{ ...S.headerCell, width: 22 }}>#</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>Elemento</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>Vx (Tn)</th>
-                    <th style={{ ...S.headerCell, width: 34, background: '#1a3a5c', color: '#64b5f6' }}>NP X</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>Vy (Tn)</th>
-                    <th style={{ ...S.headerCell, width: 34, background: '#3a1a1a', color: '#ef9a9a' }}>NP Y</th>
-                    <th style={{ ...S.headerCell, width: 22 }}></th>
+                    <ResizableTh style={{ ...S.headerCell, width: 22 }}>#</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>Elemento</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>Vx (Tn)</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, width: 34, background: '#1a3a5c', color: '#64b5f6' }}>NP X</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>Vy (Tn)</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, width: 34, background: '#3a1a1a', color: '#ef9a9a' }}>NP Y</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, width: 22 }}></ResizableTh>
                   </tr>
                 </thead>
                 <tbody>
@@ -1079,9 +1104,9 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY }
         <table className="e030-table" style={{ maxWidth: 500 }}>
           <thead>
             <tr>
-              <th style={S.headerCell}>Irregularidad</th>
-              <th style={S.headerCell}>X-X</th>
-              <th style={S.headerCell}>Y-Y</th>
+              <ResizableTh style={S.headerCell}>Irregularidad</ResizableTh>
+              <ResizableTh style={S.headerCell}>X-X</ResizableTh>
+              <ResizableTh style={S.headerCell}>Y-Y</ResizableTh>
             </tr>
           </thead>
           <tbody>
@@ -1221,14 +1246,14 @@ function TabAltura({ state, dispatch }) {
         <table className="e030-table">
           <thead>
             <tr>
-              <th style={S.headerCell}>Piso</th>
-              <th style={{ ...S.headerCell, ...S.inputCell }}>Vi (Tn)</th>
-              <th style={{ ...S.headerCell, ...S.inputCell }}>δ abs (m)</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>Δ rel (m)</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>Ki (Tn/m)</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>0.70K+1</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>0.80Pm3</th>
-              <th style={S.headerCell}>Cond</th>
+              <ResizableTh style={S.headerCell}>Piso</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>Vi (Tn)</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>δ abs (m)</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>Δ rel (m)</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>Ki (Tn/m)</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>0.70K+1</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>0.80Pm3</ResizableTh>
+              <ResizableTh style={S.headerCell}>Cond</ResizableTh>
             </tr>
           </thead>
           <tbody>
@@ -1273,11 +1298,11 @@ function TabAltura({ state, dispatch }) {
         <table className="e030-table">
           <thead>
             <tr>
-              <th style={S.headerCell}>Piso</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>Ki</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>0.60K+1</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>0.70Pm3</th>
-              <th style={S.headerCell}>Cond</th>
+              <ResizableTh style={S.headerCell}>Piso</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>Ki</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>0.60K+1</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>0.70Pm3</ResizableTh>
+              <ResizableTh style={S.headerCell}>Cond</ResizableTh>
             </tr>
           </thead>
           <tbody>
@@ -1304,10 +1329,10 @@ function TabAltura({ state, dispatch }) {
         <table className="e030-table">
           <thead>
             <tr>
-              <th style={S.headerCell}>Piso</th>
-              <th style={{ ...S.headerCell, ...S.inputCell }}>Vi (Tn)</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>{factorLabel}</th>
-              <th style={S.headerCell}>Cond</th>
+              <ResizableTh style={S.headerCell}>Piso</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>Vi (Tn)</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>{factorLabel}</ResizableTh>
+              <ResizableTh style={S.headerCell}>Cond</ResizableTh>
             </tr>
           </thead>
           <tbody>
@@ -1338,10 +1363,10 @@ function TabAltura({ state, dispatch }) {
         <table className="e030-table">
           <thead>
             <tr>
-              <th style={S.headerCell}>Piso</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>Vi</th>
-              <th style={{ ...S.headerCell, ...S.compCell }}>0.65V+1</th>
-              <th style={S.headerCell}>Cond</th>
+              <ResizableTh style={S.headerCell}>Piso</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>Vi</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>0.65V+1</ResizableTh>
+              <ResizableTh style={S.headerCell}>Cond</ResizableTh>
             </tr>
           </thead>
           <tbody>
@@ -1411,11 +1436,11 @@ function TabAltura({ state, dispatch }) {
           <table className="e030-table" style={{ maxWidth: 550 }}>
             <thead>
               <tr>
-                <th style={S.headerCell}>Piso</th>
-                <th style={{ ...S.headerCell, ...S.inputCell }}>Masa (Tn)</th>
-                <th style={{ ...S.headerCell, ...S.compCell }}>1.50*m+1</th>
-                <th style={{ ...S.headerCell, ...S.compCell }}>1.50*m-1</th>
-                <th style={S.headerCell}>Cond</th>
+                <ResizableTh style={S.headerCell}>Piso</ResizableTh>
+                <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>Masa (Tn)</ResizableTh>
+                <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>1.50*m+1</ResizableTh>
+                <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>1.50*m-1</ResizableTh>
+                <ResizableTh style={S.headerCell}>Cond</ResizableTh>
               </tr>
             </thead>
             <tbody>
@@ -1453,15 +1478,15 @@ function TabAltura({ state, dispatch }) {
           <table className="e030-table">
             <thead>
               <tr>
-                <th style={S.headerCell}>Piso</th>
-                <th style={{ ...S.headerCell, ...S.inputCell }}>Dim X (m)</th>
-                <th style={{ ...S.headerCell, ...S.compCell }}>1.30*X+1</th>
-                <th style={{ ...S.headerCell, ...S.compCell }}>1.30*X-1</th>
-                <th style={S.headerCell}>Cond X</th>
-                <th style={{ ...S.headerCell, ...S.inputCell }}>Dim Y (m)</th>
-                <th style={{ ...S.headerCell, ...S.compCell }}>1.30*Y+1</th>
-                <th style={{ ...S.headerCell, ...S.compCell }}>1.30*Y-1</th>
-                <th style={S.headerCell}>Cond Y</th>
+                <ResizableTh style={S.headerCell}>Piso</ResizableTh>
+                <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>Dim X (m)</ResizableTh>
+                <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>1.30*X+1</ResizableTh>
+                <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>1.30*X-1</ResizableTh>
+                <ResizableTh style={S.headerCell}>Cond X</ResizableTh>
+                <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>Dim Y (m)</ResizableTh>
+                <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>1.30*Y+1</ResizableTh>
+                <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>1.30*Y-1</ResizableTh>
+                <ResizableTh style={S.headerCell}>Cond Y</ResizableTh>
               </tr>
             </thead>
             <tbody>
@@ -1593,11 +1618,11 @@ function TabAltura({ state, dispatch }) {
               <table className="e030-table">
                 <thead>
                   <tr>
-                    <th style={S.headerCell}>#</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>Elemento</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>Vx (Tn)</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>Vy (Tn)</th>
-                    <th style={S.headerCell}></th>
+                    <ResizableTh style={S.headerCell}>#</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>Elemento</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>Vx (Tn)</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>Vy (Tn)</ResizableTh>
+                    <ResizableTh style={S.headerCell}></ResizableTh>
                   </tr>
                 </thead>
                 <tbody>
@@ -1668,16 +1693,16 @@ function TabAltura({ state, dispatch }) {
               <table className="e030-table">
                 <thead>
                   <tr>
-                    <th style={S.headerCell}>#</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>Elemento</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>Vx (Tn)</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>Vy (Tn)</th>
-                    <th style={S.headerCell}>Cambio Orient.</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>D orig (m)</th>
-                    <th style={{ ...S.headerCell, ...S.inputCell }}>D modif (m)</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>e (m)</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>%e</th>
-                    <th style={S.headerCell}></th>
+                    <ResizableTh style={S.headerCell}>#</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>Elemento</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>Vx (Tn)</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>Vy (Tn)</ResizableTh>
+                    <ResizableTh style={S.headerCell}>Cambio Orient.</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>D orig (m)</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.inputCell }}>D modif (m)</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>e (m)</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>%e</ResizableTh>
+                    <ResizableTh style={S.headerCell}></ResizableTh>
                   </tr>
                 </thead>
                 <tbody>
@@ -1764,13 +1789,13 @@ function TabAltura({ state, dispatch }) {
               <table className="e030-table">
                 <thead>
                   <tr>
-                    <th style={S.headerCell}>#</th>
-                    <th style={S.headerCell}>Elemento</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>%Vx</th>
-                    <th style={{ ...S.headerCell, ...S.compCell }}>%Vy</th>
-                    <th style={S.headerCell}>Discont. X</th>
-                    <th style={S.headerCell}>Discont. Y</th>
-                    <th style={S.headerCell}>Criterio</th>
+                    <ResizableTh style={S.headerCell}>#</ResizableTh>
+                    <ResizableTh style={S.headerCell}>Elemento</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>%Vx</ResizableTh>
+                    <ResizableTh style={{ ...S.headerCell, ...S.compCell }}>%Vy</ResizableTh>
+                    <ResizableTh style={S.headerCell}>Discont. X</ResizableTh>
+                    <ResizableTh style={S.headerCell}>Discont. Y</ResizableTh>
+                    <ResizableTh style={S.headerCell}>Criterio</ResizableTh>
                   </tr>
                 </thead>
                 <tbody>
@@ -1808,9 +1833,9 @@ function TabAltura({ state, dispatch }) {
               <table className="e030-table" style={{ maxWidth: 600 }}>
                 <thead>
                   <tr>
-                    <th style={S.headerCell}></th>
-                    <th style={S.headerCell}>DIR. X-X</th>
-                    <th style={S.headerCell}>DIR. Y-Y</th>
+                    <ResizableTh style={S.headerCell}></ResizableTh>
+                    <ResizableTh style={S.headerCell}>DIR. X-X</ResizableTh>
+                    <ResizableTh style={S.headerCell}>DIR. Y-Y</ResizableTh>
                   </tr>
                 </thead>
                 <tbody>
@@ -1855,9 +1880,9 @@ function TabAltura({ state, dispatch }) {
         <table className="e030-table" style={{ maxWidth: 500 }}>
           <thead>
             <tr>
-              <th style={S.headerCell}>Irregularidad</th>
-              <th style={S.headerCell}>X-X</th>
-              <th style={S.headerCell}>Y-Y</th>
+              <ResizableTh style={S.headerCell}>Irregularidad</ResizableTh>
+              <ResizableTh style={S.headerCell}>X-X</ResizableTh>
+              <ResizableTh style={S.headerCell}>Y-Y</ResizableTh>
             </tr>
           </thead>
           <tbody>
@@ -1890,10 +1915,10 @@ function TabResumen({ RoX, RoY, Rx, Ry, iaX, iaY, ipX, ipY, iaDetails, ipDetails
         <table className="e030-table" style={{ maxWidth: 600 }}>
           <thead>
             <tr>
-              <th style={S.headerCell}>Verificacion</th>
-              <th style={S.headerCell}>X-X</th>
-              <th style={S.headerCell}>Y-Y</th>
-              <th style={S.headerCell}>Adoptado</th>
+              <ResizableTh style={S.headerCell}>Verificacion</ResizableTh>
+              <ResizableTh style={S.headerCell}>X-X</ResizableTh>
+              <ResizableTh style={S.headerCell}>Y-Y</ResizableTh>
+              <ResizableTh style={S.headerCell}>Adoptado</ResizableTh>
             </tr>
           </thead>
           <tbody>
@@ -1919,10 +1944,10 @@ function TabResumen({ RoX, RoY, Rx, Ry, iaX, iaY, ipX, ipY, iaDetails, ipDetails
         <table className="e030-table" style={{ maxWidth: 600 }}>
           <thead>
             <tr>
-              <th style={S.headerCell}>Verificacion</th>
-              <th style={S.headerCell}>X-X</th>
-              <th style={S.headerCell}>Y-Y</th>
-              <th style={S.headerCell}>Adoptado</th>
+              <ResizableTh style={S.headerCell}>Verificacion</ResizableTh>
+              <ResizableTh style={S.headerCell}>X-X</ResizableTh>
+              <ResizableTh style={S.headerCell}>Y-Y</ResizableTh>
+              <ResizableTh style={S.headerCell}>Adoptado</ResizableTh>
             </tr>
           </thead>
           <tbody>
@@ -1974,10 +1999,10 @@ function TabResumen({ RoX, RoY, Rx, Ry, iaX, iaY, ipX, ipY, iaDetails, ipDetails
         <table className="e030-table" style={{ maxWidth: 600 }}>
           <thead>
             <tr>
-              <th style={{ ...S.headerCell, background: '#2e7d32' }}>Direccion</th>
-              <th style={{ ...S.headerCell, background: '#2e7d32' }}>D Maxima</th>
-              <th style={{ ...S.headerCell, background: '#2e7d32' }}>D Permitida</th>
-              <th style={{ ...S.headerCell, background: '#2e7d32' }}>Verificacion</th>
+              <ResizableTh style={{ ...S.headerCell, background: '#2e7d32' }}>Direccion</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, background: '#2e7d32' }}>D Maxima</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, background: '#2e7d32' }}>D Permitida</ResizableTh>
+              <ResizableTh style={{ ...S.headerCell, background: '#2e7d32' }}>Verificacion</ResizableTh>
             </tr>
           </thead>
           <tbody>
@@ -2479,7 +2504,7 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
         <div className="esp-right-col">
           {!esEMS && (
             <table className="esp-calc-table">
-              <thead><tr><th></th><th>Dir X-X</th><th>Dir Y-Y</th></tr></thead>
+              <thead><tr><ResizableTh style={S.headerCell}></ResizableTh><ResizableTh style={S.headerCell}>Dir X-X</ResizableTh><ResizableTh style={S.headerCell}>Dir Y-Y</ResizableTh></tr></thead>
               <tbody>
                 <tr><td className="lbl">Sistema</td><td className="vx" style={{fontSize:8}}>{sistemaXName}</td><td className="vy" style={{fontSize:8}}>{sistemaYName}</td></tr>
                 <tr><td className="lbl">Ro</td><td className="vx">{RoX}</td><td className="vy">{RoY}</td></tr>
@@ -2527,8 +2552,8 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
           <div className="esp-table-wrap">
             <table className="e030-table">
               <thead><tr>
-                <th style={S.headerCell}>T (s)</th><th style={S.headerCell}>C</th>
-                <th style={S.headerCell}>Sa (m/s2)</th><th style={S.headerCell}>Sa/g</th>
+                <ResizableTh style={S.headerCell}>T (s)</ResizableTh><ResizableTh style={S.headerCell}>C</ResizableTh>
+                <ResizableTh style={S.headerCell}>Sa (m/s2)</ResizableTh><ResizableTh style={S.headerCell}>Sa/g</ResizableTh>
               </tr></thead>
               <tbody>
                 {activeEsp.map((p, i) => (
