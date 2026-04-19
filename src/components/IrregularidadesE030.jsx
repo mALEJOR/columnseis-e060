@@ -271,18 +271,6 @@ function Section({ title, dark, children, defaultOpen = true }) {
   )
 }
 
-function PasteIndicator() {
-  return (
-    <div style={{
-      padding: '4px 10px', marginBottom: 6, fontSize: 12, fontFamily: 'var(--cond)',
-      background: 'rgba(79,195,247,0.08)', border: '1px solid rgba(79,195,247,0.2)',
-      color: '#4FC3F7', borderRadius: 4, display: 'inline-block',
-    }}>
-      Pegar celdas de Excel/ETABS (Ctrl+V en la tabla)
-    </div>
-  )
-}
-
 // ══════════════════════════════════════════════════════════════
 //  Sub-component: Parameters Bar
 // ══════════════════════════════════════════════════════════════
@@ -456,7 +444,6 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
   const renderTable = (dir, results, arrayName) => (
     <div style={{ marginBottom: 16 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#2e7d32', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
-      <PasteIndicator />
       <div style={{ overflowX: 'auto' }}>
         <table className="e030-table">
           <thead>
@@ -529,9 +516,6 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
         }} onClick={() => setPasteMode(!pasteMode)}>
           {pasteMode ? 'Cerrar zona de pegado' : 'Pegar desde ETABS'}
         </button>
-        <span style={{ fontSize: 8, color: 'var(--text3)', fontFamily: 'var(--cond)' }}>
-          Tambien: Ctrl+V directo en celdas de la tabla
-        </span>
         {importMsg && (
           <span style={{
             fontSize: 9, fontFamily: 'var(--cond)', fontWeight: 600, marginLeft: 'auto',
@@ -687,7 +671,6 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
   const renderTorsionTable = (dir, res, arrayName) => (
     <div style={{ marginBottom: 12 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
-      <PasteIndicator />
       <div style={{ overflowX: 'auto' }}>
         <table className="e030-table">
           <thead>
@@ -956,7 +939,6 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY, 
             {/* TABLA: ELEMENTOS + CHECKBOXES */}
             <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#2e75b6', marginBottom: 6, letterSpacing: .5 }}>ELEMENTOS RESISTENTES — CORTANTES Y SELECCION</h4>
             <p className="e030-hint">Vx/Vy = cortante (Tn). NP X/Y = marcar si el elemento es "no paralelo" en esa direccion. V_piso = SUM todos. V_nopar = SUM marcados.</p>
-            <PasteIndicator />
             <div style={{ overflowX: 'auto', marginBottom: 14 }}>
               <table className="e030-table">
                 <thead>
@@ -1217,7 +1199,6 @@ function TabAltura({ state, dispatch }) {
   const renderRigidezTable = (dir, res, arrayName) => (
     <div style={{ marginBottom: 12 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
-      <PasteIndicator />
       <div style={{ overflowX: 'auto' }}>
         <table className="e030-table">
           <thead>
@@ -1301,7 +1282,6 @@ function TabAltura({ state, dispatch }) {
   const renderResistenciaTable = (dir, res, arrayName, factorLabel, limitKey) => (
     <div style={{ marginBottom: 12 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
-      <PasteIndicator />
       <div style={{ overflowX: 'auto' }}>
         <table className="e030-table">
           <thead>
@@ -1409,7 +1389,6 @@ function TabAltura({ state, dispatch }) {
         <p className="e030-hint">Criterio: mi &gt; 1.50*m(i+1) o mi &gt; 1.50*m(i-1) | Pisos con nombre "azotea" o "sotano" se excluyen automaticamente</p>
         <DiagramaReferencia svgFallback={<SVGMasa />} titulo="Irregularidad de Masa"
           formulas={<>mi &gt; 1.50 * m(i+1) o mi &gt; 1.50 * m(i-1) = IRREGULAR (Ia=0.90) | No aplica en azoteas ni sotanos</>} />
-        <PasteIndicator />
         <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
           <table className="e030-table" style={{ maxWidth: 650 }}>
             <thead>
@@ -1463,7 +1442,6 @@ function TabAltura({ state, dispatch }) {
         <p className="e030-hint">Criterio: a &gt; 1.30*a(piso adyacente) | Azoteas y sotanos se excluyen (tipo heredado de seccion Masa)</p>
         <DiagramaReferencia svgFallback={<SVGGeometriaVertical />} titulo="Geometria Vertical"
           formulas={<>Di &gt; 1.30 * D(piso adyacente) = IRREGULAR (Ia=0.90) | No aplica en azoteas ni sotanos</>} />
-        <PasteIndicator />
         <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
           <table className="e030-table">
             <thead>
@@ -1561,7 +1539,6 @@ function TabAltura({ state, dispatch }) {
               </button>
             </div>
             <div id="tabla-a-body">
-            <p className="e030-hint" style={{ marginBottom: 8 }}>Pegar celdas de Excel/ETABS (Ctrl+V en la tabla) con los cortantes de TODOS los elementos resistentes.</p>
             <div style={{ overflowX: 'auto', marginBottom: 8 }}
               onPaste={ev => {
                 const text = (ev.clipboardData || window.clipboardData).getData('text')
