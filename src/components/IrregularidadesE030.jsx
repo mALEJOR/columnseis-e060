@@ -478,7 +478,7 @@ function TabDerivas({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY 
   const renderTable = (dir, results, arrayName) => (
     <div style={{ marginBottom: 16 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#2e7d32', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto', resize: 'both', overflow: 'auto', minWidth: 300, minHeight: 60, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4 }}>
         <table className="e030-table">
           <thead>
             <tr>
@@ -715,7 +715,7 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY }
   const renderTorsionTable = (dir, res, arrayName) => (
     <div style={{ marginBottom: 12 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto', resize: 'both', overflow: 'auto', minWidth: 300, minHeight: 60, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4 }}>
         <table className="e030-table">
           <thead>
             <tr>
@@ -982,7 +982,7 @@ function TabPlanta({ state, dispatch, factor, Rx, Ry, derivaPermX, derivaPermY }
             {/* TABLA: ELEMENTOS + CHECKBOXES */}
             <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#2e75b6', marginBottom: 6, letterSpacing: .5 }}>ELEMENTOS RESISTENTES — CORTANTES Y SELECCION</h4>
             <p className="e030-hint">Vx/Vy = cortante (Tn). NP X/Y = marcar si el elemento es "no paralelo" en esa direccion. V_piso = SUM todos. V_nopar = SUM marcados.</p>
-            <div style={{ overflowX: 'auto', marginBottom: 14 }}>
+            <div style={{ overflowX: 'auto', resize: 'both', overflow: 'auto', minWidth: 300, minHeight: 60, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, marginBottom: 14 }}>
               <table className="e030-table">
                 <thead>
                   <tr>
@@ -1242,7 +1242,7 @@ function TabAltura({ state, dispatch }) {
   const renderRigidezTable = (dir, res, arrayName) => (
     <div style={{ marginBottom: 12 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto', resize: 'both', overflow: 'auto', minWidth: 300, minHeight: 60, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4 }}>
         <table className="e030-table">
           <thead>
             <tr>
@@ -1294,7 +1294,7 @@ function TabAltura({ state, dispatch }) {
   const renderRigidezExtremaTable = (dir, res) => (
     <div style={{ marginBottom: 12 }}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto', resize: 'both', overflow: 'auto', minWidth: 300, minHeight: 60, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4 }}>
         <table className="e030-table">
           <thead>
             <tr>
@@ -1325,7 +1325,7 @@ function TabAltura({ state, dispatch }) {
   const renderResistenciaTable = (dir, res, arrayName, factorLabel, limitKey) => (
     <div style={{ marginBottom: 12 }} onPaste={handlePaste}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto', resize: 'both', overflow: 'auto', minWidth: 300, minHeight: 60, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4 }}>
         <table className="e030-table">
           <thead>
             <tr>
@@ -1359,7 +1359,7 @@ function TabAltura({ state, dispatch }) {
   const renderResistenciaExtremaTable = (dir, res) => (
     <div style={{ marginBottom: 12 }}>
       <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>DIR. {dir}</h4>
-      <div style={{ overflowX: 'auto' }}>
+      <div style={{ overflowX: 'auto', resize: 'both', overflow: 'auto', minWidth: 300, minHeight: 60, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4 }}>
         <table className="e030-table">
           <thead>
             <tr>
@@ -1432,7 +1432,7 @@ function TabAltura({ state, dispatch }) {
         <p className="e030-hint">Criterio: mi &gt; 1.50*m(i+1) o mi &gt; 1.50*m(i-1) | Pisos con nombre "azotea" o "sotano" se excluyen automaticamente</p>
         <DiagramaReferencia svgFallback={<SVGMasa />} titulo="Irregularidad de Masa"
           formulas={<>mi &gt; 1.50 * m(i+1) o mi &gt; 1.50 * m(i-1) = IRREGULAR (Ia=0.90) | No aplica en azoteas ni sotanos</>} />
-        <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
+        <div style={{ overflowX: 'auto', resize: 'both', overflow: 'auto', minWidth: 300, minHeight: 60, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4 }} onPaste={handlePaste}>
           <table className="e030-table" style={{ maxWidth: 550 }}>
             <thead>
               <tr>
@@ -1474,7 +1474,7 @@ function TabAltura({ state, dispatch }) {
         <p className="e030-hint">Criterio: a &gt; 1.30*a(piso adyacente) | Azoteas y sotanos se excluyen (tipo definido en Derivas)</p>
         <DiagramaReferencia svgFallback={<SVGGeometriaVertical />} titulo="Geometria Vertical"
           formulas={<>Di &gt; 1.30 * D(piso adyacente) = IRREGULAR (Ia=0.90) | No aplica en azoteas ni sotanos</>} />
-        <div style={{ overflowX: 'auto' }} onPaste={handlePaste}>
+        <div style={{ overflowX: 'auto', resize: 'both', overflow: 'auto', minWidth: 300, minHeight: 60, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4 }} onPaste={handlePaste}>
           <table className="e030-table">
             <thead>
               <tr>
@@ -1571,7 +1571,7 @@ function TabAltura({ state, dispatch }) {
               </button>
             </div>
             <div id="tabla-a-body">
-            <div style={{ overflowX: 'auto', marginBottom: 8 }}
+            <div style={{ overflowX: 'auto', resize: 'both', overflow: 'auto', minWidth: 300, minHeight: 60, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, marginBottom: 8 }}
               onPaste={ev => {
                 const text = (ev.clipboardData || window.clipboardData).getData('text')
                 if (!text || !text.trim()) return
@@ -1663,7 +1663,7 @@ function TabAltura({ state, dispatch }) {
               TABLA B: ELEMENTOS CON DESALINEAMIENTO VERTICAL
             </h4>
             <p className="e030-hint" style={{ marginBottom: 8 }}>Escribir nombre del elemento para vincular Vx/Vy de Tabla A automaticamente.</p>
-            <div style={{ overflowX: 'auto', marginBottom: 12 }}
+            <div style={{ overflowX: 'auto', resize: 'both', overflow: 'auto', minWidth: 300, minHeight: 60, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, marginBottom: 12 }}
               onPaste={ev => {
                 const text = (ev.clipboardData || window.clipboardData).getData('text')
                 if (!text || !text.trim()) return
@@ -1785,7 +1785,7 @@ function TabAltura({ state, dispatch }) {
             <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>
               CLASIFICACION AUTOMATICA
             </h4>
-            <div style={{ overflowX: 'auto', marginBottom: 12 }}>
+            <div style={{ overflowX: 'auto', resize: 'both', overflow: 'auto', minWidth: 300, minHeight: 60, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4, marginBottom: 12 }}>
               <table className="e030-table">
                 <thead>
                   <tr>
@@ -1829,7 +1829,7 @@ function TabAltura({ state, dispatch }) {
             <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: 1 }}>
               VERIFICACION POR DIRECCION
             </h4>
-            <div style={{ overflowX: 'auto' }}>
+            <div style={{ overflowX: 'auto', resize: 'both', overflow: 'auto', minWidth: 300, minHeight: 60, border: '1px solid rgba(255,255,255,0.08)', borderRadius: 4 }}>
               <table className="e030-table" style={{ maxWidth: 600 }}>
                 <thead>
                   <tr>
