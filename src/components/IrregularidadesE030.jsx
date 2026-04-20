@@ -2242,8 +2242,16 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
         <line x1={pad.left} y1={pad.top} x2={pad.left} y2={H-pad.bottom} stroke="var(--text3)" strokeWidth="1" />
         <line x1={pad.left} y1={H-pad.bottom} x2={W-pad.right} y2={H-pad.bottom} stroke="var(--text3)" strokeWidth="1" />
         {/* Curve */}
-        {path && <path d={path} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" />}
-        {path && <path d={`${path} L${xScale(4).toFixed(1)},${yScale(0).toFixed(1)} L${xScale(0).toFixed(1)},${yScale(0).toFixed(1)} Z`} fill={fillColor} />}
+        {path && <>
+          <defs>
+            <linearGradient id={`grad-${label.replace(/\s/g,'')}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+              <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          <path d={`${path} L${xScale(4).toFixed(1)},${yScale(0).toFixed(1)} L${xScale(0).toFixed(1)},${yScale(0).toFixed(1)} Z`} fill={`url(#grad-${label.replace(/\s/g,'')})`} />
+          <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" style={{filter:'drop-shadow(0 0 3px ' + color + ')'}} />
+        </>}
         {/* Tooltip crosshair */}
         {tt && <>
           <line x1={xScale(tt.T)} y1={pad.top} x2={xScale(tt.T)} y2={H-pad.bottom} stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
@@ -2709,6 +2717,7 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
 export default function IrregularidadesE030({ onBack }) {
   const [state, dispatch] = useReducer(reducer, null, initState)
   const [tab, setTab] = useState('DERIVAS')
+  const [copiado, setCopiado] = useState(false)
 
   // Derived values
   const RoX = useMemo(() => E030.getRo(state.sistemaX), [state.sistemaX])
@@ -2886,6 +2895,50 @@ export default function IrregularidadesE030({ onBack }) {
     { nombre: '4. Sistemas No Paralelos (0.90)', x: npRes.ipX, y: npRes.ipY },
   ], [torsionXRes, torsionYRes, esquinasRes, diafRes, npRes])
 
+  const handleCopiarResultados = () => {
+    const f4 = (v) => (v === '' || v == null || isNaN(Number(v))) ? '—' : Number(v).toFixed(4)
+
+    const { nPisos } = state
+    const cumpleX = derivaResX?.cumple
+    const cumpleY = derivaResY?.cumple
+    const derivMaxX = derivaResultsX.length ? Math.max(...derivaResultsX.map(d => d.derivaInelastica ?? 0)) : null
+    const derivMaxY = derivaResultsY.length ? Math.max(...derivaResultsY.map(d => d.derivaInelastica ?? 0)) : null
+
+    const iaRows = iaDetails.map(d => `  ${d.nombre}: Ia_X=${f4(d.x)}  Ia_Y=${f4(d.y)}`)
+    const ipRows = ipDetails.map(d => `  ${d.nombre}: Ip_X=${f4(d.x)}  Ip_Y=${f4(d.y)}`)
+
+    const lineas = [
+      'IRREGULARIDADES SÍSMICAS — NTP E.030',
+      '=====================================',
+      '',
+      `Sistema X: ${state.sistemaX} | Material X: ${state.materialX}`,
+      `Sistema Y: ${state.sistemaY} | Material Y: ${state.materialY}`,
+      `N° pisos: ${nPisos} | ${state.esIrregular ? 'Estructura irregular' : 'Estructura regular'}`,
+      '',
+      'FACTORES DE IRREGULARIDAD EN ALTURA (Ia)',
+      ...iaRows,
+      `  → Ia_X final = ${f4(iaFinal.iaX)} | Ia_Y final = ${f4(iaFinal.iaY)}`,
+      '',
+      'FACTORES DE IRREGULARIDAD EN PLANTA (Ip)',
+      ...ipRows,
+      `  → Ip_X final = ${f4(ipFinal.ipX)} | Ip_Y final = ${f4(ipFinal.ipY)}`,
+      '',
+      'COEFICIENTE DE REDUCCIÓN R',
+      `  Ro_X = ${f4(RoX)} | Ro_Y = ${f4(RoY)}`,
+      `  R_X = ${f4(Rx)} | R_Y = ${f4(Ry)}`,
+      '',
+      'VERIFICACIÓN DE DERIVAS',
+      `  Deriva permisible X: ${f4(derivaPermX)} | Deriva permisible Y: ${f4(derivaPermY)}`,
+      `  Deriva máx. inelástica X: ${derivMaxX !== null ? f4(derivMaxX) : '—'} → ${cumpleX === true ? 'CUMPLE' : cumpleX === false ? 'NO CUMPLE' : '—'}`,
+      `  Deriva máx. inelástica Y: ${derivMaxY !== null ? f4(derivMaxY) : '—'} → ${cumpleY === true ? 'CUMPLE' : cumpleY === false ? 'NO CUMPLE' : '—'}`,
+    ]
+
+    navigator.clipboard.writeText(lineas.join('\n')).then(() => {
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    })
+  }
+
   return (
     <div className="app e030-app">
       <style>{`
@@ -2986,6 +3039,15 @@ export default function IrregularidadesE030({ onBack }) {
           ))}
         </div>
         <div className="topbar-badges">
+          <button onClick={handleCopiarResultados} style={{
+            padding: '5px 12px', fontSize: 10, fontFamily: 'var(--cond)',
+            fontWeight: 600, borderRadius: 'var(--r)',
+            border: '1px solid rgba(79,195,247,0.4)',
+            background: 'rgba(79,195,247,0.12)', color: '#64b5f6',
+            cursor: 'pointer', letterSpacing: '.3px',
+          }}>
+            {copiado ? 'Copiado!' : 'Copiar Resultados'}
+          </button>
           <span className="badge norm">NTE E.030</span>
           <span className="badge accent">v1.0</span>
         </div>

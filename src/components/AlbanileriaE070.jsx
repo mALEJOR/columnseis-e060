@@ -519,6 +519,7 @@ export default function AlbanileriaE070({ onBack }) {
   const [vmEiX, setVmEiX] = useState('')
   const [vmEiY, setVmEiY] = useState('')
   const [tab, setTab] = useState('MUROS X')
+  const [copiado, setCopiado] = useState(false)
   const { murosX, murosY, densidad, columnas, vigas, ortogonales } = state
 
   // ── Densidad calc ─────────────────────────────────────────────────────────
@@ -597,6 +598,101 @@ export default function AlbanileriaE070({ onBack }) {
     )
   }, [ortogonales])
 
+  // ── Copiar Resultados ─────────────────────────────────────────────────────
+  const handleCopiarResultados = () => {
+    const p = (v, d = 2) => (v === '' || v == null || isNaN(Number(v))) ? '—' : Number(v).toFixed(d)
+
+    // Vm Dir X
+    const vmResX = (() => {
+      const muros = murosX.props.map((pr, i) => {
+        const sRow = murosX.sismo[i] || {}
+        const gRow = murosX.grav[i] || {}
+        return {
+          nombre: sRow.pier || pr.pier || String(i + 1),
+          v2: parseFloat(sRow.v2) / 1000 || 0,
+          m3: parseFloat(sRow.m3) / 1000 || 0,
+          pg: (parseFloat(gRow.p) || 0) / 1000,
+          t: parseFloat(pr.t) || 0,
+          L: parseFloat(pr.L) || 0,
+          vm_prima: parseFloat(pr.vm) || 0,
+        }
+      }).filter(m => m.t > 0 && m.L > 0 && m.vm_prima > 0)
+      return calcularVm(muros)
+    })()
+
+    // Vm Dir Y
+    const vmResY = (() => {
+      const muros = murosY.props.map((pr, i) => {
+        const sRow = murosY.sismo[i] || {}
+        const gRow = murosY.grav[i] || {}
+        return {
+          nombre: sRow.pier || pr.pier || String(i + 1),
+          v2: parseFloat(sRow.v2) / 1000 || 0,
+          m3: parseFloat(sRow.m3) / 1000 || 0,
+          pg: (parseFloat(gRow.p) || 0) / 1000,
+          t: parseFloat(pr.t) || 0,
+          L: parseFloat(pr.L) || 0,
+          vm_prima: parseFloat(pr.vm) || 0,
+        }
+      }).filter(m => m.t > 0 && m.L > 0 && m.vm_prima > 0)
+      return calcularVm(muros)
+    })()
+
+    const densCalcLocal = (() => {
+      const mX = densidad.murosX.filter(m => parseFloat(m.L) > 0 && parseFloat(m.t) > 0).map(m => ({
+        nombre: m.nombre, L: parseFloat(m.L), t: parseFloat(m.t),
+        esPlacaCA: m.esPlacaCA, Ec: parseFloat(m.Ec) || 0, Em: parseFloat(m.Em) || 0,
+      }))
+      const mY = densidad.murosY.filter(m => parseFloat(m.L) > 0 && parseFloat(m.t) > 0).map(m => ({
+        nombre: m.nombre, L: parseFloat(m.L), t: parseFloat(m.t),
+        esPlacaCA: m.esPlacaCA, Ec: parseFloat(m.Ec) || 0, Em: parseFloat(m.Em) || 0,
+      }))
+      return calcularDensidadMuros(mX, mY,
+        parseFloat(densidad.N) || 3, parseFloat(densidad.Ap) || 160,
+        parseFloat(densidad.Z) || 0.45, parseFloat(densidad.U) || 1, parseFloat(densidad.S) || 1)
+    })()
+
+    const colCalcLocal = calcularColumnasConfinamiento({
+      Mu1: parseFloat(columnas.Mu1) || 0, Vm1: parseFloat(columnas.Vm1) || 0,
+      h: parseFloat(columnas.h) || 2.6, L: parseFloat(columnas.L) || 3.5,
+      Lm: parseFloat(columnas.Lm) || 1.75, Nc: parseFloat(columnas.Nc) || 2,
+      Pg: parseFloat(columnas.Pg) || 0, fc: parseFloat(columnas.fc) || 175,
+      fy: parseFloat(columnas.fy) || 4200, phi_c: parseFloat(columnas.phi_c) || 0.70,
+      phi_f: parseFloat(columnas.phi_f) || 0.85, mu_f: parseFloat(columnas.mu_f) || 0.80,
+      bc: parseFloat(columnas.bc) || 0.13, dc: parseFloat(columnas.dc) || 0.30,
+      db_estribo: parseFloat(columnas.db_estribo) || 8,
+      recubrimiento: parseFloat(columnas.recubrimiento) || 4,
+    })
+
+    const lineas = [
+      'ALBAÑILERÍA CONFINADA — NTP E.070',
+      '==================================',
+      '',
+      'RESISTENCIA AL AGRIETAMIENTO — Dir X-X',
+      `  ΣVm = ${p(vmResX.sumVm, 4)} ton | muros analizados: ${vmResX.resultados.length}`,
+      ...vmResX.resultados.map(r => `  ${r.nombre}: Vm = ${p(r.Vm, 4)} ton (${r.verificacion})`),
+      '',
+      'RESISTENCIA AL AGRIETAMIENTO — Dir Y-Y',
+      `  ΣVm = ${p(vmResY.sumVm, 4)} ton | muros analizados: ${vmResY.resultados.length}`,
+      ...vmResY.resultados.map(r => `  ${r.nombre}: Vm = ${p(r.Vm, 4)} ton (${r.verificacion})`),
+      '',
+      'DENSIDAD MÍNIMA DE MUROS',
+      `  Densidad requerida = ${p(densCalcLocal.densidadReq, 6)}`,
+      `  Dir X-X: densidad = ${p(densCalcLocal.resultadoX?.densidad, 6)} → ${densCalcLocal.resultadoX?.cumple ? 'CUMPLE' : 'NO CUMPLE'}`,
+      `  Dir Y-Y: densidad = ${p(densCalcLocal.resultadoY?.densidad, 6)} → ${densCalcLocal.resultadoY?.cumple ? 'CUMPLE' : 'NO CUMPLE'}`,
+      '',
+      'COLUMNAS DE CONFINAMIENTO',
+      `  Ac = ${p(colCalcLocal.Ac)} cm² | An ext = ${p(colCalcLocal.An_ext, 3)} cm² → ${colCalcLocal.Ac != null ? (colCalcLocal.Ac >= colCalcLocal.An_ext ? 'CUMPLE' : 'NO CUMPLE') : '—'}`,
+      `  As tracción = ${p(colCalcLocal.As_traccion, 3)} cm² | As req = ${p(colCalcLocal.As, 3)} cm²`,
+      `  s conf. adoptado = ${p(colCalcLocal.s_conf_adoptado, 1)} cm | s central = ${p(colCalcLocal.s_central_adoptado, 1)} cm`,
+    ]
+
+    navigator.clipboard.writeText(lineas.join('\n')).then(() => {
+      setCopiado(true)
+      setTimeout(() => setCopiado(false), 2000)
+    })
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -617,6 +713,15 @@ export default function AlbanileriaE070({ onBack }) {
           </div>
         </div>
         <div style={{ flex: 1 }} />
+        <button onClick={handleCopiarResultados} style={{
+          padding: '5px 12px', fontSize: 10, fontFamily: 'var(--cond)',
+          fontWeight: 600, borderRadius: 'var(--r)',
+          border: '1px solid rgba(79,195,247,0.4)',
+          background: 'rgba(79,195,247,0.12)', color: '#64b5f6',
+          cursor: 'pointer', letterSpacing: '.3px',
+        }}>
+          {copiado ? 'Copiado!' : 'Copiar Resultados'}
+        </button>
         <span style={S.badge('#1f4e79', '#90caf9')}>RNE E.070</span>
       </div>
 
