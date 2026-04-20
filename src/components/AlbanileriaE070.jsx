@@ -518,6 +518,7 @@ export default function AlbanileriaE070({ onBack }) {
   const [state, dispatch] = useReducer(reducer, null, initState)
   const [vmEiX, setVmEiX] = useState('')
   const [vmEiY, setVmEiY] = useState('')
+  const [tab, setTab] = useState('MUROS X')
   const { murosX, murosY, densidad, columnas, vigas, ortogonales } = state
 
   // ── Densidad calc ─────────────────────────────────────────────────────────
@@ -619,11 +620,24 @@ export default function AlbanileriaE070({ onBack }) {
         <span style={S.badge('#1f4e79', '#90caf9')}>RNE E.070</span>
       </div>
 
+      {/* ── Tab bar ─────────────────────────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: 4, padding: '6px 16px', background: 'var(--surface)', borderBottom: '1px solid var(--border)', overflowX: 'auto', flexShrink: 0 }}>
+        {['MUROS X', 'MUROS Y', 'DENSIDAD', 'COLUMNAS', 'SOLERAS', 'CARGAS ORT.', 'TABLAS'].map(t => (
+          <button key={t} onClick={() => setTab(t)} style={{
+            padding: '6px 14px', fontSize: 10, fontFamily: 'var(--cond)', fontWeight: 700,
+            letterSpacing: '.5px', border: 'none', borderRadius: 'var(--r)',
+            cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s',
+            background: tab === t ? '#7c4dff' : 'rgba(255,255,255,0.06)',
+            color: tab === t ? '#fff' : 'var(--text2)',
+          }}>{t}</button>
+        ))}
+      </div>
+
       {/* ── Scrollable body ─────────────────────────────────────────────────── */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px' }}>
 
         {/* ══ 1. Muros Dir X-X ══════════════════════════════════════════════ */}
-        <Section title="1. Verificación Muros Dir X-X" defaultOpen>
+        {tab === 'MUROS X' && <>
           <EtabsTable rows={murosX.sismo} dispatch={dispatch} dir="murosX" tbl="sismo"
             title="A. Fuerzas por Sismo (EQXDESP) — R=3" />
           <EtabsTable rows={murosX.grav} dispatch={dispatch} dir="murosX" tbl="grav"
@@ -638,10 +652,10 @@ export default function AlbanileriaE070({ onBack }) {
             props={murosX.props} fm={murosX.fm} h={murosX.h}
             dispatch={dispatch} dir="murosX"
           />
-        </Section>
+        </>}
 
         {/* ══ 2. Muros Dir Y-Y ══════════════════════════════════════════════ */}
-        <Section title="2. Verificación Muros Dir Y-Y" defaultOpen={false}>
+        {tab === 'MUROS Y' && <>
           <EtabsTable rows={murosY.sismo} dispatch={dispatch} dir="murosY" tbl="sismo"
             title="A. Fuerzas por Sismo (EQYDESP) — R=3" />
           <EtabsTable rows={murosY.grav} dispatch={dispatch} dir="murosY" tbl="grav"
@@ -656,10 +670,10 @@ export default function AlbanileriaE070({ onBack }) {
             props={murosY.props} fm={murosY.fm} h={murosY.h}
             dispatch={dispatch} dir="murosY"
           />
-        </Section>
+        </>}
 
         {/* ══ 3. Densidad Mínima ════════════════════════════════════════════ */}
-        <Section title="3. Densidad Mínima de Muros (Art. 19.2b)" defaultOpen={false} dark>
+        {tab === 'DENSIDAD' && <>
           <ParamGrid cols={5}>
             <PF label="N° pisos" value={densidad.N}  onChange={v => dispatch({ type: 'SET_DENSIDAD', field: 'N',  value: v })} min={1} />
             <PF label="Ap (m²)"  value={densidad.Ap} onChange={v => dispatch({ type: 'SET_DENSIDAD', field: 'Ap', value: v })} />
@@ -689,10 +703,10 @@ export default function AlbanileriaE070({ onBack }) {
               </div>
             ))}
           </div>
-        </Section>
+        </>}
 
         {/* ══ 4. Columnas de Confinamiento ══════════════════════════════════ */}
-        <Section title="4. Columnas de Confinamiento (Art. 27.3)" defaultOpen={false} dark>
+        {tab === 'COLUMNAS' && <>
           <ParamGrid cols={4}>
             <PF label="Mu1 — momento muro (ton·m)" value={columnas.Mu1} onChange={v => dispatch({ type: 'SET_COL', field: 'Mu1', value: v })} />
             <PF label="Vm1 — cortante muro (ton)"  value={columnas.Vm1} onChange={v => dispatch({ type: 'SET_COL', field: 'Vm1', value: v })} />
@@ -776,10 +790,10 @@ export default function AlbanileriaE070({ onBack }) {
               <ResultRow label="s adoptado (zona central)" value={pf(colCalc.s_central_adoptado, 1)} unit="cm" />
             </div>
           </div>
-        </Section>
+        </>}
 
         {/* ══ 5. Vigas Soleras ══════════════════════════════════════════════ */}
-        <Section title="5. Vigas Soleras (Art. 27.3b)" defaultOpen={false} dark>
+        {tab === 'SOLERAS' && <>
           <ParamGrid cols={4}>
             <PF label="Vm1 — cortante muro (ton)" value={vigas.Vm1} onChange={v => dispatch({ type: 'SET_VIGA', field: 'Vm1', value: v })} />
             <PF label="Lm — long. paño (m)"       value={vigas.Lm}  onChange={v => dispatch({ type: 'SET_VIGA', field: 'Lm',  value: v })} />
@@ -801,10 +815,10 @@ export default function AlbanileriaE070({ onBack }) {
           <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 8, fontStyle: 'italic', fontFamily: 'var(--sans)' }}>
             La viga solera se diseña a tracción pura. As adoptado ≥ As req y ≥ As mín.
           </div>
-        </Section>
+        </>}
 
         {/* ══ 6. Cargas Ortogonales ═════════════════════════════════════════ */}
-        <Section title="6. Cargas Ortogonales al Plano del Muro (Art. 29)" defaultOpen={false} dark>
+        {tab === 'CARGAS ORT.' && <>
           <ParamGrid cols={4}>
             <PF label="Z" value={ortogonales.Z} onChange={v => dispatch({ type: 'SET_ORT', field: 'Z', value: v })} step="0.05" />
             <PF label="U" value={ortogonales.U} onChange={v => dispatch({ type: 'SET_ORT', field: 'U', value: v })} step="0.05" />
@@ -842,10 +856,10 @@ export default function AlbanileriaE070({ onBack }) {
           <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 8, fontStyle: 'italic', fontFamily: 'var(--sans)' }}>
             Si fm &gt; f't, el muro requiere refuerzo horizontal o reducción de panel libre.
           </div>
-        </Section>
+        </>}
 
         {/* ══ 7. Tablas de Referencia ═══════════════════════════════════════ */}
-        <Section title="7. Tablas de Referencia E.070" defaultOpen={false}>
+        {tab === 'TABLAS' && <>
 
           {/* TABLA_9 — Resistencias características */}
           <div style={{ marginBottom: 20 }}>
@@ -932,7 +946,7 @@ export default function AlbanileriaE070({ onBack }) {
             </div>
           </div>
 
-        </Section>
+        </>}
 
       </div>{/* end scroll body */}
     </div>
