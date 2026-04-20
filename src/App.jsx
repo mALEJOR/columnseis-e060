@@ -12,6 +12,7 @@ const InteractionChart = lazy(() => import('./charts/InteractionDiagramMx'))
 const StirrupDesign = lazy(() => import('./components/StirrupDesign'))
 const BibliotecaTipos = lazy(() => import('./components/BibliotecaTipos'))
 const IrregularidadesE030 = lazy(() => import('./components/IrregularidadesE030'))
+const AlbanileriaE070 = lazy(() => import('./components/AlbanileriaE070'))
 
 // jsPDF se carga dinámicamente solo al exportar PDF
 const generarPDF = async (args) => {
@@ -296,6 +297,20 @@ function ModuleSelector({ onSelect }) {
               </div>
             </div>
           </button>
+          <button className="module-card" onClick={() => onSelect('e070')}>
+            <div className="module-card-icon" style={{background:'linear-gradient(135deg,#bf360c,#ff6e40)'}}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" width="32" height="32">
+                <rect x="3" y="8" width="18" height="13" rx="1"/><path d="M3 14h18M7 8V5M12 8V4M17 8V5"/><rect x="6" y="10" width="3" height="3" rx=".5" fill="rgba(255,255,255,.3)"/><rect x="15" y="10" width="3" height="3" rx=".5" fill="rgba(255,255,255,.3)"/>
+              </svg>
+            </div>
+            <div className="module-card-body">
+              <div className="module-card-title">Albanileria Confinada E.070</div>
+              <div className="module-card-desc">Verificacion de muros, densidad, columnas de confinamiento, vigas soleras y cargas ortogonales segun NTE E.070</div>
+              <div className="module-card-badges">
+                <span className="badge norm" style={{borderColor:'#bf360c',color:'#ff6e40'}}>NTE E.070</span>
+              </div>
+            </div>
+          </button>
         </div>
       </div>
     </div>
@@ -307,10 +322,13 @@ function ModuleSelector({ onSelect }) {
 // ══════════════════════════════════════════════════════════════════
 export default function App() {
   const { vista } = useProyecto()
-  const [modulo, setModulo] = useState(null) // null = selector, 'e060', 'e030'
+  const [modulo, setModulo] = useState(null) // null = selector, 'e060', 'e030', 'e070'
 
   // E.030 module
   if (modulo === 'e030') return <Suspense fallback={<LazyFallback />}><IrregularidadesE030 onBack={() => setModulo(null)} /></Suspense>
+
+  // E.070 module
+  if (modulo === 'e070') return <Suspense fallback={<LazyFallback />}><AlbanileriaE070 onBack={() => setModulo(null)} /></Suspense>
 
   // E.060 module (existing views)
   if (modulo === 'e060' || vista === 'editor' || vista === 'biblioteca') {
