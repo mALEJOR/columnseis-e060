@@ -13,6 +13,7 @@ const StirrupDesign = lazy(() => import('./components/StirrupDesign'))
 const BibliotecaTipos = lazy(() => import('./components/BibliotecaTipos'))
 const IrregularidadesE030 = lazy(() => import('./components/IrregularidadesE030'))
 const AlbanileriaE070 = lazy(() => import('./components/AlbanileriaE070'))
+const VigasE060 = lazy(() => import('./components/VigasE060'))
 
 // jsPDF se carga dinámicamente solo al exportar PDF
 const generarPDF = async (args) => {
@@ -311,6 +312,21 @@ function ModuleSelector({ onSelect }) {
               </div>
             </div>
           </button>
+          <button className="module-card" onClick={() => onSelect('vigas')}>
+            <div className="module-card-icon" style={{background:'linear-gradient(135deg,#4527a0,#7c4dff)'}}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" width="32" height="32">
+                <rect x="2" y="8" width="20" height="6" rx="1"/><line x1="5" y1="14" x2="5" y2="20"/><line x1="19" y1="14" x2="19" y2="20"/><line x1="3" y1="20" x2="7" y2="20"/><line x1="17" y1="20" x2="21" y2="20"/><line x1="8" y1="10" x2="8" y2="12" stroke="#fff" strokeWidth="1"/><line x1="12" y1="10" x2="12" y2="12" stroke="#fff" strokeWidth="1"/><line x1="16" y1="10" x2="16" y2="12" stroke="#fff" strokeWidth="1"/>
+              </svg>
+            </div>
+            <div className="module-card-body">
+              <div className="module-card-title">Diseno de Vigas E.060</div>
+              <div className="module-card-desc">Diseno por flexion, corte, estribos sismicos y predimensionamiento de elementos estructurales</div>
+              <div className="module-card-badges">
+                <span className="badge norm" style={{borderColor:'#4527a0',color:'#7c4dff'}}>NTP E.060</span>
+                <span className="badge norm" style={{borderColor:'#4527a0',color:'#7c4dff'}}>ACI 318</span>
+              </div>
+            </div>
+          </button>
         </div>
       </div>
     </div>
@@ -322,13 +338,16 @@ function ModuleSelector({ onSelect }) {
 // ══════════════════════════════════════════════════════════════════
 export default function App() {
   const { vista } = useProyecto()
-  const [modulo, setModulo] = useState(null) // null = selector, 'e060', 'e030', 'e070'
+  const [modulo, setModulo] = useState(null) // null = selector, 'e060', 'e030', 'e070', 'vigas'
 
   // E.030 module
   if (modulo === 'e030') return <Suspense fallback={<LazyFallback />}><IrregularidadesE030 onBack={() => setModulo(null)} /></Suspense>
 
   // E.070 module
   if (modulo === 'e070') return <Suspense fallback={<LazyFallback />}><AlbanileriaE070 onBack={() => setModulo(null)} /></Suspense>
+
+  // Vigas module
+  if (modulo === 'vigas') return <Suspense fallback={<LazyFallback />}><VigasE060 onBack={() => setModulo(null)} /></Suspense>
 
   // E.060 module (existing views)
   if (modulo === 'e060' || vista === 'editor' || vista === 'biblioteca') {

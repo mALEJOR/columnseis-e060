@@ -83,7 +83,7 @@ export function disenoFlexion({ Mu_tonm, b, h, rec, fc, fy }) {
 
 // ── 2. Diseno a Corte (E.060 Cap. 11) ───────────────────────────
 //    Vu en toneladas, b y d en cm, fc y fy en kg/cm2
-export function disenoCorte({ Vu_ton, b, d, fc, fy }) {
+export function disenoCorte({ Vu_ton, b, d, fc }) {
   const Vu = Vu_ton * 1000                   // ton -> kg
   const phi = 0.85                            // E.060 9.3.2.3
 
