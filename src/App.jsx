@@ -14,6 +14,7 @@ const BibliotecaTipos = lazy(() => import('./components/BibliotecaTipos'))
 const IrregularidadesE030 = lazy(() => import('./components/IrregularidadesE030'))
 const AlbanileriaE070 = lazy(() => import('./components/AlbanileriaE070'))
 const VigasE060 = lazy(() => import('./components/VigasE060'))
+const Predimensionamiento = lazy(() => import('./components/Predimensionamiento'))
 
 // jsPDF se carga dinámicamente solo al exportar PDF
 const generarPDF = async (args) => {
@@ -327,6 +328,20 @@ function ModuleSelector({ onSelect }) {
               </div>
             </div>
           </button>
+          <button className="module-card" onClick={() => onSelect('predim')}>
+            <div className="module-card-icon" style={{background:'linear-gradient(135deg,#00695c,#26a69a)'}}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.5" width="32" height="32">
+                <path d="M4 20h16M4 20V10l4-4h8l4 4v10"/><line x1="9" y1="20" x2="9" y2="14"/><line x1="15" y1="20" x2="15" y2="14"/><line x1="9" y1="14" x2="15" y2="14"/><line x1="12" y1="6" x2="12" y2="3" strokeDasharray="2,1"/>
+              </svg>
+            </div>
+            <div className="module-card-body">
+              <div className="module-card-title">Predimensionamiento</div>
+              <div className="module-card-desc">Dimensiones iniciales de vigas, columnas, losas aligeradas y macizas para estructuras de concreto armado</div>
+              <div className="module-card-badges">
+                <span className="badge norm" style={{borderColor:'#00695c',color:'#26a69a'}}>Herramienta rapida</span>
+              </div>
+            </div>
+          </button>
         </div>
       </div>
     </div>
@@ -338,7 +353,7 @@ function ModuleSelector({ onSelect }) {
 // ══════════════════════════════════════════════════════════════════
 export default function App() {
   const { vista } = useProyecto()
-  const [modulo, setModulo] = useState(null) // null = selector, 'e060', 'e030', 'e070', 'vigas'
+  const [modulo, setModulo] = useState(null) // null = selector, 'e060', 'e030', 'e070', 'vigas', 'predim'
 
   // E.030 module
   if (modulo === 'e030') return <Suspense fallback={<LazyFallback />}><IrregularidadesE030 onBack={() => setModulo(null)} /></Suspense>
@@ -348,6 +363,9 @@ export default function App() {
 
   // Vigas module
   if (modulo === 'vigas') return <Suspense fallback={<LazyFallback />}><VigasE060 onBack={() => setModulo(null)} /></Suspense>
+
+  // Predimensionamiento module
+  if (modulo === 'predim') return <Suspense fallback={<LazyFallback />}><Predimensionamiento onBack={() => setModulo(null)} /></Suspense>
 
   // E.060 module (existing views)
   if (modulo === 'e060' || vista === 'editor' || vista === 'biblioteca') {

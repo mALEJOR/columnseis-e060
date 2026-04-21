@@ -33,10 +33,82 @@ const S = {
   sectionHeader: { padding: '10px 14px', background: '#2e75b6', color: '#fff', fontFamily: 'var(--cond)', fontSize: 12, fontWeight: 700, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 8, borderRadius: 'var(--r2)', marginBottom: 8, letterSpacing: '.5px' },
   sectionHeaderDark: { padding: '10px 14px', background: '#1f4e79', color: '#fff', fontFamily: 'var(--cond)', fontSize: 12, fontWeight: 700, cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: 8, borderRadius: 'var(--r2)', marginBottom: 8, letterSpacing: '.5px' },
   badge:         (bg, color) => ({ display: 'inline-block', padding: '3px 10px', borderRadius: 'var(--r)', fontSize: 10, fontWeight: 700, fontFamily: 'var(--mono)', background: bg, color, letterSpacing: '.5px' }),
-  paramLabel:    { fontSize: 10, color: 'var(--text2)', fontFamily: 'var(--cond)', textTransform: 'uppercase', letterSpacing: '.5px', display: 'block', marginBottom: 3 },
-  paramInput:    { width: '100%', background: '#1a2744', border: '1px solid rgba(68,114,196,0.35)', borderRadius: 'var(--r)', color: 'var(--text0)', fontFamily: 'var(--mono)', fontSize: 11, padding: '4px 7px', outline: 'none' },
-  paramSelect:   { width: '100%', background: '#161922', border: '1px solid rgba(68,114,196,0.35)', borderRadius: 'var(--r)', color: 'var(--text0)', fontFamily: 'var(--mono)', fontSize: 11, padding: '4px 7px', outline: 'none' },
+  paramLabel:    { fontSize: 11, color: 'var(--text2)', fontFamily: 'var(--sans)', display: 'block', marginBottom: 4 },
+  paramInput:    { width: '100%', background: '#1a2744', border: '1px solid rgba(68,114,196,0.35)', borderRadius: 'var(--r)', color: 'var(--text0)', fontFamily: 'var(--mono)', fontSize: 12, padding: '6px 8px', outline: 'none', boxSizing: 'border-box' },
+  paramSelect:   { width: '100%', background: '#161922', border: '1px solid rgba(68,114,196,0.35)', borderRadius: 'var(--r)', color: 'var(--text0)', fontFamily: 'var(--mono)', fontSize: 12, padding: '6px 8px', outline: 'none', boxSizing: 'border-box' },
   resultBox:     { background: '#0f1c2e', border: '1px solid rgba(68,114,196,0.25)', borderRadius: 'var(--r2)', padding: '10px 14px', marginTop: 8 },
+}
+
+// ── Design system (amigable, igual que VigasE060) ─────────────────────────────
+const D = {
+  verifOK:      { background: 'rgba(46,125,50,0.15)',  border: '1px solid rgba(46,125,50,0.4)',  borderRadius: 12, padding: '16px 20px' },
+  verifFail:    { background: 'rgba(198,40,40,0.15)',  border: '1px solid rgba(198,40,40,0.4)',  borderRadius: 12, padding: '16px 20px' },
+  verifNeutral: { background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)',        borderRadius: 12, padding: '16px 20px' },
+  verifTitle: (ok) => ({
+    fontSize: 16, fontWeight: 700, fontFamily: 'var(--cond)',
+    color: ok === true ? '#69f0ae' : ok === false ? '#ff5252' : 'var(--text2)',
+    letterSpacing: '.5px', marginBottom: 6,
+  }),
+  verifDetail: { fontSize: 12, fontFamily: 'var(--mono)', color: 'var(--text1)', lineHeight: 1.7 },
+  formulaBox: {
+    background: 'rgba(79,195,247,0.04)',
+    border: '1px solid rgba(79,195,247,0.12)',
+    borderRadius: 8, padding: '10px 14px',
+    fontFamily: 'var(--mono)', fontSize: 11,
+    color: 'var(--text2)', lineHeight: 1.85,
+    marginBottom: 12,
+  },
+  formulaTitle: {
+    fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--cond)',
+    textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 5,
+  },
+  summaryCard: {
+    background: 'rgba(79,195,247,0.07)',
+    border: '1px solid rgba(79,195,247,0.18)',
+    borderRadius: 12, padding: '14px 18px',
+    display: 'flex', flexDirection: 'column', gap: 4,
+  },
+  bigValue:      { fontSize: 28, fontFamily: 'var(--mono)', fontWeight: 700, color: 'var(--text0)', lineHeight: 1 },
+  bigValueGreen: { fontSize: 28, fontFamily: 'var(--mono)', fontWeight: 700, color: '#69f0ae', lineHeight: 1 },
+  bigValueAmber: { fontSize: 28, fontFamily: 'var(--mono)', fontWeight: 700, color: '#fbbf24', lineHeight: 1 },
+  bigUnit:       { fontSize: 12, color: 'var(--text3)', fontFamily: 'var(--sans)', marginLeft: 5, fontWeight: 400 },
+  cardLabel:     { fontSize: 11, color: 'var(--text2)', fontFamily: 'var(--sans)', marginTop: 4 },
+}
+
+// ── Presentational sub-components ─────────────────────────────────────────────
+
+function FormulaBox({ title, lines }) {
+  return (
+    <div style={D.formulaBox}>
+      {title && <div style={D.formulaTitle}>{title}</div>}
+      {lines.map((l, i) => <div key={i}>{l}</div>)}
+    </div>
+  )
+}
+
+function VerifCard({ ok, mainText, detail }) {
+  const cardStyle = ok === true ? D.verifOK : ok === false ? D.verifFail : D.verifNeutral
+  const symbol    = ok === true ? '✓' : ok === false ? '✗' : '—'
+  const label     = ok === true ? 'CUMPLE' : ok === false ? 'NO CUMPLE' : 'SIN DATOS'
+  return (
+    <div style={cardStyle}>
+      <div style={D.verifTitle(ok)}>{symbol} {mainText || label}</div>
+      {detail && <div style={D.verifDetail}>{detail}</div>}
+    </div>
+  )
+}
+
+function SummaryCard({ value, unit, label, note, green }) {
+  return (
+    <div style={D.summaryCard}>
+      <div>
+        <span style={green ? D.bigValueGreen : D.bigValue}>{value}</span>
+        {unit && <span style={D.bigUnit}>{unit}</span>}
+      </div>
+      <div style={D.cardLabel}>{label}</div>
+      {note && <div style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--sans)', marginTop: 2 }}>{note}</div>}
+    </div>
+  )
 }
 
 const condBg  = c => c === 'CUMPLE' || c === 'OK' || c === 'NO SE FISURA' ? 'rgba(46,125,50,0.25)' : c === 'NO CUMPLE' || c === 'MURO FISURADO' ? 'rgba(198,40,40,0.25)' : 'transparent'
@@ -215,10 +287,13 @@ function ParamGrid({ children, cols = 4 }) {
   )
 }
 
-function PF({ label, children, onChange, value, type = 'number', step, min }) {
+function PF({ label, hint, children, onChange, value, type = 'number', step, min }) {
   return (
     <div>
-      <label style={S.paramLabel}>{label}</label>
+      <label style={S.paramLabel}>
+        {label}
+        {hint && <span style={{ color: 'var(--text3)', fontSize: 10, marginLeft: 4 }}>{hint}</span>}
+      </label>
       {children || (
         <input type={type} value={value} step={step} min={min} style={S.paramInput}
           onChange={e => onChange(e.target.value)} />
@@ -338,27 +413,53 @@ function VmTable({ simoRows, gravRows, props, dispatch, dir, vmEi, setVmEi }) {
 
   const verifArt = useMemo(() => {
     const VE = parseFloat(vmEi) || 0
-    if (!vmResult.sumVm || !VE) return '—'
-    return vmResult.sumVm >= VE ? 'CUMPLE' : 'NO CUMPLE'
+    if (!vmResult.sumVm || !VE) return null
+    return vmResult.sumVm >= VE
   }, [vmResult, vmEi])
 
-  const hdrs = ['Pier', 't (m)', 'L (m)', "v'm (kg/cm²)", 'Ve (ton)', 'Me (ton·m)', 'Pg (ton)', 'α calc', 'α adopt', 'Vm (ton)', '0.55·Vm', 'Verificación']
+  const noFisuran = vmResult.resultados.filter(r => r.verificacion === 'NO SE FISURA').length
+  const totalMuros = vmResult.resultados.length
+
+  const hdrs = ['Pier', 'Espesor t (m)', 'Longitud L (m)', "v'm (kg/cm²)", 'Ve (ton)', 'Me (ton·m)', 'Pg (ton)', 'α calc', 'α adopt', 'Vm (ton)', '0.55·Vm', 'Verificación']
 
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ marginBottom: 6 }}>
-        <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'var(--cond)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 4 }}>
-          C. Resistencia al agrietamiento diagonal Vm
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 120px)', gap: '6px 10px', marginBottom: 8 }}>
-          {props.map((p, idx) => idx < 5 ? null : null) /* props editados en tabla */}
-        </div>
-      </div>
+    <div style={{ marginBottom: 16 }}>
 
-      {/* Props editable inputs above table */}
+      {/* ── Fórmula Vm ─────────────────────────────────────────────────────── */}
+      <FormulaBox
+        title="Resistencia al agrietamiento diagonal (Art. 26.2)"
+        lines={[
+          'Vm = 0.5·v\'m·α·t·L + 0.23·Pg',
+          'donde:  α = Ve·L / (Me)  →  α adoptado = min(α_calc, 1)',
+          'Verificación por muro:  Ve ≤ 0.55·Vm  →  NO SE FISURA',
+        ]}
+      />
+
+      {/* ── Resumen visual ─────────────────────────────────────────────────── */}
+      {totalMuros > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 14 }}>
+          <SummaryCard
+            value={pf4(vmResult.sumVm)}
+            unit="ton"
+            label="ΣVm — Resistencia total de muros"
+            green={vmResult.sumVm > 0}
+          />
+          <SummaryCard
+            value={totalMuros}
+            label="Muros analizados"
+          />
+          <SummaryCard
+            value={`${noFisuran} / ${totalMuros}`}
+            label="Muros que NO SE FISURAN"
+            green={noFisuran === totalMuros}
+          />
+        </div>
+      )}
+
+      {/* ── Props editable inputs above table ──────────────────────────────── */}
       <div style={{ overflowX: 'auto', marginBottom: 8, border: '1px solid rgba(68,114,196,0.2)', borderRadius: 'var(--r)', padding: 8, background: 'rgba(26,39,68,0.3)' }}>
         <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--cond)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 6 }}>
-          Propiedades de muros (editables)
+          Propiedades de muros (editables) — Pier / Espesor t / Longitud L / Resistencia v'm
         </div>
         <div style={{ overflowX: 'auto' }}>
           <table style={{ borderCollapse: 'collapse', tableLayout: 'fixed', width: '100%' }}>
@@ -366,9 +467,9 @@ function VmTable({ simoRows, gravRows, props, dispatch, dir, vmEi, setVmEi }) {
               <tr>
                 <ResizableTh style={{ ...S.headerCell, width: 28, fontSize: 8 }}>#</ResizableTh>
                 <ResizableTh style={{ ...S.headerCell, width: 80 }}>Pier</ResizableTh>
-                <ResizableTh style={{ ...S.headerCell, width: 72 }}>t (m)</ResizableTh>
-                <ResizableTh style={{ ...S.headerCell, width: 72 }}>L (m)</ResizableTh>
-                <ResizableTh style={{ ...S.headerCell, width: 88 }}>v'm (kg/cm²)</ResizableTh>
+                <ResizableTh style={{ ...S.headerCell, width: 90 }}>Espesor t (m)</ResizableTh>
+                <ResizableTh style={{ ...S.headerCell, width: 90 }}>Longitud L (m)</ResizableTh>
+                <ResizableTh style={{ ...S.headerCell, width: 100 }}>v'm (kg/cm²)</ResizableTh>
               </tr>
             </thead>
             <tbody>
@@ -388,14 +489,14 @@ function VmTable({ simoRows, gravRows, props, dispatch, dir, vmEi, setVmEi }) {
         </div>
       </div>
 
-      {/* Vm results table */}
+      {/* ── Vm results table ───────────────────────────────────────────────── */}
       <div style={{ overflowX: 'auto', resize: 'both', minHeight: 70, border: '1px solid var(--border)', borderRadius: 'var(--r2)' }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
           <thead>
             <tr>
               <ResizableTh style={{ ...S.headerCell, width: 28, fontSize: 8 }}>#</ResizableTh>
               {hdrs.map((h, i) => (
-                <ResizableTh key={i} style={{ ...S.headerCell, width: i < 4 ? 70 : 76 }}>{h}</ResizableTh>
+                <ResizableTh key={i} style={{ ...S.headerCell, width: i < 4 ? 76 : 76 }}>{h}</ResizableTh>
               ))}
             </tr>
           </thead>
@@ -433,16 +534,24 @@ function VmTable({ simoRows, gravRows, props, dispatch, dir, vmEi, setVmEi }) {
               <td colSpan={2} style={{ ...S.cell, ...S.inputCell, padding: 0 }}>
                 <input style={S.tableInput} value={vmEi} onChange={e => setVmEi(e.target.value)} placeholder="ingresar" />
               </td>
-              <td style={{ ...S.cell, background: condBg(verifArt), color: condClr(verifArt), fontSize: 9, fontFamily: 'var(--mono)', fontWeight: 700 }}>
-                {verifArt}
+              <td style={{ ...S.cell, background: condBg(verifArt === true ? 'CUMPLE' : verifArt === false ? 'NO CUMPLE' : '—'), color: condClr(verifArt === true ? 'CUMPLE' : verifArt === false ? 'NO CUMPLE' : '—'), fontSize: 9, fontFamily: 'var(--mono)', fontWeight: 700 }}>
+                {verifArt === true ? 'CUMPLE' : verifArt === false ? 'NO CUMPLE' : '—'}
               </td>
             </tr>
           </tfoot>
         </table>
       </div>
-      <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 4, fontStyle: 'italic', fontFamily: 'var(--sans)' }}>
-        Art. 26.4: ΣVmi ≥ ΣVEi · La verificación Ve ≤ 0.55·Vm indica si el muro se fisura.
-      </div>
+
+      {/* ── Verificación grande ΣVmi ≥ ΣVEi ───────────────────────────────── */}
+      {verifArt !== null && (
+        <div style={{ marginTop: 14 }}>
+          <VerifCard
+            ok={verifArt}
+            mainText={verifArt ? 'ΣVmi ≥ ΣVEi — Resistencia global suficiente' : 'ΣVmi < ΣVEi — Resistencia global insuficiente'}
+            detail={`ΣVm = ${pf4(vmResult.sumVm)} ton  |  ΣVEi = ${pf(parseFloat(vmEi), 4)} ton  (Art. 26.4)`}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -464,18 +573,30 @@ function EsfAxialTable({ simoRows, gravRows, props, fm, h, dispatch, dir }) {
     return calcularEsfuerzoAxial(muros, parseFloat(fm) || 65, parseFloat(h) || 2.6)
   }, [simoRows, gravRows, props, fm, h])
 
+  const todoCumple = result.resultados.length > 0 && result.resultados.every(r => r.cumpleFa)
+
   const hdrs = ['Pier', 'L (m)', 't (m)', 'Pm (ton)', 'σm (kg/cm²)', 'Fa (kg/cm²)', '0.15·f\'m', '0.05·f\'m', 'Verificación']
 
   return (
-    <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'var(--cond)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 6 }}>
-        D. Esfuerzo Axial Máximo (Art. 19.1b)
-      </div>
+    <div style={{ marginBottom: 16 }}>
+
+      {/* ── Fórmulas ─────────────────────────────────────────────────────── */}
+      <FormulaBox
+        title="Esfuerzo axial máximo (Art. 19.1b)"
+        lines={[
+          'σm = Pm / (L · t)   [kg/cm²]   donde Pm = Pgrav + 0.25·Psismo',
+          'Fa = 0.2·f\'m · [1 − (h / 35t)²]',
+          'Verificación:  σm ≤ Fa  →  MURO CORRECTO',
+          'Límites:  σm ≤ 0.15·f\'m  y  σm ≤ 0.05·f\'m  (según zona)',
+        ]}
+      />
+
       <ParamGrid cols={2}>
-        <PF label="f'm (kg/cm²)" value={fm} onChange={v => dispatch({ type: 'SET_MUR_PARAM', dir, field: 'fm', value: v })} />
-        <PF label="h libre (m)" value={h}  onChange={v => dispatch({ type: 'SET_MUR_PARAM', dir, field: 'h',  value: v })} />
+        <PF label="Resistencia de la albañilería f'm (kg/cm²)" value={fm} onChange={v => dispatch({ type: 'SET_MUR_PARAM', dir, field: 'fm', value: v })} />
+        <PF label="Altura libre de entrepiso h (m)" value={h}  onChange={v => dispatch({ type: 'SET_MUR_PARAM', dir, field: 'h',  value: v })} />
       </ParamGrid>
-      <div style={{ overflowX: 'auto', resize: 'both', minHeight: 60, border: '1px solid var(--border)', borderRadius: 'var(--r2)' }}>
+
+      <div style={{ overflowX: 'auto', resize: 'both', minHeight: 60, border: '1px solid var(--border)', borderRadius: 'var(--r2)', marginBottom: 12 }}>
         <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
           <thead>
             <tr>
@@ -501,6 +622,15 @@ function EsfAxialTable({ simoRows, gravRows, props, fm, h, dispatch, dir }) {
           </tbody>
         </table>
       </div>
+
+      {/* ── Verificación grande ───────────────────────────────────────────── */}
+      {result.resultados.length > 0 && (
+        <VerifCard
+          ok={todoCumple}
+          mainText={todoCumple ? 'σm ≤ Fa — Todos los muros dentro del límite axial' : 'Hay muros que exceden el esfuerzo axial admisible Fa'}
+          detail={`${result.resultados.filter(r => r.cumpleFa).length} de ${result.resultados.length} muros cumplen σm ≤ Fa  (Art. 19.1b)`}
+        />
+      )}
     </div>
   )
 }
@@ -859,12 +989,23 @@ export default function AlbanileriaE070({ onBack }) {
 
         {/* ══ 3. Densidad Mínima ════════════════════════════════════════════ */}
         {tab === 'DENSIDAD' && <>
+
+          <FormulaBox
+            title="Densidad mínima de muros portantes (Art. 19.2)"
+            lines={[
+              'Densidad requerida:  Σ(L·t) / Ap  ≥  Z·U·S·N / 56',
+              'Σ(L·t) = suma de áreas de sección transversal de muros en la dirección',
+              'Para muros de CA mezclados:  L·t equiv = L·t·(Ec / Em)',
+              'Ap = área de planta techada (m²)',
+            ]}
+          />
+
           <ParamGrid cols={5}>
-            <PF label="N° pisos" value={densidad.N}  onChange={v => dispatch({ type: 'SET_DENSIDAD', field: 'N',  value: v })} min={1} />
-            <PF label="Ap (m²)"  value={densidad.Ap} onChange={v => dispatch({ type: 'SET_DENSIDAD', field: 'Ap', value: v })} />
-            <PF label="Z"        value={densidad.Z}  onChange={v => dispatch({ type: 'SET_DENSIDAD', field: 'Z',  value: v })} step="0.05" />
-            <PF label="U"        value={densidad.U}  onChange={v => dispatch({ type: 'SET_DENSIDAD', field: 'U',  value: v })} step="0.05" />
-            <PF label="S"        value={densidad.S}  onChange={v => dispatch({ type: 'SET_DENSIDAD', field: 'S',  value: v })} step="0.05" />
+            <PF label="Número de pisos N" value={densidad.N}  onChange={v => dispatch({ type: 'SET_DENSIDAD', field: 'N',  value: v })} min={1} />
+            <PF label="Área de planta Ap (m²)"  value={densidad.Ap} onChange={v => dispatch({ type: 'SET_DENSIDAD', field: 'Ap', value: v })} />
+            <PF label="Factor de zona Z"        value={densidad.Z}  onChange={v => dispatch({ type: 'SET_DENSIDAD', field: 'Z',  value: v })} step="0.05" />
+            <PF label="Factor de uso U"        value={densidad.U}  onChange={v => dispatch({ type: 'SET_DENSIDAD', field: 'U',  value: v })} step="0.05" />
+            <PF label="Factor de suelo S"        value={densidad.S}  onChange={v => dispatch({ type: 'SET_DENSIDAD', field: 'S',  value: v })} step="0.05" />
           </ParamGrid>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
@@ -872,19 +1013,28 @@ export default function AlbanileriaE070({ onBack }) {
             <DensidadDir muros={densidad.murosY} dispatch={dispatch} dirKey="murosY" label="Y-Y" />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 8 }}>
+          {/* Resultados con verificaciones grandes */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 12 }}>
             {[
-              { label: 'Dir X-X', res: densCalc.resultadoX },
-              { label: 'Dir Y-Y', res: densCalc.resultadoY },
+              { label: 'Dirección X-X', res: densCalc.resultadoX },
+              { label: 'Dirección Y-Y', res: densCalc.resultadoY },
             ].map(({ label, res }) => (
-              <div key={label} style={S.resultBox}>
-                <div style={{ fontSize: 10, color: '#90caf9', fontFamily: 'var(--cond)', fontWeight: 700, marginBottom: 8 }}>{label}</div>
-                <ResultRow label="Σ(L·t) equiv" value={pf(res?.sumaLt, 4)} unit="m²" />
-                <ResultRow label="Densidad existente" value={pf(res?.densidad, 6)} />
-                <ResultRow label="Densidad requerida (Z·U·S·N/56)" value={pf(densCalc.densidadReq, 6)} />
-                <ResultRow label="Verificación"
-                  value={res?.cumple ? 'CUMPLE' : res?.densidad != null ? 'NO CUMPLE' : '—'}
-                  ok={res?.densidad != null ? res.cumple : undefined} />
+              <div key={label} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={S.resultBox}>
+                  <div style={{ fontSize: 10, color: '#90caf9', fontFamily: 'var(--cond)', fontWeight: 700, marginBottom: 8 }}>{label}</div>
+                  <ResultRow label="Σ(L·t) equiv" value={pf(res?.sumaLt, 4)} unit="m²" />
+                  <ResultRow label="Densidad existente  Σ(L·t)/Ap" value={pf(res?.densidad, 6)} />
+                  <ResultRow label="Densidad requerida  Z·U·S·N/56" value={pf(densCalc.densidadReq, 6)} />
+                </div>
+                <VerifCard
+                  ok={res?.densidad != null ? res.cumple : undefined}
+                  mainText={res?.densidad != null
+                    ? (res.cumple ? `${label} — Densidad suficiente` : `${label} — Densidad insuficiente`)
+                    : `${label} — Sin datos`}
+                  detail={res?.densidad != null
+                    ? `Existente = ${pf(res.densidad, 6)}  ≥  Requerida = ${pf(densCalc.densidadReq, 6)}  ?  →  ${res.cumple ? 'SÍ' : 'NO'}`
+                    : undefined}
+                />
               </div>
             ))}
           </div>
@@ -892,24 +1042,38 @@ export default function AlbanileriaE070({ onBack }) {
 
         {/* ══ 4. Columnas de Confinamiento ══════════════════════════════════ */}
         {tab === 'COLUMNAS' && <>
+
+          <FormulaBox
+            title="Columnas de confinamiento — Tabla 11 (Art. 27)"
+            lines={[
+              'Vc  = 1.5·Vm1·Lm / (L·Nc)          [Cortante en cada columna]',
+              'M   = Mu1 − 0.5·Vm1·h               [Momento intermedio]',
+              'T   = |M / L|                        [Tracción col. extrema e interior]',
+              'C   = |M / L|  (ext)  /  Pg  (int)  [Compresión]',
+              'An  = C / (φc·0.85·f\'c)             [Área neta requerida por compresión]',
+              'Acf = T / (φf·μf·f\'c·bc)            [Sección CA por corte-fricción]',
+              'As  = max(T/φfy,  Avf)              [Acero vertical requerido]',
+            ]}
+          />
+
           <ParamGrid cols={4}>
-            <PF label="Mu1 — momento muro (ton·m)" value={columnas.Mu1} onChange={v => dispatch({ type: 'SET_COL', field: 'Mu1', value: v })} />
-            <PF label="Vm1 — cortante muro (ton)"  value={columnas.Vm1} onChange={v => dispatch({ type: 'SET_COL', field: 'Vm1', value: v })} />
-            <PF label="h — altura entrepiso (m)"   value={columnas.h}   onChange={v => dispatch({ type: 'SET_COL', field: 'h',   value: v })} />
-            <PF label="L — longitud muro (m)"      value={columnas.L}   onChange={v => dispatch({ type: 'SET_COL', field: 'L',   value: v })} />
-            <PF label="Lm — longitud paño (m)"     value={columnas.Lm}  onChange={v => dispatch({ type: 'SET_COL', field: 'Lm',  value: v })} />
-            <PF label="Nc — N° columnas"            value={columnas.Nc}  onChange={v => dispatch({ type: 'SET_COL', field: 'Nc',  value: v })} min={1} />
-            <PF label="Pg — carga grav. col (ton)"  value={columnas.Pg}  onChange={v => dispatch({ type: 'SET_COL', field: 'Pg',  value: v })} />
-            <PF label="f'c (kg/cm²)"               value={columnas.fc}  onChange={v => dispatch({ type: 'SET_COL', field: 'fc',  value: v })} />
+            <PF label="Momento del muro Mu1 (ton·m)" value={columnas.Mu1} onChange={v => dispatch({ type: 'SET_COL', field: 'Mu1', value: v })} />
+            <PF label="Cortante del muro Vm1 (ton)"  value={columnas.Vm1} onChange={v => dispatch({ type: 'SET_COL', field: 'Vm1', value: v })} />
+            <PF label="Altura de entrepiso h (m)"   value={columnas.h}   onChange={v => dispatch({ type: 'SET_COL', field: 'h',   value: v })} />
+            <PF label="Longitud total del muro L (m)"      value={columnas.L}   onChange={v => dispatch({ type: 'SET_COL', field: 'L',   value: v })} />
+            <PF label="Longitud del paño Lm (m)"     value={columnas.Lm}  onChange={v => dispatch({ type: 'SET_COL', field: 'Lm',  value: v })} />
+            <PF label="Número de columnas Nc"            value={columnas.Nc}  onChange={v => dispatch({ type: 'SET_COL', field: 'Nc',  value: v })} min={1} />
+            <PF label="Carga gravitacional columna Pg (ton)"  value={columnas.Pg}  onChange={v => dispatch({ type: 'SET_COL', field: 'Pg',  value: v })} />
+            <PF label="Resistencia del concreto f'c (kg/cm²)"               value={columnas.fc}  onChange={v => dispatch({ type: 'SET_COL', field: 'fc',  value: v })} />
           </ParamGrid>
           <ParamGrid cols={4}>
-            <PF label="fy (kg/cm²)"                 value={columnas.fy}    onChange={v => dispatch({ type: 'SET_COL', field: 'fy',    value: v })} />
-            <PF label="φc — factor compresión"      value={columnas.phi_c} onChange={v => dispatch({ type: 'SET_COL', field: 'phi_c', value: v })} step="0.05" />
-            <PF label="φf — factor fricción"        value={columnas.phi_f} onChange={v => dispatch({ type: 'SET_COL', field: 'phi_f', value: v })} step="0.05" />
-            <PF label="μf — coef. fricción"         value={columnas.mu_f}  onChange={v => dispatch({ type: 'SET_COL', field: 'mu_f',  value: v })} step="0.05" />
-            <PF label="bc — ancho col. (m)"         value={columnas.bc}    onChange={v => dispatch({ type: 'SET_COL', field: 'bc',    value: v })} />
-            <PF label="dc — peralte col. (m)"       value={columnas.dc}    onChange={v => dispatch({ type: 'SET_COL', field: 'dc',    value: v })} />
-            <PF label="db estribo (mm)"             value={columnas.db_estribo}    onChange={v => dispatch({ type: 'SET_COL', field: 'db_estribo',    value: v })} />
+            <PF label="Resistencia del acero fy (kg/cm²)"                 value={columnas.fy}    onChange={v => dispatch({ type: 'SET_COL', field: 'fy',    value: v })} />
+            <PF label="Factor de reducción compresión φc"      value={columnas.phi_c} onChange={v => dispatch({ type: 'SET_COL', field: 'phi_c', value: v })} step="0.05" />
+            <PF label="Factor de reducción fricción φf"        value={columnas.phi_f} onChange={v => dispatch({ type: 'SET_COL', field: 'phi_f', value: v })} step="0.05" />
+            <PF label="Coef. de fricción μf"         value={columnas.mu_f}  onChange={v => dispatch({ type: 'SET_COL', field: 'mu_f',  value: v })} step="0.05" />
+            <PF label="Ancho de columna bc (m)"         value={columnas.bc}    onChange={v => dispatch({ type: 'SET_COL', field: 'bc',    value: v })} />
+            <PF label="Peralte de columna dc (m)"       value={columnas.dc}    onChange={v => dispatch({ type: 'SET_COL', field: 'dc',    value: v })} />
+            <PF label="Diámetro de estribo db (mm)"             value={columnas.db_estribo}    onChange={v => dispatch({ type: 'SET_COL', field: 'db_estribo',    value: v })} />
             <PF label="Recubrimiento (cm)"          value={columnas.recubrimiento} onChange={v => dispatch({ type: 'SET_COL', field: 'recubrimiento', value: v })} />
           </ParamGrid>
 
@@ -921,17 +1085,17 @@ export default function AlbanileriaE070({ onBack }) {
             <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
               <thead>
                 <tr>
-                  <ResizableTh style={{ ...S.headerCell, width: 180 }}>Fuerza</ResizableTh>
+                  <ResizableTh style={{ ...S.headerCell, width: 200 }}>Fuerza interna</ResizableTh>
                   <ResizableTh style={{ ...S.headerCell, width: 130 }}>Col. Extrema</ResizableTh>
                   <ResizableTh style={{ ...S.headerCell, width: 130 }}>Col. Interior</ResizableTh>
-                  <ResizableTh style={{ ...S.headerCell, width: 180 }}>Fórmula</ResizableTh>
+                  <ResizableTh style={{ ...S.headerCell, width: 200 }}>Expresión</ResizableTh>
                 </tr>
               </thead>
               <tbody>
                 {[
                   { label: 'Vc — Cortante (ton)',     ext: pf(colCalc.Vc_ext, 4),  int: pf(colCalc.Vc_int, 4),  formula: '1.5·Vm1·Lm / (L·Nc)' },
                   { label: 'T — Tracción (ton)',      ext: pf(colCalc.T_ext, 4),   int: pf(colCalc.T_int, 4),   formula: '|M / L|' },
-                  { label: 'C — Compresión (ton)',    ext: pf(colCalc.C_ext, 4),   int: pf(colCalc.C_int, 4),   formula: 'Ext: |M/L|  Int: Pg' },
+                  { label: 'C — Compresión (ton)',    ext: pf(colCalc.C_ext, 4),   int: pf(colCalc.C_int, 4),   formula: 'Ext: |M/L|  /  Int: Pg' },
                   { label: 'M — Momento intermedio', ext: pf(colCalc.M, 4),        int: '—',                    formula: 'Mu1 − 0.5·Vm1·h' },
                 ].map((r, i) => (
                   <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
@@ -954,15 +1118,12 @@ export default function AlbanileriaE070({ onBack }) {
                 ok={colCalc.Ac != null && colCalc.An_ext != null ? colCalc.Ac >= colCalc.An_ext : undefined} />
               <ResultRow label="An int" value={pf(colCalc.An_int, 3)} unit="cm²"
                 ok={colCalc.Ac != null && colCalc.An_int != null ? colCalc.Ac >= colCalc.An_int : undefined} />
-              <ResultRow label="Verif. (Ac ≥ An ext)"
-                value={colCalc.Ac != null ? (colCalc.Ac >= colCalc.An_ext ? 'CUMPLE' : 'NO CUMPLE') : '—'}
-                ok={colCalc.Ac != null ? colCalc.Ac >= colCalc.An_ext : undefined} />
             </div>
             <div style={S.resultBox}>
               <div style={{ fontSize: 10, color: '#90caf9', fontFamily: 'var(--cond)', fontWeight: 700, marginBottom: 6 }}>Acero vertical</div>
-              <ResultRow label="As tracción" value={pf(colCalc.As_traccion, 3)} unit="cm²" />
+              <ResultRow label="As tracción = T / (φ·fy)" value={pf(colCalc.As_traccion, 3)} unit="cm²" />
               <ResultRow label="Avf ext (corte-fricción)" value={pf(colCalc.Avf_ext, 3)} unit="cm²" />
-              <ResultRow label="As requerido" value={pf(colCalc.As, 3)} unit="cm²" />
+              <ResultRow label="As requerido = max(As_t, Avf)" value={pf(colCalc.As, 3)} unit="cm²" />
               <ResultRow label="Acf ext (sección CA)" value={pf(colCalc.Acf_ext, 2)} unit="cm²" />
             </div>
             <div style={S.resultBox}>
@@ -975,71 +1136,122 @@ export default function AlbanileriaE070({ onBack }) {
               <ResultRow label="s adoptado (zona central)" value={pf(colCalc.s_central_adoptado, 1)} unit="cm" />
             </div>
           </div>
+
+          {/* Verificación grande Ac ≥ An */}
+          {colCalc.Ac != null && colCalc.An_ext != null && (
+            <div style={{ marginTop: 14 }}>
+              <VerifCard
+                ok={colCalc.Ac >= colCalc.An_ext}
+                mainText={colCalc.Ac >= colCalc.An_ext
+                  ? 'Ac ≥ An — Sección de columna suficiente'
+                  : 'Ac < An — Aumentar sección de columna'}
+                detail={`Ac = ${pf(colCalc.Ac, 2)} cm²  |  An ext = ${pf(colCalc.An_ext, 3)} cm²  (Art. 27.2)`}
+              />
+            </div>
+          )}
         </>}
 
         {/* ══ 5. Vigas Soleras ══════════════════════════════════════════════ */}
         {tab === 'SOLERAS' && <>
+
+          <FormulaBox
+            title="Viga solera — diseño a tracción pura (Art. 28)"
+            lines={[
+              'Ts = Vm1 · Lm / (2 · L)            [Tracción en la solera, ton]',
+              'As = Ts · 1000 / (φ · fy)          [Acero requerido, cm²]',
+              'As_mín = 0.1 · f\'c · Acs / fy      [Acero mínimo por sección]',
+              'As adoptado = max(As, As_mín)',
+            ]}
+          />
+
           <ParamGrid cols={4}>
-            <PF label="Vm1 — cortante muro (ton)" value={vigas.Vm1} onChange={v => dispatch({ type: 'SET_VIGA', field: 'Vm1', value: v })} />
-            <PF label="Lm — long. paño (m)"       value={vigas.Lm}  onChange={v => dispatch({ type: 'SET_VIGA', field: 'Lm',  value: v })} />
-            <PF label="L — longitud muro (m)"     value={vigas.L}   onChange={v => dispatch({ type: 'SET_VIGA', field: 'L',   value: v })} />
-            <PF label="φ — factor reducción"      value={vigas.phi} onChange={v => dispatch({ type: 'SET_VIGA', field: 'phi', value: v })} step="0.05" />
-            <PF label="f'c (kg/cm²)"              value={vigas.fc}  onChange={v => dispatch({ type: 'SET_VIGA', field: 'fc',  value: v })} />
-            <PF label="fy (kg/cm²)"               value={vigas.fy}  onChange={v => dispatch({ type: 'SET_VIGA', field: 'fy',  value: v })} />
-            <PF label="Acs — área sección (cm²)"  value={vigas.Acs} onChange={v => dispatch({ type: 'SET_VIGA', field: 'Acs', value: v })} />
+            <PF label="Cortante del muro Vm1 (ton)" value={vigas.Vm1} onChange={v => dispatch({ type: 'SET_VIGA', field: 'Vm1', value: v })} />
+            <PF label="Longitud del paño Lm (m)"       value={vigas.Lm}  onChange={v => dispatch({ type: 'SET_VIGA', field: 'Lm',  value: v })} />
+            <PF label="Longitud total del muro L (m)"     value={vigas.L}   onChange={v => dispatch({ type: 'SET_VIGA', field: 'L',   value: v })} />
+            <PF label="Factor de reducción φ"      value={vigas.phi} onChange={v => dispatch({ type: 'SET_VIGA', field: 'phi', value: v })} step="0.05" />
+            <PF label="Resistencia del concreto f'c (kg/cm²)"              value={vigas.fc}  onChange={v => dispatch({ type: 'SET_VIGA', field: 'fc',  value: v })} />
+            <PF label="Resistencia del acero fy (kg/cm²)"               value={vigas.fy}  onChange={v => dispatch({ type: 'SET_VIGA', field: 'fy',  value: v })} />
+            <PF label="Área de sección de solera Acs (cm²)"  value={vigas.Acs} onChange={v => dispatch({ type: 'SET_VIGA', field: 'Acs', value: v })} />
           </ParamGrid>
-          <div style={{ ...S.resultBox, maxWidth: 420 }}>
-            <div style={{ fontSize: 10, color: '#90caf9', fontFamily: 'var(--cond)', fontWeight: 700, marginBottom: 8 }}>Resultados</div>
-            <ResultRow label="Ts = Vm1·Lm / (2·L)" value={pf(vigaCalc.Ts, 4)} unit="ton" />
-            <ResultRow label="As req = Ts·1000 / (φ·fy)" value={pf(vigaCalc.As, 4)} unit="cm²" />
-            <ResultRow label="As mín = 0.1·f'c·Acs / fy" value={pf(vigaCalc.As_min, 4)} unit="cm²" />
-            <ResultRow label="As adoptado = max(As, As mín)"
-              value={pf(vigaCalc.As_adoptado, 4)} unit="cm²"
-              ok={vigaCalc.As_adoptado != null && vigaCalc.As != null ? vigaCalc.As_adoptado >= vigaCalc.As : undefined} />
-          </div>
-          <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 8, fontStyle: 'italic', fontFamily: 'var(--sans)' }}>
-            La viga solera se diseña a tracción pura. As adoptado ≥ As req y ≥ As mín.
+
+          <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16, alignItems: 'start' }}>
+            <div style={S.resultBox}>
+              <div style={{ fontSize: 10, color: '#90caf9', fontFamily: 'var(--cond)', fontWeight: 700, marginBottom: 8 }}>Resultados</div>
+              <ResultRow label="Ts = Vm1·Lm / (2·L)" value={pf(vigaCalc.Ts, 4)} unit="ton" />
+              <ResultRow label="As req = Ts·1000 / (φ·fy)" value={pf(vigaCalc.As, 4)} unit="cm²" />
+              <ResultRow label="As mín = 0.1·f'c·Acs / fy" value={pf(vigaCalc.As_min, 4)} unit="cm²" />
+              <ResultRow label="As adoptado = max(As, As mín)"
+                value={pf(vigaCalc.As_adoptado, 4)} unit="cm²"
+                ok={vigaCalc.As_adoptado != null && vigaCalc.As != null ? vigaCalc.As_adoptado >= vigaCalc.As : undefined} />
+            </div>
+            {vigaCalc.As_adoptado != null && (
+              <VerifCard
+                ok={vigaCalc.As_adoptado >= vigaCalc.As}
+                mainText={vigaCalc.As_adoptado >= vigaCalc.As
+                  ? 'As adoptado ≥ As req — Solera correcta'
+                  : 'As adoptado < As req — Revisar sección'}
+                detail={`As adoptado = ${pf(vigaCalc.As_adoptado, 4)} cm²  |  As req = ${pf(vigaCalc.As, 4)} cm²  |  Ts = ${pf(vigaCalc.Ts, 4)} ton`}
+              />
+            )}
           </div>
         </>}
 
         {/* ══ 6. Cargas Ortogonales ═════════════════════════════════════════ */}
         {tab === 'CARGAS ORT.' && <>
+
+          <FormulaBox
+            title="Cargas ortogonales al plano del muro (Art. 29)"
+            lines={[
+              'Presión sísmica:  w = 0.8·Z·U·C1·γ·e          [ton/m²]',
+              'Momento de diseño:  Ms = m·w·a²               [ton·m/m]',
+              '   m = coeficiente de momento de Tabla 12 (interpolado por b/a y caso de borde)',
+              'Esfuerzo de flexión:  fm = 6·Ms / t²           [kg/cm²]',
+              'Verificación:  fm ≤ f\'t  →  muro sin refuerzo horizontal CUMPLE',
+            ]}
+          />
+
           <ParamGrid cols={4}>
-            <PF label="Z" value={ortogonales.Z} onChange={v => dispatch({ type: 'SET_ORT', field: 'Z', value: v })} step="0.05" />
-            <PF label="U" value={ortogonales.U} onChange={v => dispatch({ type: 'SET_ORT', field: 'U', value: v })} step="0.05" />
-            <PF label="C1 — coef. sísmico" value={ortogonales.C1} onChange={v => dispatch({ type: 'SET_ORT', field: 'C1', value: v })} />
-            <PF label="γ — peso unit. (ton/m³)" value={ortogonales.gamma} onChange={v => dispatch({ type: 'SET_ORT', field: 'gamma', value: v })} />
-            <PF label="e — espesor muro (m)" value={ortogonales.e} onChange={v => dispatch({ type: 'SET_ORT', field: 'e', value: v })} />
-            <PF label="b/a" value={ortogonales.ba} onChange={v => dispatch({ type: 'SET_ORT', field: 'ba', value: v })} step="0.1" />
-            <PF label="m — coef. momento (Tabla 12, dejar vacío para auto)" value={ortogonales.m} onChange={v => dispatch({ type: 'SET_ORT', field: 'm', value: v })} />
-            <PF label="a — dim. menor (m)" value={ortogonales.a} onChange={v => dispatch({ type: 'SET_ORT', field: 'a', value: v })} />
-            <PF label="t eff (m)" value={ortogonales.tEff} onChange={v => dispatch({ type: 'SET_ORT', field: 'tEff', value: v })} />
-            <PF label="f't — resist. tracción (kg/cm²)" value={ortogonales.ft} onChange={v => dispatch({ type: 'SET_ORT', field: 'ft', value: v })} />
+            <PF label="Factor de zona Z" value={ortogonales.Z} onChange={v => dispatch({ type: 'SET_ORT', field: 'Z', value: v })} step="0.05" />
+            <PF label="Factor de uso U" value={ortogonales.U} onChange={v => dispatch({ type: 'SET_ORT', field: 'U', value: v })} step="0.05" />
+            <PF label="Coef. sísmico C1" value={ortogonales.C1} onChange={v => dispatch({ type: 'SET_ORT', field: 'C1', value: v })} />
+            <PF label="Peso unitario albañilería γ (ton/m³)" value={ortogonales.gamma} onChange={v => dispatch({ type: 'SET_ORT', field: 'gamma', value: v })} />
+            <PF label="Espesor del muro e (m)" value={ortogonales.e} onChange={v => dispatch({ type: 'SET_ORT', field: 'e', value: v })} />
+            <PF label="Relación de aspecto b/a" value={ortogonales.ba} onChange={v => dispatch({ type: 'SET_ORT', field: 'ba', value: v })} step="0.1" />
+            <PF label="Coef. m (Tabla 12, vacío = automático)" value={ortogonales.m} onChange={v => dispatch({ type: 'SET_ORT', field: 'm', value: v })} />
+            <PF label="Dimensión menor del panel a (m)" value={ortogonales.a} onChange={v => dispatch({ type: 'SET_ORT', field: 'a', value: v })} />
+            <PF label="Espesor efectivo del muro t_eff (m)" value={ortogonales.tEff} onChange={v => dispatch({ type: 'SET_ORT', field: 'tEff', value: v })} />
+            <PF label="Resistencia a tracción f't (kg/cm²)" value={ortogonales.ft} onChange={v => dispatch({ type: 'SET_ORT', field: 'ft', value: v })} />
             <div>
-              <label style={S.paramLabel}>Caso de borde</label>
+              <label style={S.paramLabel}>Caso de borde (condición de apoyo)</label>
               <select style={S.paramSelect}
                 value={ortogonales.caso}
                 onChange={e => dispatch({ type: 'SET_ORT', field: 'caso', value: e.target.value })}>
                 <option value="caso1">Caso 1 — 4 bordes arriostrados</option>
                 <option value="caso2">Caso 2 — 3 bordes arriostrados</option>
                 <option value="caso3">Caso 3 — borde superior libre</option>
-                <option value="caso4">Caso 4 — solo bordes horiz.</option>
+                <option value="caso4">Caso 4 — solo bordes horizontales</option>
               </select>
             </div>
           </ParamGrid>
-          <div style={{ ...S.resultBox, maxWidth: 460 }}>
-            <div style={{ fontSize: 10, color: '#90caf9', fontFamily: 'var(--cond)', fontWeight: 700, marginBottom: 8 }}>Resultados</div>
-            <ResultRow label="m (Tabla 12)" value={pf4(ortCalc.coef_m)} />
-            <ResultRow label="w = 0.8·Z·U·C1·γ·e" value={pf(ortCalc.w, 6)} unit="ton/m²" />
-            <ResultRow label="Ms = m·w·a²" value={pf(ortCalc.Ms, 6)} unit="ton·m/m" />
-            <ResultRow label="fm = 6·Ms / t²" value={pf(ortCalc.fm, 4)} unit="kg/cm²" />
-            <ResultRow label="f't" value={pf(ortCalc.ft, 2)} unit="kg/cm²" />
-            <ResultRow label="Verificación fm ≤ f't"
-              value={ortCalc.cumple ? 'CUMPLE' : 'NO CUMPLE'}
-              ok={ortCalc.cumple} />
-          </div>
-          <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 8, fontStyle: 'italic', fontFamily: 'var(--sans)' }}>
-            Si fm &gt; f't, el muro requiere refuerzo horizontal o reducción de panel libre.
+
+          <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16, alignItems: 'start' }}>
+            <div style={S.resultBox}>
+              <div style={{ fontSize: 10, color: '#90caf9', fontFamily: 'var(--cond)', fontWeight: 700, marginBottom: 8 }}>Resultados de cálculo</div>
+              <ResultRow label="m (Tabla 12 interpolado)" value={pf4(ortCalc.coef_m)} />
+              <ResultRow label="w = 0.8·Z·U·C1·γ·e" value={pf(ortCalc.w, 6)} unit="ton/m²" />
+              <ResultRow label="Ms = m·w·a²" value={pf(ortCalc.Ms, 6)} unit="ton·m/m" />
+              <ResultRow label="fm = 6·Ms / t²" value={pf(ortCalc.fm, 4)} unit="kg/cm²" />
+              <ResultRow label="f't resistencia a tracción" value={pf(ortCalc.ft, 2)} unit="kg/cm²" />
+            </div>
+            {ortCalc.fm != null && (
+              <VerifCard
+                ok={ortCalc.cumple}
+                mainText={ortCalc.cumple
+                  ? 'fm ≤ f\'t — Muro sin refuerzo horizontal'
+                  : 'fm > f\'t — Requiere refuerzo horizontal'}
+                detail={`fm = ${pf(ortCalc.fm, 4)} kg/cm²  |  f't = ${pf(ortCalc.ft, 2)} kg/cm²  (Art. 29)${!ortCalc.cumple ? '\n→ Considerar refuerzo horizontal o reducir panel libre' : ''}`}
+              />
+            )}
           </div>
         </>}
 

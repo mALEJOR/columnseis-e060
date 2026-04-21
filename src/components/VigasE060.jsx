@@ -1782,7 +1782,7 @@ export default function VigasE060({ onBack }) {
     })
   }
 
-  const TABS = ['FLEXIÓN', 'CORTE', 'PREDIMENSIONAMIENTO', 'DEFLEXIONES', 'NUDOS']
+  const TABS = ['FLEXIÓN', 'CORTE', 'DEFLEXIONES', 'NUDOS']
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -1872,7 +1872,6 @@ export default function VigasE060({ onBack }) {
       <div style={{ flex: 1, overflowY: 'auto', padding: '18px 20px' }}>
         {tab === 'FLEXIÓN'             && <TabFlexion      state={state} dispatch={dispatch} />}
         {tab === 'CORTE'               && <TabCorte        state={state} dispatch={dispatch} />}
-        {tab === 'PREDIMENSIONAMIENTO' && <TabPredim       state={state} dispatch={dispatch} />}
         {tab === 'DEFLEXIONES'         && <TabDeflexiones  state={state} dispatch={dispatch} />}
         {tab === 'NUDOS'               && <TabNudos        state={state} dispatch={dispatch} />}
       </div>
