@@ -2205,6 +2205,38 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
     color: active ? '#4caf50' : 'var(--text3)', letterSpacing: '.4px', transition: 'all .15s',
   })
 
+  const exportarSVGaPNG = (svgRef, label) => {
+    const svgEl = svgRef.current
+    if (!svgEl) return
+    const SCALE = 2
+    const CW = W * SCALE
+    const CH = H * SCALE
+    const serializer = new XMLSerializer()
+    const svgStr = serializer.serializeToString(svgEl)
+    const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' })
+    const url = URL.createObjectURL(svgBlob)
+    const img = new Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      canvas.width = CW
+      canvas.height = CH
+      const ctx = canvas.getContext('2d')
+      ctx.fillStyle = '#0d1117'
+      ctx.fillRect(0, 0, CW, CH)
+      ctx.drawImage(img, 0, 0, CW, CH)
+      URL.revokeObjectURL(url)
+      canvas.toBlob(blob => {
+        const dlUrl = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = dlUrl
+        a.download = `espectro-${label.toLowerCase().replace(/\s+/g, '-')}.png`
+        a.click()
+        URL.revokeObjectURL(dlUrl)
+      }, 'image/png')
+    }
+    img.src = url
+  }
+
   // Render a single chart SVG
   const renderChart = (esp, path, color, fillColor, label, R, saMaxVal, sagMaxVal, svgR, tt, setTT) => (
     <div className="esp-chart-wrap">
@@ -2212,6 +2244,12 @@ function TabEspectro({ iaCalcX, iaCalcY, ipCalcX, ipCalcY, RoXParam, RoYParam, s
         <span style={{fontSize:10,fontFamily:'var(--cond)',fontWeight:700,color,letterSpacing:'.5px'}}>
           {label} &nbsp;<span style={{fontWeight:400,color:'var(--text2)',fontSize:9}}>R={R.toFixed(2)} | Sa max={(modoSa==='Sa'?saMaxVal:sagMaxVal).toFixed(4)} {modoSa==='Sa'?'m/s2':''}</span>
         </span>
+        <button onClick={() => exportarSVGaPNG(svgR, label)} style={{
+          padding: '2px 8px', fontSize: 8, fontFamily: 'var(--cond)',
+          border: '1px solid rgba(79,195,247,0.3)', borderRadius: 'var(--r)',
+          background: 'rgba(79,195,247,0.1)', color: '#64b5f6',
+          cursor: 'pointer',
+        }}>PNG</button>
       </div>
       <svg ref={svgR} width="100%" viewBox={`0 0 ${W} ${H}`} style={{cursor:'crosshair'}}
         onMouseMove={mkHandleSvgMove(esp, setTT)} onMouseLeave={() => setTT(null)}>

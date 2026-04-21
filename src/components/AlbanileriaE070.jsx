@@ -101,6 +101,70 @@ function reducer(state, action) {
       return { ...state, vigas: { ...state.vigas, [action.field]: action.value } }
     case 'SET_ORT':
       return { ...state, ortogonales: { ...state.ortogonales, [action.field]: action.value } }
+    case 'LOAD_EXAMPLE': {
+      const exGrav = (pier, p) => ({ story: 'Story1', pier, outputCase: 'Pg', caseType: 'Combination', stepType: '', location: 'Bottom', p, v2: 0, v3: 0, t: 0, m2: 0, m3: 0 })
+
+      const mxSismo = emptyMuroRows()
+      mxSismo[0] = { story:'Story1', pier:'X1', outputCase:'EQXDESP', caseType:'LinRespSpec', stepType:'Max', location:'Bottom', p:2500,  v2:8500,  v3:100, t:50, m2:30, m3:12000 }
+      mxSismo[1] = { story:'Story1', pier:'X2', outputCase:'EQXDESP', caseType:'LinRespSpec', stepType:'Max', location:'Bottom', p:1800,  v2:6200,  v3:80,  t:35, m2:25, m3:9500  }
+      mxSismo[2] = { story:'Story1', pier:'X3', outputCase:'EQXDESP', caseType:'LinRespSpec', stepType:'Max', location:'Bottom', p:3200,  v2:11000, v3:150, t:70, m2:40, m3:16000 }
+      mxSismo[3] = { story:'Story1', pier:'X4', outputCase:'EQXDESP', caseType:'LinRespSpec', stepType:'Max', location:'Bottom', p:2100,  v2:7800,  v3:90,  t:45, m2:28, m3:11500 }
+
+      const mxGrav = emptyMuroRows()
+      mxGrav[0] = exGrav('X1', 15000)
+      mxGrav[1] = exGrav('X2', 12000)
+      mxGrav[2] = exGrav('X3', 18000)
+      mxGrav[3] = exGrav('X4', 14000)
+
+      const mxProps = emptyMuroProps()
+      mxProps[0] = { pier:'X1', t:0.13, L:3.5, vm:8.1 }
+      mxProps[1] = { pier:'X2', t:0.13, L:2.8, vm:8.1 }
+      mxProps[2] = { pier:'X3', t:0.23, L:4.2, vm:8.1 }
+      mxProps[3] = { pier:'X4', t:0.13, L:3.0, vm:8.1 }
+
+      const mySismo = emptyMuroRows()
+      mySismo[0] = { story:'Story1', pier:'Y1', outputCase:'EQYDESP', caseType:'LinRespSpec', stepType:'Max', location:'Bottom', p:2200,  v2:7500,  v3:90,  t:45, m2:25, m3:10500 }
+      mySismo[1] = { story:'Story1', pier:'Y2', outputCase:'EQYDESP', caseType:'LinRespSpec', stepType:'Max', location:'Bottom', p:2900,  v2:9800,  v3:120, t:60, m2:35, m3:14000 }
+      mySismo[2] = { story:'Story1', pier:'Y3', outputCase:'EQYDESP', caseType:'LinRespSpec', stepType:'Max', location:'Bottom', p:1600,  v2:5500,  v3:70,  t:30, m2:20, m3:8000  }
+
+      const myGrav = emptyMuroRows()
+      myGrav[0] = exGrav('Y1', 13000)
+      myGrav[1] = exGrav('Y2', 17000)
+      myGrav[2] = exGrav('Y3', 10500)
+
+      const myProps = emptyMuroProps()
+      myProps[0] = { pier:'Y1', t:0.13, L:3.2, vm:8.1 }
+      myProps[1] = { pier:'Y2', t:0.23, L:3.8, vm:8.1 }
+      myProps[2] = { pier:'Y3', t:0.13, L:2.5, vm:8.1 }
+
+      const densMurosX = emptyDensMuros()
+      densMurosX[0] = { nombre:'X1', L:'3.5', t:'0.13', esPlacaCA: false, Ec:'', Em:'' }
+      densMurosX[1] = { nombre:'X2', L:'2.8', t:'0.13', esPlacaCA: false, Ec:'', Em:'' }
+      densMurosX[2] = { nombre:'X3', L:'4.2', t:'0.23', esPlacaCA: false, Ec:'', Em:'' }
+      densMurosX[3] = { nombre:'X4', L:'3.0', t:'0.13', esPlacaCA: false, Ec:'', Em:'' }
+
+      const densMurosY = emptyDensMuros()
+      densMurosY[0] = { nombre:'Y1', L:'3.2', t:'0.13', esPlacaCA: false, Ec:'', Em:'' }
+      densMurosY[1] = { nombre:'Y2', L:'3.8', t:'0.23', esPlacaCA: false, Ec:'', Em:'' }
+      densMurosY[2] = { nombre:'Y3', L:'2.5', t:'0.13', esPlacaCA: false, Ec:'', Em:'' }
+
+      return {
+        murosX: { sismo: mxSismo, grav: mxGrav, props: mxProps, fm: 65, h: 2.6 },
+        murosY: { sismo: mySismo, grav: myGrav, props: myProps, fm: 65, h: 2.6 },
+        densidad: {
+          N: 3, Ap: 160, Z: 0.45, U: 1, S: 1,
+          murosX: densMurosX,
+          murosY: densMurosY,
+        },
+        columnas: {
+          Vm1: 12, Mu1: 8, h: 2.6, L: 3.5, Lm: 1.75, Nc: 2, Pg: 0,
+          fc: 175, fy: 4200, phi_c: 0.70, phi_f: 0.85, mu_f: 0.80,
+          bc: 0.13, dc: 0.30, db_estribo: 8, recubrimiento: 4,
+        },
+        vigas: { Vm1: 12, Lm: 1.75, L: 3.5, phi: 0.85, fc: 175, fy: 4200, Acs: 150 },
+        ortogonales: { Z: 0.45, U: 1, C1: 2, gamma: 1.8, e: 0.15, caso: 'caso4', ba: 1, m: '', a: 2.6, tEff: 0.13, ft: 1.5 },
+      }
+    }
     default: return state
   }
 }
@@ -598,6 +662,13 @@ export default function AlbanileriaE070({ onBack }) {
     )
   }, [ortogonales])
 
+  // ── Cargar Ejemplo ────────────────────────────────────────────────────────
+  const handleCargarEjemplo = () => {
+    dispatch({ type: 'LOAD_EXAMPLE' })
+    setVmEiX('35.5')
+    setVmEiY('28.8')
+  }
+
   // ── Copiar Resultados ─────────────────────────────────────────────────────
   const handleCopiarResultados = () => {
     const p = (v, d = 2) => (v === '' || v == null || isNaN(Number(v))) ? '—' : Number(v).toFixed(d)
@@ -713,6 +784,15 @@ export default function AlbanileriaE070({ onBack }) {
           </div>
         </div>
         <div style={{ flex: 1 }} />
+        <button onClick={handleCargarEjemplo} style={{
+          padding: '5px 12px', fontSize: 10, fontFamily: 'var(--cond)',
+          fontWeight: 600, borderRadius: 'var(--r)',
+          border: '1px solid rgba(255,193,7,0.4)',
+          background: 'rgba(255,193,7,0.12)', color: '#ffc107',
+          cursor: 'pointer', letterSpacing: '.3px',
+        }}>
+          Cargar Ejemplo
+        </button>
         <button onClick={handleCopiarResultados} style={{
           padding: '5px 12px', fontSize: 10, fontFamily: 'var(--cond)',
           fontWeight: 600, borderRadius: 'var(--r)',
