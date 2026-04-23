@@ -247,6 +247,8 @@ export default function ExcelTable({
   const [formulaEditing, setFormulaEditing] = useState(false)
   const [formulaLocal, setFormulaLocal] = useState('')
   const [isMouseSelecting, setIsMouseSelecting] = useState(false)
+  const [isFillDragging, setIsFillDragging] = useState(false)
+  const [fillRange, setFillRange] = useState(null) // {endRow}
 
   const tableRef  = useRef(null)
   const editRef   = useRef(null)
@@ -608,6 +610,90 @@ export default function ExcelTable({
     }
   }, [navigate])
 
+  // ── Fill handle (drag to fill) ─────────────────────────────────────────
+  const handleFillMouseDown = useCallback((e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!selectedCell) return
+    setIsFillDragging(true)
+    setFillRange({ endRow: selectedCell.row })
+  }, [selectedCell])
+
+  const handleFillMouseEnter = useCallback((row) => {
+    if (!isFillDragging) return
+    setFillRange({ endRow: row })
+  }, [isFillDragging])
+
+  const handleFillMouseUp = useCallback(() => {
+    if (!isFillDragging || !fillRange || !selectedCell) {
+      setIsFillDragging(false)
+      setFillRange(null)
+      return
+    }
+    // Fill from selectedCell.row to fillRange.endRow with the value of selectedCell
+    const srcRow = selectedCell.row
+    const destStart = Math.min(srcRow, fillRange.endRow)
+    const destEnd = Math.max(srcRow, fillRange.endRow)
+    const changes = []
+    // Get range of columns to fill
+    const colStart = selectionRange ? Math.min(selectionRange.startCol, selectionRange.endCol) : selectedCell.col
+    const colEnd = selectionRange ? Math.max(selectionRange.startCol, selectionRange.endCol) : selectedCell.col
+    for (let r = destStart; r <= destEnd; r++) {
+      if (r === srcRow) continue
+      for (let c = colStart; c <= colEnd; c++) {
+        if (isReadOnly(c)) continue
+        const srcVal = getCellValue(srcRow, c)
+        const origIdx = displayRows[r]?._origIdx
+        if (origIdx == null) continue
+        changes.push({ rowIdx: origIdx, colKey: cols[c].key, value: srcVal })
+      }
+    }
+    if (changes.length > 0) {
+      onBulkChange?.(changes)
+      if (!onBulkChange && onChange) changes.forEach(c => onChange(c.rowIdx, c.colKey, c.value))
+    }
+    // Extend selection to cover filled area
+    setSelectionRange({
+      startRow: Math.min(srcRow, fillRange.endRow),
+      startCol: colStart,
+      endRow: Math.max(srcRow, fillRange.endRow),
+      endCol: colEnd,
+    })
+    setIsFillDragging(false)
+    setFillRange(null)
+  }, [isFillDragging, fillRange, selectedCell, selectionRange, isReadOnly, getCellValue, displayRows, cols, onBulkChange, onChange])
+
+  useEffect(() => {
+    if (isFillDragging) {
+      window.addEventListener('mouseup', handleFillMouseUp)
+      return () => window.removeEventListener('mouseup', handleFillMouseUp)
+    }
+  }, [isFillDragging, handleFillMouseUp])
+
+  // Check if row is in fill preview range
+  const isInFillRange = useCallback((row, col) => {
+    if (!isFillDragging || !fillRange || !selectedCell) return false
+    const srcRow = selectedCell.row
+    const minR = Math.min(srcRow, fillRange.endRow)
+    const maxR = Math.max(srcRow, fillRange.endRow)
+    const colStart = selectionRange ? Math.min(selectionRange.startCol, selectionRange.endCol) : selectedCell.col
+    const colEnd = selectionRange ? Math.max(selectionRange.startCol, selectionRange.endCol) : selectedCell.col
+    return row >= minR && row <= maxR && col >= colStart && col <= colEnd && row !== srcRow
+  }, [isFillDragging, fillRange, selectedCell, selectionRange])
+
+  // ── Row/Column header selection ──────────────────────────────────────────
+  const handleRowHeaderClick = useCallback((row) => {
+    setSelectedCell({ row, col: 0 })
+    setSelectionRange({ startRow: row, startCol: 0, endRow: row, endCol: colCount - 1 })
+    tableRef.current?.focus()
+  }, [colCount])
+
+  const handleColHeaderClick = useCallback((col) => {
+    setSelectedCell({ row: 0, col })
+    setSelectionRange({ startRow: 0, startCol: col, endRow: rowCount - 1, endCol: col })
+    tableRef.current?.focus()
+  }, [rowCount])
+
   // ── Render ────────────────────────────────────────────────────────────────
   const activeCol = selectedCell?.col ?? null
   const activeRow = selectedCell?.row ?? null
@@ -678,7 +764,8 @@ export default function ExcelTable({
                       ...S.headerCell,
                       ...(isActive ? S.headerCellActive : {}),
                     }}
-                    onClick={() => handleHeaderClick(col.key)}
+                    onClick={(e) => { if (e.shiftKey) handleColHeaderClick(ci); else handleHeaderClick(col.key) }}
+                    onDoubleClick={() => handleColHeaderClick(ci)}
                     title={col.label}
                   >
                     {col.label}
@@ -701,7 +788,8 @@ export default function ExcelTable({
                   style={isActiveRow ? { background: 'rgba(255,255,255,0.02)' } : {}}
                 >
                   {showRowNumbers && (
-                    <td style={S.rowNumCell}>{ri + 1}</td>
+                    <td style={{ ...S.rowNumCell, cursor: 'pointer' }}
+                      onClick={() => handleRowHeaderClick(ri)}>{ri + 1}</td>
                   )}
                   {cols.map((col, ci) => {
                     const isEditing = editingCell?.row === ri && editingCell?.col === ci
@@ -711,12 +799,17 @@ export default function ExcelTable({
                     const rawVal = rowData[col.key]
                     const displayVal = rawVal == null ? '' : rawVal
 
+                    const inFill = isInFillRange(ri, ci)
+                    const showFillHandle = isSelected && !isEditing && !ro
+
                     let cellStyle = {
                       ...S.cell,
                       ...(ro ? S.cellComputed : S.cellInput),
                       ...(inRange && !isSelected ? S.cellInRange : {}),
+                      ...(inFill ? { background: 'rgba(79,195,247,0.25)', borderBottom: '1px dashed #4FC3F7' } : {}),
                       ...(isSelected ? S.cellSelected : {}),
                       ...(isEditing ? S.cellEditing : {}),
+                      position: 'relative',
                     }
 
                     return (
@@ -724,7 +817,7 @@ export default function ExcelTable({
                         key={col.key}
                         style={cellStyle}
                         onMouseDown={(e) => handleCellMouseDown(e, ri, ci)}
-                        onMouseEnter={() => handleCellMouseEnter(ri, ci)}
+                        onMouseEnter={() => { handleCellMouseEnter(ri, ci); handleFillMouseEnter(ri) }}
                         onDoubleClick={() => handleCellDoubleClick(ri, ci)}
                       >
                         {isEditing ? (
@@ -757,6 +850,15 @@ export default function ExcelTable({
                           <span style={{ pointerEvents: 'none', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {displayVal === '' || displayVal == null ? '\u00A0' : String(displayVal)}
                           </span>
+                        )}
+                        {showFillHandle && (
+                          <div
+                            onMouseDown={handleFillMouseDown}
+                            style={{
+                              position: 'absolute', right: -3, bottom: -3, width: 7, height: 7,
+                              background: '#4FC3F7', border: '1px solid #0d1117', cursor: 'crosshair', zIndex: 2,
+                            }}
+                          />
                         )}
                       </td>
                     )
