@@ -552,6 +552,23 @@ function VmTable({ simoRows, gravRows, props, dispatch, dir, vmEi, setVmEi }) {
           />
         </div>
       )}
+
+      {/* ── Semáforo por muro ─────────────────────────────────────────────── */}
+      {vmResult.resultados.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+          {vmResult.resultados.map((r, i) => (
+            <span key={i} style={{
+              padding: '3px 8px', borderRadius: 4, fontSize: 9, fontWeight: 700,
+              background: r.verificacion === 'NO SE FISURA' ? 'rgba(46,125,50,0.2)' : 'rgba(198,40,40,0.2)',
+              color: r.verificacion === 'NO SE FISURA' ? '#69f0ae' : '#ff5252',
+              border: '1px solid ' + (r.verificacion === 'NO SE FISURA' ? 'rgba(46,125,50,0.4)' : 'rgba(198,40,40,0.4)'),
+              fontFamily: 'var(--mono)',
+            }}>
+              {r.nombre}: {r.verificacion} ({((r.Ve / (r.Vm055 || 1)) * 100).toFixed(0)}%)
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -1149,6 +1166,88 @@ export default function AlbanileriaE070({ onBack }) {
               />
             </div>
           )}
+
+          {/* ── Sección sugerida ─────────────────────────────────────────────── */}
+          {colCalc.Ac != null && (() => {
+            const Ac = colCalc.Ac || 195
+            const dim = Ac <= 195 ? '15 × 13' : Ac <= 300 ? '15 × 20' : Ac <= 400 ? '20 × 20' : '25 × 20'
+            return (
+              <div style={{ marginTop: 14 }}>
+                <SummaryCard value={dim} unit="cm" label="Sección sugerida de columna" note={`Ac mín requerida = ${pf(colCalc.Ac, 1)} cm²`} />
+              </div>
+            )
+          })()}
+
+          {/* ── Tabla de barras sugeridas para refuerzo vertical ─────────────── */}
+          {colCalc.As != null && (() => {
+            const AsReq = colCalc.As || 0
+            const opciones = [
+              { label: '4φ8mm',  barras: '4×0.50', As: 4 * 0.50 },
+              { label: '4φ3/8"', barras: '4×0.71', As: 4 * 0.71 },
+              { label: '4φ1/2"', barras: '4×1.27', As: 4 * 1.27 },
+              { label: '4φ5/8"', barras: '4×1.98', As: 4 * 1.98 },
+            ]
+            const primerOk = opciones.findIndex(o => o.As >= AsReq && o.As >= 2.01)
+            return (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'var(--cond)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 6 }}>
+                  Opciones de refuerzo vertical — As req = {pf(AsReq, 3)} cm²
+                </div>
+                <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r2)', maxWidth: 520 }}>
+                  <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
+                    <thead>
+                      <tr>
+                        <ResizableTh style={{ ...S.headerCell, width: 90 }}>Opción</ResizableTh>
+                        <ResizableTh style={{ ...S.headerCell, width: 90 }}>Barras</ResizableTh>
+                        <ResizableTh style={{ ...S.headerCell, width: 110 }}>As total (cm²)</ResizableTh>
+                        <ResizableTh style={{ ...S.headerCell, width: 70 }}>Cumple</ResizableTh>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {opciones.map((op, i) => {
+                        const cumple = op.As >= AsReq && op.As >= 2.01
+                        const isFirst = i === primerOk
+                        return (
+                          <tr key={i} style={{
+                            background: isFirst ? 'rgba(46,125,50,0.15)' : i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)',
+                            border: isFirst ? '1px solid rgba(46,125,50,0.4)' : undefined,
+                          }}>
+                            <td style={{ ...S.cell, fontFamily: 'var(--mono)', fontWeight: isFirst ? 700 : 400, color: isFirst ? '#69f0ae' : 'var(--text1)' }}>{op.label}</td>
+                            <td style={{ ...S.cell, ...S.compCell }}>{op.barras}</td>
+                            <td style={{ ...S.cell, ...S.compCell, fontWeight: 700 }}>{op.As.toFixed(2)}</td>
+                            <td style={{ ...S.cell, color: cumple ? '#69f0ae' : '#ff5252', fontWeight: 700, fontSize: 12 }}>{cumple ? '✓' : '✗'}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* ── Distribución de estribos ─────────────────────────────────────── */}
+          {colCalc.s_conf_adoptado != null && colCalc.s_central_adoptado != null && (() => {
+            const dc = parseFloat(columnas.dc) || 0.30
+            const zonaConf = Math.max(45, Math.round(1.5 * dc * 100))
+            const sConf = colCalc.s_conf_adoptado
+            const sCentral = colCalc.s_central_adoptado
+            const db = parseFloat(columnas.db_estribo) || 8
+            const nConf = sConf > 0 ? Math.round(zonaConf / sConf) : 0
+            return (
+              <div style={{ background: 'rgba(124,77,255,0.1)', border: '1px solid rgba(124,77,255,0.3)', borderRadius: 12, padding: 16, marginTop: 12 }}>
+                <div style={{ fontSize: 11, color: '#b388ff', fontWeight: 700, marginBottom: 6, fontFamily: 'var(--cond)', letterSpacing: '.5px', textTransform: 'uppercase' }}>
+                  Distribución de estribos
+                </div>
+                <div style={{ fontFamily: 'var(--mono)', fontSize: 14, color: '#e1bee7', fontWeight: 700 }}>
+                  &#9634;{db}mm: 1@5, {nConf}@{pf(sConf, 1)}, r@{pf(sCentral, 1)} cm
+                </div>
+                <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 6 }}>
+                  Zona confinada: {zonaConf} cm desde cada extremo | Zona central: resto
+                </div>
+              </div>
+            )
+          })()}
         </>}
 
         {/* ══ 5. Vigas Soleras ══════════════════════════════════════════════ */}
@@ -1194,6 +1293,50 @@ export default function AlbanileriaE070({ onBack }) {
               />
             )}
           </div>
+
+          {/* ── Tabla de barras sugeridas para solera ────────────────────────── */}
+          {vigaCalc.As_adoptado != null && (() => {
+            const AsReq = vigaCalc.As_adoptado || 0
+            const opciones = [
+              { label: '4φ8mm',  barras: '4×0.50', As: 4 * 0.50 },
+              { label: '4φ3/8"', barras: '4×0.71', As: 4 * 0.71 },
+              { label: '4φ1/2"', barras: '4×1.27', As: 4 * 1.27 },
+            ]
+            const primerOk = opciones.findIndex(o => o.As >= AsReq)
+            return (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'var(--cond)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 6 }}>
+                  Opciones de refuerzo longitudinal — As adoptado = {pf(AsReq, 4)} cm²
+                </div>
+                <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 'var(--r2)', maxWidth: 420 }}>
+                  <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
+                    <thead>
+                      <tr>
+                        <ResizableTh style={{ ...S.headerCell, width: 90 }}>Opción</ResizableTh>
+                        <ResizableTh style={{ ...S.headerCell, width: 100 }}>As total (cm²)</ResizableTh>
+                        <ResizableTh style={{ ...S.headerCell, width: 70 }}>Cumple</ResizableTh>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {opciones.map((op, i) => {
+                        const cumple = op.As >= AsReq
+                        const isFirst = i === primerOk
+                        return (
+                          <tr key={i} style={{
+                            background: isFirst ? 'rgba(46,125,50,0.15)' : i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)',
+                          }}>
+                            <td style={{ ...S.cell, fontFamily: 'var(--mono)', fontWeight: isFirst ? 700 : 400, color: isFirst ? '#69f0ae' : 'var(--text1)' }}>{op.label}</td>
+                            <td style={{ ...S.cell, ...S.compCell, fontWeight: 700 }}>{op.As.toFixed(2)}</td>
+                            <td style={{ ...S.cell, color: cumple ? '#69f0ae' : '#ff5252', fontWeight: 700, fontSize: 12 }}>{cumple ? '✓' : '✗'}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })()}
         </>}
 
         {/* ══ 6. Cargas Ortogonales ═════════════════════════════════════════ */}
@@ -1231,6 +1374,37 @@ export default function AlbanileriaE070({ onBack }) {
                 <option value="caso3">Caso 3 — borde superior libre</option>
                 <option value="caso4">Caso 4 — solo bordes horizontales</option>
               </select>
+              {/* Mini SVGs de casos de apoyo */}
+              <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                {[
+                  { key: 'caso1', label: '1', top: true,  right: true,  bottom: true,  left: true,  topDash: false, rightDash: false, bottomDash: false, leftDash: false },
+                  { key: 'caso2', label: '2', top: true,  right: true,  bottom: true,  left: false, topDash: false, rightDash: false, bottomDash: false, leftDash: true  },
+                  { key: 'caso3', label: '3', top: false, right: false, bottom: true,  left: false, topDash: true,  rightDash: false, bottomDash: false, leftDash: false },
+                  { key: 'caso4', label: '4', top: true,  right: false, bottom: true,  left: false, topDash: false, rightDash: false, bottomDash: false, leftDash: false },
+                ].map(({ key, label, top, right, bottom, left, topDash, rightDash, bottomDash, leftDash }) => {
+                  const active = ortogonales.caso === key
+                  const sw = 2.5
+                  const dashed = '4,3'
+                  return (
+                    <div key={key} onClick={() => dispatch({ type: 'SET_ORT', field: 'caso', value: key })}
+                      style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                      <svg width={60} height={50} style={{ border: active ? '1.5px solid #7c4dff' : '1.5px solid rgba(255,255,255,0.08)', borderRadius: 6, background: active ? 'rgba(124,77,255,0.08)' : 'transparent', display: 'block' }}>
+                        {/* Top */}
+                        <line x1="8" y1="8" x2="52" y2="8" stroke={top ? (active ? '#b388ff' : '#90caf9') : 'rgba(255,255,255,0.2)'} strokeWidth={sw} strokeDasharray={topDash ? dashed : undefined} />
+                        {/* Right */}
+                        <line x1="52" y1="8" x2="52" y2="42" stroke={right ? (active ? '#b388ff' : '#90caf9') : 'rgba(255,255,255,0.2)'} strokeWidth={sw} strokeDasharray={rightDash ? dashed : undefined} />
+                        {/* Bottom */}
+                        <line x1="8" y1="42" x2="52" y2="42" stroke={bottom ? (active ? '#b388ff' : '#90caf9') : 'rgba(255,255,255,0.2)'} strokeWidth={sw} strokeDasharray={bottomDash ? dashed : undefined} />
+                        {/* Left */}
+                        <line x1="8" y1="8" x2="8" y2="42" stroke={left ? (active ? '#b388ff' : '#90caf9') : 'rgba(255,255,255,0.2)'} strokeWidth={sw} strokeDasharray={leftDash ? dashed : undefined} />
+                        {/* Arrow for caso4 voladizo */}
+                        {key === 'caso4' && <polygon points="30,18 25,30 35,30" fill={active ? '#b388ff' : '#90caf9'} opacity={0.7} />}
+                      </svg>
+                      <span style={{ fontSize: 9, fontFamily: 'var(--cond)', color: active ? '#b388ff' : 'var(--text3)', fontWeight: active ? 700 : 400 }}>C{label}</span>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </ParamGrid>
 
