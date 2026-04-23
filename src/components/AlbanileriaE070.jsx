@@ -4,12 +4,13 @@ import {
   calcularVm, calcularEsfuerzoAxial, calcularDensidadMuros,
   calcularColumnasConfinamiento, calcularVigaSolera, calcularCargasOrtogonales,
 } from '../utils/albanileriaE070'
+import ExcelTable from './ExcelTable'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const pf  = (v, d = 2)  => (v === '' || v == null || isNaN(Number(v))) ? '—' : Number(v).toFixed(d)
 const pf4 = v => pf(v, 4)
 
-function smartParse(str) {
+function _SmartParse(str) {
   if (!str || str === '' || str === '-' || str === '—') return ''
   let c = str.replace(/\s/g, '')
   if (c.includes(',') && c.includes('.')) {
@@ -314,85 +315,52 @@ function ResultRow({ label, value, unit = '', ok }) {
   )
 }
 
-// ── ETABS Paste handler ───────────────────────────────────────────────────────
-function makeEtabsPasteHandler(dispatch, dir, tbl) {
-  return e => {
-    const text = (e.clipboardData || window.clipboardData)?.getData('text/plain')
-    if (!text?.trim()) return
-    const active = document.activeElement
-    const field  = active?.dataset?.field
-    const startIdx = parseInt(active?.dataset?.idx)
-    if (!field || isNaN(startIdx)) return
-    const lines = text.trim().split(/\r?\n/).map(l => l.trim()).filter(Boolean)
-    const hasTab = lines.some(l => l.includes('\t'))
-    e.preventDefault()
-    const startCol = ETABS_FIELDS.indexOf(field)
-    const cells = []
-    if (hasTab && startCol !== -1) {
-      lines.forEach((line, r) => {
-        const idx = startIdx + r
-        if (idx >= MAX_MUROS) return
-        line.split('\t').forEach((val, c) => {
-          const col = startCol + c
-          if (col < ETABS_FIELDS.length) {
-            const parsed = smartParse(val)
-            cells.push({ idx, field: ETABS_FIELDS[col], value: parsed !== '' ? parsed : val })
-          }
-        })
-      })
-    } else {
-      lines.forEach((val, r) => {
-        const idx = startIdx + r
-        if (idx < MAX_MUROS) {
-          const parsed = smartParse(val)
-          cells.push({ idx, field, value: parsed !== '' ? parsed : val })
-        }
-      })
-    }
-    if (cells.length) dispatch({ type: 'SET_ETABS_BULK', dir, tbl, cells })
-  }
-}
+// (ETABS paste handler removed — ExcelTable handles paste natively)
 
 // ── ETABS Table ───────────────────────────────────────────────────────────────
 function EtabsTable({ rows, dispatch, dir, tbl, title }) {
-  const onPaste = useMemo(() => makeEtabsPasteHandler(dispatch, dir, tbl), [dispatch, dir, tbl])
+  const columns = [
+    { key: 'story',      label: 'Story',      width: 70,  type: 'text' },
+    { key: 'pier',       label: 'Pier',        width: 60,  type: 'text' },
+    { key: 'outputCase', label: 'Output Case', width: 90,  type: 'text' },
+    { key: 'caseType',   label: 'Case Type',   width: 85,  type: 'text' },
+    { key: 'stepType',   label: 'Step Type',   width: 70,  type: 'text' },
+    { key: 'location',   label: 'Location',    width: 70,  type: 'text' },
+    { key: 'p',          label: 'P (kgf)',     width: 75,  type: 'number' },
+    { key: 'v2',         label: 'V2 (kgf)',    width: 75,  type: 'number' },
+    { key: 'v3',         label: 'V3 (kgf)',    width: 75,  type: 'number' },
+    { key: 't',          label: 'T (kgf·m)',   width: 75,  type: 'number' },
+    { key: 'm2',         label: 'M2 (kgf·m)',  width: 80,  type: 'number' },
+    { key: 'm3',         label: 'M3 (kgf·m)',  width: 80,  type: 'number' },
+  ]
+
+  const handleChange = useCallback((rowIdx, colKey, value) => {
+    dispatch({ type: 'SET_ETABS_ROW', dir, tbl, idx: rowIdx, field: colKey, value })
+  }, [dispatch, dir, tbl])
+
+  const handleBulkChange = useCallback((changes) => {
+    dispatch({ type: 'SET_ETABS_BULK', dir, tbl, cells: changes.map(c => ({ idx: c.rowIdx, field: c.colKey, value: c.value })) })
+  }, [dispatch, dir, tbl])
+
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 10, color: 'var(--text2)', fontFamily: 'var(--cond)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 6 }}>
-        {title} &mdash; <span style={{ color: 'var(--text3)', fontWeight: 400, textTransform: 'none' }}>Pegar desde ETABS (Ctrl+V en celda)</span>
-      </div>
-      <div style={{ overflowX: 'auto', resize: 'both', minHeight: 70, border: '1px solid var(--border)', borderRadius: 'var(--r2)' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
-          <thead>
-            <tr>
-              <ResizableTh style={{ ...S.headerCell, width: 28, fontSize: 8 }}>#</ResizableTh>
-              {ETABS_FIELDS.map((f, i) => (
-                <ResizableTh key={f} style={{ ...S.headerCell, width: i < 6 ? 80 : 72 }}>{ETABS_LABELS[i]}</ResizableTh>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, idx) => (
-              <tr key={idx} style={{ background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-                <td style={{ ...S.cell, color: 'var(--text3)', fontSize: 9 }}>{idx + 1}</td>
-                {ETABS_FIELDS.map(f => (
-                  <td key={f} style={{ ...S.cell, ...S.inputCell, padding: 0 }}>
-                    <input style={S.tableInput} value={row[f] ?? ''}
-                      data-field={f} data-idx={idx}
-                      onChange={e => dispatch({ type: 'SET_ETABS_ROW', dir, tbl, idx, field: f, value: e.target.value })}
-                      onPaste={onPaste} />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <h4 style={{ fontFamily: 'var(--cond)', fontSize: 11, color: '#1f4e79', marginBottom: 6, letterSpacing: '.5px' }}>{title}</h4>
+      <ExcelTable
+        columns={columns}
+        data={rows}
+        onChange={handleChange}
+        onBulkChange={handleBulkChange}
+        showFormulaBar={true}
+        showRowNumbers={true}
+        sortable={false}
+      />
     </div>
   )
 }
 
 // ── Vm Table ──────────────────────────────────────────────────────────────────
+const VM_KEY_TO_PROPS_FIELD = { t: 't', L: 'L', vm_prima: 'vm' }
+
 function VmTable({ simoRows, gravRows, props, dispatch, dir, vmEi, setVmEi }) {
   const vmResult = useMemo(() => {
     const muros = props.map((p, i) => {
@@ -420,7 +388,70 @@ function VmTable({ simoRows, gravRows, props, dispatch, dir, vmEi, setVmEi }) {
   const noFisuran = vmResult.resultados.filter(r => r.verificacion === 'NO SE FISURA').length
   const totalMuros = vmResult.resultados.length
 
-  const hdrs = ['Pier', 'Espesor t (m)', 'Longitud L (m)', "v'm (kg/cm²)", 'Ve (ton)', 'Me (ton·m)', 'Pg (ton)', 'α calc', 'α adopt', 'Vm (ton)', '0.55·Vm', 'Verificación']
+  // ── Build combined data array (props editables + resultados calculados) ──────
+  const vmTableData = useMemo(() => {
+    // Build a lookup from nombre → resultado calculado
+    const resultByNombre = {}
+    vmResult.resultados.forEach(r => { resultByNombre[r.nombre] = r })
+
+    return props.map((p, i) => {
+      const sRow = simoRows[i] || {}
+      const gRow = gravRows[i] || {}
+      const nombre = sRow.pier || p.pier || ''
+      const r = resultByNombre[nombre] || null
+      const v2raw = parseFloat(sRow.v2) || 0    // kgf
+      const m3raw = parseFloat(sRow.m3) || 0    // kgf·m
+      const pgRaw = (parseFloat(gRow.p) || 0) / 1000  // ton
+      return {
+        pier:        nombre,
+        v_r3:        v2raw !== 0 ? pf4(v2raw / 1000) : '',   // ton con R=3 (raw / 1000)
+        ve_r6:       r ? pf4(r.Ve) : '',
+        t:           p.t ?? '',
+        L:           p.L ?? '',
+        pg:          pgRaw !== 0 ? pf4(pgRaw) : '',
+        vm_prima:    p.vm ?? '',
+        m_r3:        m3raw !== 0 ? pf4(m3raw / 1000) : '',   // ton·m
+        me_r6:       r ? pf4(r.Me) : '',
+        alpha_calc:  r ? pf4(r.alfa_calc) : '',
+        alpha_adopt: r ? pf4(r.alfa) : '',
+        vm:          r ? pf4(r.Vm) : '',
+        vm055:       r ? pf4(r.Vm055) : '',
+        verif:       r ? r.verificacion : '',
+        _propsIdx:   i,
+      }
+    })
+  }, [props, simoRows, gravRows, vmResult])
+
+  const vmColumns = [
+    { key: 'pier',        label: 'Pier',          width: 60,  readOnly: true },
+    { key: 'v_r3',        label: 'V(R=3) ton',    width: 75,  readOnly: true },
+    { key: 've_r6',       label: 'Ve(R=6) ton',   width: 75,  readOnly: true },
+    { key: 't',           label: 'Espesor t (m)', width: 80,  type: 'number' },
+    { key: 'L',           label: 'Longitud L (m)',width: 85,  type: 'number' },
+    { key: 'pg',          label: 'Pg (tonf)',      width: 75,  readOnly: true },
+    { key: 'vm_prima',    label: "v'm (kg/cm²)",  width: 85,  type: 'number' },
+    { key: 'm_r3',        label: 'M(R=3) t·m',    width: 75,  readOnly: true },
+    { key: 'me_r6',       label: 'Me(R=6) t·m',   width: 75,  readOnly: true },
+    { key: 'alpha_calc',  label: 'α calc',         width: 65,  readOnly: true },
+    { key: 'alpha_adopt', label: 'α adopt',        width: 65,  readOnly: true },
+    { key: 'vm',          label: 'Vm (tonf)',      width: 75,  readOnly: true },
+    { key: 'vm055',       label: '0.55·Vm',        width: 70,  readOnly: true },
+    { key: 'verif',       label: 'Verificación',   width: 100, readOnly: true },
+  ]
+
+  const handleVmChange = useCallback((rowIdx, colKey, value) => {
+    const propsField = VM_KEY_TO_PROPS_FIELD[colKey]
+    if (!propsField) return
+    dispatch({ type: 'SET_PROPS_ROW', dir, idx: rowIdx, field: propsField, value })
+  }, [dispatch, dir])
+
+  const handleVmBulkChange = useCallback((changes) => {
+    changes.forEach(c => {
+      const propsField = VM_KEY_TO_PROPS_FIELD[c.colKey]
+      if (!propsField) return
+      dispatch({ type: 'SET_PROPS_ROW', dir, idx: c.rowIdx, field: propsField, value: c.value })
+    })
+  }, [dispatch, dir])
 
   return (
     <div style={{ marginBottom: 16 }}>
@@ -456,90 +487,43 @@ function VmTable({ simoRows, gravRows, props, dispatch, dir, vmEi, setVmEi }) {
         </div>
       )}
 
-      {/* ── Props editable inputs above table ──────────────────────────────── */}
-      <div style={{ overflowX: 'auto', marginBottom: 8, border: '1px solid rgba(68,114,196,0.2)', borderRadius: 'var(--r)', padding: 8, background: 'rgba(26,39,68,0.3)' }}>
+      {/* ── Tabla combinada props + resultados (ExcelTable) ────────────────── */}
+      <div style={{ marginBottom: 8 }}>
         <div style={{ fontSize: 9, color: 'var(--text3)', fontFamily: 'var(--cond)', textTransform: 'uppercase', letterSpacing: '.5px', marginBottom: 6 }}>
-          Propiedades de muros (editables) — Pier / Espesor t / Longitud L / Resistencia v'm
+          Propiedades de muros (celdas azules editables) + Resultados Vm calculados (celdas verdes)
         </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', tableLayout: 'fixed', width: '100%' }}>
-            <thead>
-              <tr>
-                <ResizableTh style={{ ...S.headerCell, width: 28, fontSize: 8 }}>#</ResizableTh>
-                <ResizableTh style={{ ...S.headerCell, width: 80 }}>Pier</ResizableTh>
-                <ResizableTh style={{ ...S.headerCell, width: 90 }}>Espesor t (m)</ResizableTh>
-                <ResizableTh style={{ ...S.headerCell, width: 90 }}>Longitud L (m)</ResizableTh>
-                <ResizableTh style={{ ...S.headerCell, width: 100 }}>v'm (kg/cm²)</ResizableTh>
-              </tr>
-            </thead>
-            <tbody>
-              {props.map((p, idx) => (
-                <tr key={idx} style={{ background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-                  <td style={{ ...S.cell, color: 'var(--text3)', fontSize: 9 }}>{idx + 1}</td>
-                  {['pier', 't', 'L', 'vm'].map(f => (
-                    <td key={f} style={{ ...S.cell, ...S.inputCell, padding: 0 }}>
-                      <input style={S.tableInput} value={p[f] ?? ''}
-                        onChange={e => dispatch({ type: 'SET_PROPS_ROW', dir, idx, field: f, value: e.target.value })} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ExcelTable
+          columns={vmColumns}
+          data={vmTableData}
+          onChange={handleVmChange}
+          onBulkChange={handleVmBulkChange}
+          showFormulaBar={true}
+          showRowNumbers={true}
+          sortable={false}
+        />
       </div>
 
-      {/* ── Vm results table ───────────────────────────────────────────────── */}
-      <div style={{ overflowX: 'auto', resize: 'both', minHeight: 70, border: '1px solid var(--border)', borderRadius: 'var(--r2)' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%', tableLayout: 'fixed' }}>
-          <thead>
-            <tr>
-              <ResizableTh style={{ ...S.headerCell, width: 28, fontSize: 8 }}>#</ResizableTh>
-              {hdrs.map((h, i) => (
-                <ResizableTh key={i} style={{ ...S.headerCell, width: i < 4 ? 76 : 76 }}>{h}</ResizableTh>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {vmResult.resultados.map((row, idx) => (
-              <tr key={idx} style={{ background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
-                <td style={{ ...S.cell, color: 'var(--text3)', fontSize: 9 }}>{idx + 1}</td>
-                <td style={{ ...S.cell, ...S.compCell }}>{row.nombre}</td>
-                <td style={{ ...S.cell, ...S.compCell }}>{pf(row.t, 2)}</td>
-                <td style={{ ...S.cell, ...S.compCell }}>{pf(row.L, 2)}</td>
-                <td style={{ ...S.cell, ...S.compCell }}>{pf(row.vm_prima, 1)}</td>
-                <td style={{ ...S.cell, ...S.compCell }}>{pf4(row.Ve)}</td>
-                <td style={{ ...S.cell, ...S.compCell }}>{pf4(row.Me)}</td>
-                <td style={{ ...S.cell, ...S.compCell }}>{pf(row.pg, 4)}</td>
-                <td style={{ ...S.cell, ...S.compCell }}>{pf4(row.alfa_calc)}</td>
-                <td style={{ ...S.cell, ...S.compCell }}>{pf4(row.alfa)}</td>
-                <td style={{ ...S.cell, ...S.compCell, fontWeight: 700 }}>{pf4(row.Vm)}</td>
-                <td style={{ ...S.cell, ...S.compCell }}>{pf4(row.Vm055)}</td>
-                <td style={{ ...S.cell, background: condBg(row.verificacion), color: condClr(row.verificacion), fontSize: 9, fontFamily: 'var(--mono)', fontWeight: 700 }}>{row.verificacion}</td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr style={{ background: '#1f4e79' }}>
-              <td colSpan={10} style={{ ...S.cell, color: '#cce0ff', fontFamily: 'var(--cond)', fontWeight: 700, textAlign: 'right', fontSize: 9 }}>
-                ΣVmi (ton) →
-              </td>
-              <td style={{ ...S.cell, ...S.compCell, fontWeight: 700 }}>{pf4(vmResult.sumVm)}</td>
-              <td colSpan={2}></td>
-            </tr>
-            <tr style={{ background: 'rgba(30,50,80,0.5)' }}>
-              <td colSpan={10} style={{ ...S.cell, color: '#cce0ff', fontFamily: 'var(--cond)', fontWeight: 700, textAlign: 'right', fontSize: 9 }}>
-                ΣVEi — Cortante sísmico total (ton) →
-              </td>
-              <td colSpan={2} style={{ ...S.cell, ...S.inputCell, padding: 0 }}>
-                <input style={S.tableInput} value={vmEi} onChange={e => setVmEi(e.target.value)} placeholder="ingresar" />
-              </td>
-              <td style={{ ...S.cell, background: condBg(verifArt === true ? 'CUMPLE' : verifArt === false ? 'NO CUMPLE' : '—'), color: condClr(verifArt === true ? 'CUMPLE' : verifArt === false ? 'NO CUMPLE' : '—'), fontSize: 9, fontFamily: 'var(--mono)', fontWeight: 700 }}>
-                {verifArt === true ? 'CUMPLE' : verifArt === false ? 'NO CUMPLE' : '—'}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
+      {/* ── ΣVmi y verificación global ─────────────────────────────────────── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, padding: '8px 12px', background: '#1f4e79', borderRadius: 'var(--r2)' }}>
+        <span style={{ fontSize: 10, color: '#cce0ff', fontFamily: 'var(--cond)', fontWeight: 700, flex: 1, textAlign: 'right' }}>
+          ΣVmi (ton) = <strong style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{pf4(vmResult.sumVm)}</strong>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          ΣVEi — Cortante sísmico total (ton):
+        </span>
+        <input
+          style={{ ...S.paramInput, width: 110, padding: '4px 8px', fontSize: 11 }}
+          value={vmEi}
+          onChange={e => setVmEi(e.target.value)}
+          placeholder="ingresar"
+        />
+        <span style={{
+          padding: '4px 10px', borderRadius: 4, fontSize: 10, fontWeight: 700,
+          background: condBg(verifArt === true ? 'CUMPLE' : verifArt === false ? 'NO CUMPLE' : ''),
+          color: condClr(verifArt === true ? 'CUMPLE' : verifArt === false ? 'NO CUMPLE' : 'var(--text3)'),
+          fontFamily: 'var(--mono)', minWidth: 80, textAlign: 'center',
+        }}>
+          {verifArt === true ? 'CUMPLE' : verifArt === false ? 'NO CUMPLE' : '—'}
+        </span>
       </div>
 
       {/* ── Verificación grande ΣVmi ≥ ΣVEi ───────────────────────────────── */}
